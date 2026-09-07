@@ -1,15 +1,10 @@
-// Unit tests for pause-fx's pure/isolable logic -- node's built-in test runner, no
-// dependencies (`node --test scripts/`). Deliberately NOT trying to mock Foundry's whole
-// Hooks/game/togglePause/ApplicationV2 surface to drive the full PauseFX.run() sequence
-// end-to-end here -- that needs a real Foundry session to mean anything, and chasing
-// coverage of Foundry-coupled code through mocks would mostly just re-prove the mocks work.
-// What's covered here is the genuinely pure logic: the hasFrame window-close filter, and
-// the clock/wait math, which is easy to get subtly wrong and easy to test in isolation.
+// Unit tests for pause-fx's pure/isolable logic (node's built-in test runner, no
+// dependencies) -- not the full PauseFX.run() sequence itself; see README.md's Testing
+// section for why.
 //
-// Minimal Foundry globals (`ui`, `foundry`) are stubbed just enough for
-// closeAllWindowsHandler to run -- set up before importing pause-fx.js, since its top-level
-// code touches `globalThis.socketlib` at import time (see that comment in the source for
-// why it needs to be resilient to `socketlib` not being loaded yet).
+// Minimal Foundry globals (`ui`, `foundry`, `Hooks`) are stubbed just enough for
+// closeAllWindowsHandler to run and for the module to import cleanly without socketlib
+// present.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -60,11 +55,8 @@ test("resolveTextCycleMs: a custom multiplier is honored when textCycleMs is omi
   assert.equal(resolveTextCycleMs({ borderCycleMs: 1000, textCycleMultiplier: 3 }), 3000);
 });
 
-// Table-driven -- same behavior (unit-count * the right clock) across varying inputs, so one
-// row per case reads better as a table than as separately-argued tests. Each row still
-// registers as its own `test()`, not a loop of asserts inside one -- so a single row shows up
-// as its own ✔/✖ line, and `--test-name-pattern` can target just that one row instead of
-// the whole table.
+// Table-driven -- one test() per row, not a loop of asserts inside one, so each row still
+// reports individually and `--test-name-pattern` can target just one (see README.md).
 const CLOCK_MS_CASES = [
   ["border clock", { units: 1.5, clock: "border" }, 5460],
   ["text clock, not border", { units: 2, clock: "text" }, 14560],
