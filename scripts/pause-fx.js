@@ -1,20 +1,8 @@
 // pause-fx -- declarative Foundry pause-screen effects engine.
 //
-// Two named clocks (a `border` cycle and a `text` cycle, independently timeable), a
-// declarative `steps` array instead of a hand-written imperative sequence, and a few
-// deliberate CSS/DOM choices:
-//   - the border glow is pause-fx's own overlay (its own body class, its own pseudo-element,
-//     its own CSS custom property) -- independent of any other module, so it looks the same
-//     whether or not something like Monk's Little Details is also installed.
-//   - freezing a pulse uses `animation-play-state: paused`, not `animation: none` --
-//     the former freezes exactly where it visually is, the latter resets it.
-//   - a video/image overlay is `position: fixed` on `<body>`, never positioned relative
-//     to `#pause` itself -- that element is only ever sized for its own small icon+label,
-//     not a full-screen container, and inserting a large child into it both clips to that
-//     tiny box and shoves the rest of Foundry's UI around. The border overlay uses the same
-//     technique for the same reason.
-//
-// See README.md for the full config shape and a worked example.
+// Two named clocks (`border`, `text`, independently timeable) drive a declarative `steps`
+// array instead of a hand-written imperative sequence. See README.md for the config shape
+// and a worked example.
 
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered";
@@ -23,13 +11,10 @@ const DEFAULT_BORDER_CYCLE_MS = 3640; // no icon-GIF-timing auto-detection yet -
 
 let socket;
 
-// pause-fx's own esmodule loads asynchronously (dynamic import, like every esmodule), so on
-// a fresh module-enable it can resolve *after* socketlib's own "ready" hook has already
-// fired and gone stale -- a bare `Hooks.once("socketlib.ready", ...)` would then never run,
-// and `socket` would stay undefined silently (socketlib.modules just stays empty, no error).
-// If `socketlib` is already on the page by the time this evaluates, register immediately
-// instead of waiting on a hook that may never come again; only fall back to the hook when
-// socketlib itself genuinely hasn't loaded yet.
+/**
+ * Registers pause-fx's socketlib socket -- immediately if socketlib is already loaded,
+ * otherwise once its "ready" hook fires.
+ */
 function registerSocket() {
   socket = socketlib.registerModule(MODULE_ID);
   socket.register("closeAllWindows", closeAllWindowsHandler);
@@ -43,19 +28,21 @@ if (globalThis.socketlib) {
   Hooks.once("socketlib.ready", registerSocket);
 }
 
-// Closes both legacy (Application v1) and ApplicationV2 windows on whichever client runs
-// this -- called via socket.executeForEveryone so every connected client closes its own.
-//
-// foundry.applications.instances holds every ApplicationV2 instance, including Foundry's
-// own persistent docked UI chrome (sidebar, hotbar, players list, scene controls/nav, each
-// sidebar tab, the pause overlay itself, etc.), not just real floating windows (sheets,
-// config dialogs) -- closing the former would blank a client's entire UI, not just its open
-// sheets. `hasFrame` is Foundry's own signal for "this is a real titled window with a close
-// control": false on every docked chrome piece, true on every floating window.
+/**
+ * Whether `app` is a real floating window (a titled window with a close control), as
+ * opposed to one of Foundry's own persistent docked UI regions.
+ * @param {object} app - an ApplicationV2 instance.
+ * @returns {boolean}
+ */
 export function isRealWindow(app) {
   return !!app.hasFrame;
 }
 
+/**
+ * Closes every real floating window (legacy and ApplicationV2) on whichever client runs
+ * this -- called via socket.executeForEveryone so every connected client closes its own.
+ * Leaves Foundry's own docked UI chrome untouched.
+ */
 export function closeAllWindowsHandler() {
   Object.values(ui.windows).forEach((app) => app.close());
   for (const app of foundry.applications.instances.values()) {
@@ -65,17 +52,26 @@ export function closeAllWindowsHandler() {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ---- pure clock math -- pulled out of run()'s loop so it has its own direct tests instead
-// of only being exercised indirectly through a full (Foundry-globals-dependent) sequence ----
-
-// textCycleMs, if given, always wins; otherwise derive it from borderCycleMs and the
-// multiplier (2x by default -- "half speed").
+/**
+ * @param {object} opts
+ * @param {number} [opts.textCycleMs] - explicit override; wins if given.
+ * @param {number} opts.borderCycleMs
+ * @param {number} [opts.textCycleMultiplier=2]
+ * @returns {number} the text pulse period, in ms.
+ */
 export function resolveTextCycleMs({ textCycleMs, borderCycleMs, textCycleMultiplier = 2 }) {
   return textCycleMs ?? borderCycleMs * textCycleMultiplier;
 }
 
-// A step's `wait: {units, clock}` is always a number of units on a named clock, never a raw
-// ms count (see README) -- this is the one place that unit count actually becomes a delay.
+/**
+ * @param {object} waitSpec
+ * @param {number} waitSpec.units
+ * @param {"border"|"text"} [waitSpec.clock="border"]
+ * @param {object} clocks
+ * @param {number} clocks.borderCycleMs
+ * @param {number} clocks.textCycleMs
+ * @returns {number} the wait, in ms.
+ */
 export function clockMsFor(waitSpec, { borderCycleMs, textCycleMs }) {
   const cycleMs = waitSpec.clock === "text" ? textCycleMs : borderCycleMs;
   return waitSpec.units * cycleMs;
@@ -139,14 +135,9 @@ function removeStyles() {
   styleEl = null;
 }
 
-// ---- border colour -- an inline custom property + class on <body>, entirely local to this
-// client. Nothing shared/persisted, so there's nothing to lose if a session dies mid-pause;
-// it just resets on reload like any other unsaved DOM state. ----
+// ---- border colour: an inline custom property + class on <body>, local to this client ----
 
-// Resolves any real CSS colour (hex, a named colour like "royalblue", rgb()/hsl(), ...) to
-// "r, g, b" the way the box-shadow keyframes above need it -- via the browser's own colour
-// parser (an offscreen probe element's computed style), not a hand-rolled hex-only parser,
-// so it accepts whatever a caller reasonably passes rather than just hex strings.
+/** Resolves any real CSS colour to "r, g, b" via the browser's own colour parser. */
 let colourProbe = null;
 function resolveRgbTriplet(colour) {
   if (!colourProbe) {
