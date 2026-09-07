@@ -13,9 +13,11 @@ this generalizes.
 ## Requires
 
 [socketlib](https://github.com/manuelVo/foundryvtt-socketlib) (for `closeAllWindows`).
-Recommends [Monk's Little Details](https://github.com/ironmonk88/monks-little-details)
-for the border-glow steps -- without it, border-colour changes are silently skipped and
-everything else still works.
+Nothing else -- the border-glow overlay is `pause-fx`'s own (an earlier version retinted
+[Monk's Little Details](https://github.com/ironmonk88/monks-little-details)' own pause
+effect instead; turned out MLD owns that whole visual outright -- its own body class, its
+own box-shadow pseudo-element -- so there was nothing to fall back to without it. Owning
+the overlay directly means it looks the same with or without MLD installed).
 
 ## Usage
 

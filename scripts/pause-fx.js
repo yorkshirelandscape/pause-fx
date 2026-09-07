@@ -4,25 +4,30 @@
 // (2026-09-07, see that world's `temp-pause.js` / `norgorber-takes-his-due.js` macros for
 // the original one-off versions this replaces): two named clocks (a `border` cycle and a
 // `text` cycle, independently timeable), a declarative `steps` array instead of a
-// hand-written imperative sequence, and three hard-won CSS/DOM techniques baked in so
+// hand-written imperative sequence, and a few hard-won CSS/DOM techniques baked in so
 // callers never have to rediscover them:
-//   - the pause-border glow lives on Monk's Little Details' own `pause-border-colour`
-//     world setting (not a raw CSS variable -- that gets fought/overwritten by MLD's own
-//     onChange), with a localStorage safety net in case a session dies mid-pause before
-//     cleanup runs (world-scoped settings persist across logins; nothing else does).
+//   - the border glow is pause-fx's own overlay, not borrowed from anything else. (Earlier
+//     versions retinted Monk's Little Details' own pause effect instead -- turned out MLD
+//     owns the entire visual (its own body class, its own box-shadow pseudo-element), so
+//     "retint it" only ever worked when MLD happened to be installed, and there was nothing
+//     to fall back to otherwise. Owning the overlay outright means it looks the same
+//     regardless of what else is installed, and drops the old localStorage safety net
+//     entirely -- that existed to protect a world-scoped MLD setting from getting stuck for
+//     everyone if a session died mid-pause; a body class and an inline style are purely
+//     local to one client and just reset on reload, nothing shared to protect.)
 //   - freezing a pulse uses `animation-play-state: paused`, not `animation: none` --
 //     the former freezes exactly where it visually is, the latter resets it.
 //   - a video/image overlay is `position: fixed` on `<body>`, never positioned relative
 //     to `#pause` itself -- that element is only ever sized for its own small icon+label,
 //     not a full-screen container, and inserting a large child into it both clips to that
-//     tiny box and shoves the rest of Foundry's UI around.
+//     tiny box and shoves the rest of Foundry's UI around. The border overlay uses the same
+//     `position: fixed` + `<body>` technique for the same reason.
 //
 // See README.md for the full config shape and a worked example.
 
 const MODULE_ID = "pause-fx";
-const MLD_MODULE = "monks-little-details";
-const MLD_SETTING = "pause-border-colour";
-const BORDER_STASH_KEY = "pauseFxPrevBorderColour";
+const BORDER_CLASS = "pause-fx-bordered";
+const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const DEFAULT_BORDER_CYCLE_MS = 3640; // no icon-GIF-timing auto-detection yet -- pass borderCycleMs explicitly for anything that should sync to a specific asset's real loop length (see README "Known limitations")
 
 let socket;
@@ -101,17 +106,25 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
   styleEl = document.createElement("style");
   styleEl.id = "pause-fx-styles";
   styleEl.textContent = `
+    body.${BORDER_CLASS}:before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 90000; /* above the game canvas, below the video/image overlay's 100000 */
+    }
+
     @keyframes pause-fx-border-pulse {
-      0%, 100% { box-shadow: rgba(var(--pause-border-color), 0.15) 0px 0px 30px 15px inset; }
-      50% { box-shadow: rgba(var(--pause-border-color), 0.35) 0px 0px 70px 45px inset; }
+      0%, 100% { box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.15) 0px 0px 30px 15px inset; }
+      50% { box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.35) 0px 0px 70px 45px inset; }
     }
     @media (prefers-reduced-motion: reduce) {
-      body.mld-paused:after {
-        box-shadow: rgba(var(--pause-border-color), 0.25) 0px 0px 40px 20px inset !important;
+      body.${BORDER_CLASS}:before {
+        box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.25) 0px 0px 40px 20px inset !important;
       }
     }
     @media (prefers-reduced-motion: no-preference) {
-      body.mld-paused:after {
+      body.${BORDER_CLASS}:before {
         animation: pause-fx-border-pulse ${borderCycleMs / 1000}s ease-in-out infinite;
       }
       /* Higher specificity (extra class) wins without !important -- and needs to: an
@@ -119,7 +132,7 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
          since !important declarations beat active CSS animations on the same property
          even from a totally unrelated rule. animation-play-state just freezes/resumes
          in place, doesn't reset it. */
-      body.pause-fx-frozen.mld-paused:after {
+      body.pause-fx-frozen.${BORDER_CLASS}:before {
         animation-play-state: paused;
       }
     }
@@ -143,27 +156,34 @@ function removeStyles() {
   styleEl = null;
 }
 
-// ---- MLD border colour, with the localStorage recovery safety net ----
+// ---- border colour -- an inline custom property + class on <body>, entirely local to this
+// client. Nothing shared/persisted, so there's nothing to lose if a session dies mid-pause;
+// it just resets on reload like any other unsaved DOM state. ----
 
-async function setBorderColour(colour) {
-  if (!game.modules.get(MLD_MODULE)?.active) return null; // MLD not installed/enabled -- border steps just no-op
-  let prev = localStorage.getItem(BORDER_STASH_KEY);
-  if (prev) {
-    ui.notifications.warn(
-      "pause-fx: found a leftover pause-border colour from an interrupted run -- restoring it once this pause ends.",
-    );
-  } else {
-    prev = game.settings.get(MLD_MODULE, MLD_SETTING);
-    localStorage.setItem(BORDER_STASH_KEY, prev);
+// Resolves any real CSS colour (hex, a named colour like "royalblue", rgb()/hsl(), ...) to
+// "r, g, b" the way the box-shadow keyframes above need it -- via the browser's own colour
+// parser (an offscreen probe element's computed style), not a hand-rolled hex-only parser,
+// so it accepts whatever a caller reasonably passes rather than just hex strings.
+let colourProbe = null;
+function resolveRgbTriplet(colour) {
+  if (!colourProbe) {
+    colourProbe = document.createElement("div");
+    colourProbe.style.display = "none";
+    document.body.appendChild(colourProbe);
   }
-  await game.settings.set(MLD_MODULE, MLD_SETTING, colour);
-  return prev;
+  colourProbe.style.color = colour;
+  const [r, g, b] = getComputedStyle(colourProbe).color.match(/\d+(\.\d+)?/g) ?? [255, 0, 0];
+  return `${r}, ${g}, ${b}`;
 }
 
-async function restoreBorderColour(prev) {
-  if (prev == null || !game.modules.get(MLD_MODULE)?.active) return;
-  await game.settings.set(MLD_MODULE, MLD_SETTING, prev);
-  localStorage.removeItem(BORDER_STASH_KEY);
+function setBorderColour(colour) {
+  document.body.style.setProperty(BORDER_COLOUR_VAR, resolveRgbTriplet(colour));
+  document.body.classList.add(BORDER_CLASS);
+}
+
+function clearBorderColour() {
+  document.body.classList.remove(BORDER_CLASS);
+  document.body.style.removeProperty(BORDER_COLOUR_VAR);
 }
 
 // ---- the sequencer itself ----
@@ -173,7 +193,8 @@ export class PauseFX {
    * @param {object} config
    * @param {string} [config.icon] - image/GIF path for the pause icon.
    * @param {string} [config.iconGlow="red"] - CSS colour for the icon's drop-shadow.
-   * @param {string} [config.borderColor="red"] - CSS hex colour for MLD's pause border.
+   * @param {string} [config.borderColor="red"] - any real CSS colour for pause-fx's own
+   *   border-glow overlay (hex, a named colour, rgb()/hsl(), ...).
    * @param {string} [config.text=""] - initial label text.
    * @param {number} [config.borderCycleMs] - border/eye pulse period. Defaults to 3640ms
    *   (28 frames @ 130ms, Norgorber.gif's real loop length) if not given -- pass this
@@ -216,12 +237,12 @@ export class PauseFX {
       else await socket.executeForEveryone("closeAllWindows");
     }
 
-    const prevBorderColour = await setBorderColour(borderColor);
+    setBorderColour(borderColor);
     injectStyles({ borderCycleMs, textCycleMs: resolvedTextCycle });
 
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
-      restoreBorderColour(prevBorderColour);
+      clearBorderColour();
       removeStyles();
       document.body.classList.remove("pause-fx-frozen");
       Hooks.off("pauseGame", resetOnUnpause);
