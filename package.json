@@ -1,0 +1,9 @@
+{
+  "name": "pause-fx",
+  "private": true,
+  "type": "module",
+  "description": "Declarative, reusable Foundry pause-screen effects -- see module.json for the real manifest.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "pause-fx",
+  "title": "Pause FX",
+  "description": "Declarative, reusable themed pause-screen reveals -- border/icon/text/video/image/audio/macro steps on cycle-based clocks, plus closing every connected client's open windows via socketlib.",
+  "version": "0.1.0",
+  "socket": true,
+  "authors": [
+    {
+      "name": "volfied"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "esmodules": [
+    "scripts/pause-fx.js"
+  ],
+  "relationships": {
+    "requires": [
+      {
+        "id": "socketlib",
+        "type": "module",
+        "manifest": "https://github.com/manuelVo/foundryvtt-socketlib/releases/latest/download/module.json"
+      }
+    ],
+    "recommends": [
+      {
+        "id": "monks-little-details",
+        "type": "module",
+        "reason": "Border-glow steps drive its pause-border-colour setting; without it, border steps are silently skipped and everything else still works."
+      }
+    ]
+  }
+}
