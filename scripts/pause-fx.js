@@ -7,7 +7,9 @@
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered";
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
-const DEFAULT_BORDER_CYCLE_MS = 3640; // no icon-GIF-timing auto-detection yet -- pass borderCycleMs explicitly for anything that should sync to a specific asset's real loop length (see README "Known limitations")
+// No icon-GIF-timing auto-detection yet -- pass borderCycleMs explicitly to sync against a
+// specific asset's real loop length (see README "Known limitations").
+const DEFAULT_BORDER_CYCLE_MS = 3640;
 
 let socket;
 
