@@ -1,27 +1,18 @@
 // pause-fx -- declarative Foundry pause-screen effects engine.
 //
-// Generalizes everything learned building Curtain Call's Norgorber pause-screen reveal
-// (2026-09-07, see that world's `temp-pause.js` / `norgorber-takes-his-due.js` macros for
-// the original one-off versions this replaces): two named clocks (a `border` cycle and a
-// `text` cycle, independently timeable), a declarative `steps` array instead of a
-// hand-written imperative sequence, and a few hard-won CSS/DOM techniques baked in so
-// callers never have to rediscover them:
-//   - the border glow is pause-fx's own overlay, not borrowed from anything else. (Earlier
-//     versions retinted Monk's Little Details' own pause effect instead -- turned out MLD
-//     owns the entire visual (its own body class, its own box-shadow pseudo-element), so
-//     "retint it" only ever worked when MLD happened to be installed, and there was nothing
-//     to fall back to otherwise. Owning the overlay outright means it looks the same
-//     regardless of what else is installed, and drops the old localStorage safety net
-//     entirely -- that existed to protect a world-scoped MLD setting from getting stuck for
-//     everyone if a session died mid-pause; a body class and an inline style are purely
-//     local to one client and just reset on reload, nothing shared to protect.)
+// Two named clocks (a `border` cycle and a `text` cycle, independently timeable), a
+// declarative `steps` array instead of a hand-written imperative sequence, and a few
+// deliberate CSS/DOM choices:
+//   - the border glow is pause-fx's own overlay (its own body class, its own pseudo-element,
+//     its own CSS custom property) -- independent of any other module, so it looks the same
+//     whether or not something like Monk's Little Details is also installed.
 //   - freezing a pulse uses `animation-play-state: paused`, not `animation: none` --
 //     the former freezes exactly where it visually is, the latter resets it.
 //   - a video/image overlay is `position: fixed` on `<body>`, never positioned relative
 //     to `#pause` itself -- that element is only ever sized for its own small icon+label,
 //     not a full-screen container, and inserting a large child into it both clips to that
 //     tiny box and shoves the rest of Foundry's UI around. The border overlay uses the same
-//     `position: fixed` + `<body>` technique for the same reason.
+//     technique for the same reason.
 //
 // See README.md for the full config shape and a worked example.
 
@@ -32,14 +23,13 @@ const DEFAULT_BORDER_CYCLE_MS = 3640; // no icon-GIF-timing auto-detection yet -
 
 let socket;
 
-// pause-fx's own esmodule loads asynchronously (dynamic import, like every esmodule) --
-// confirmed live (2026-09-07) that on a fresh module-enable this can resolve *after*
-// socketlib's own "ready" hook has already fired and gone stale, so a bare
-// `Hooks.once("socketlib.ready", ...)` never runs and `socket` stays undefined forever
-// (silently -- socketlib.modules just stays empty, no error). If `socketlib` is already
-// on the page by the time this evaluates, register immediately instead of waiting on a
-// hook that may never come again; only fall back to the hook when socketlib itself
-// genuinely hasn't loaded yet.
+// pause-fx's own esmodule loads asynchronously (dynamic import, like every esmodule), so on
+// a fresh module-enable it can resolve *after* socketlib's own "ready" hook has already
+// fired and gone stale -- a bare `Hooks.once("socketlib.ready", ...)` would then never run,
+// and `socket` would stay undefined silently (socketlib.modules just stays empty, no error).
+// If `socketlib` is already on the page by the time this evaluates, register immediately
+// instead of waiting on a hook that may never come again; only fall back to the hook when
+// socketlib itself genuinely hasn't loaded yet.
 function registerSocket() {
   socket = socketlib.registerModule(MODULE_ID);
   socket.register("closeAllWindows", closeAllWindowsHandler);
@@ -55,20 +45,13 @@ if (globalThis.socketlib) {
 
 // Closes both legacy (Application v1) and ApplicationV2 windows on whichever client runs
 // this -- called via socket.executeForEveryone so every connected client closes its own.
-// API confirmed against 5 real installed modules on the actual production Foundry server,
-// not guessed (escape-window, monks-active-tiles, monks-tokenbar, patrol,
-// xdy-pf2e-workbench, pf2e-skill-issue).
 //
 // foundry.applications.instances holds every ApplicationV2 instance, including Foundry's
-// own persistent docked UI chrome (sidebar, hotbar, players list, scene controls/nav,
-// each sidebar tab, the pause overlay itself, etc.) alongside real floating windows
-// (sheets, config dialogs) -- confirmed live (2026-09-07) that closing the former blanks
-// a client's entire UI, not just its open sheets. `hasFrame` is Foundry's own signal for
-// "this is a real titled window with a close control" -- false on every docked chrome
-// piece, true on every floating window -- so filter on that rather than the registry as
-// a whole.
-// Extracted as its own pure predicate so the regression it guards against (see comment
-// above) has a direct unit test, not just the one-off live check that originally caught it.
+// own persistent docked UI chrome (sidebar, hotbar, players list, scene controls/nav, each
+// sidebar tab, the pause overlay itself, etc.), not just real floating windows (sheets,
+// config dialogs) -- closing the former would blank a client's entire UI, not just its open
+// sheets. `hasFrame` is Foundry's own signal for "this is a real titled window with a close
+// control": false on every docked chrome piece, true on every floating window.
 export function isRealWindow(app) {
   return !!app.hasFrame;
 }
@@ -86,7 +69,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // of only being exercised indirectly through a full (Foundry-globals-dependent) sequence ----
 
 // textCycleMs, if given, always wins; otherwise derive it from borderCycleMs and the
-// multiplier (2x by default -- "half speed", per the original Curtain Call brief).
+// multiplier (2x by default -- "half speed").
 export function resolveTextCycleMs({ textCycleMs, borderCycleMs, textCycleMultiplier = 2 }) {
   return textCycleMs ?? borderCycleMs * textCycleMultiplier;
 }
@@ -196,9 +179,9 @@ export class PauseFX {
    * @param {string} [config.borderColor="red"] - any real CSS colour for pause-fx's own
    *   border-glow overlay (hex, a named colour, rgb()/hsl(), ...).
    * @param {string} [config.text=""] - initial label text.
-   * @param {number} [config.borderCycleMs] - border/eye pulse period. Defaults to 3640ms
-   *   (28 frames @ 130ms, Norgorber.gif's real loop length) if not given -- pass this
-   *   explicitly to sync against a different asset's own real timing instead.
+   * @param {number} [config.borderCycleMs] - border/eye pulse period, in ms. Defaults to
+   *   3640ms if not given -- pass this explicitly to sync against a specific icon's own
+   *   real loop length instead (e.g. a GIF's actual per-frame timing).
    * @param {number} [config.textCycleMs] - text pulse period. Defaults to
    *   borderCycleMs * textCycleMultiplier.
    * @param {number} [config.textCycleMultiplier=2] - only used if textCycleMs is omitted.

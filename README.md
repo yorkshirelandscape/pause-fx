@@ -6,37 +6,30 @@ video or image, playing an audio cue, dropping in an existing macro, or closing 
 connected client's open windows -- instead of hand-writing a new imperative macro per
 reveal.
 
-Grew out of Curtain Call's Norgorber pause-screen reveal (2026-09-07); see that project's
-`temp-pause.js` / `norgorber-takes-his-due.js` macros for the original one-off versions
-this generalizes.
-
 ## Requires
 
 [socketlib](https://github.com/manuelVo/foundryvtt-socketlib) (for `closeAllWindows`).
-Nothing else -- the border-glow overlay is `pause-fx`'s own (an earlier version retinted
-[Monk's Little Details](https://github.com/ironmonk88/monks-little-details)' own pause
-effect instead; turned out MLD owns that whole visual outright -- its own body class, its
-own box-shadow pseudo-element -- so there was nothing to fall back to without it. Owning
-the overlay directly means it looks the same with or without MLD installed).
+Nothing else -- the border-glow overlay is entirely `pause-fx`'s own, so it looks the same
+whether or not another pause-screen module (e.g. Monk's Little Details) is also installed.
 
 ## Usage
 
 ```js
 await game.modules.get("pause-fx").api.run({
-  icon: "curtain-call/art/bk2/Norgorber.gif",
+  icon: "modules/my-module/art/eye.gif",
   iconGlow: "#960018",
   borderColor: "#FF0000",
-  borderCycleMs: 3640, // 28 frames @ 130ms -- Norgorber.gif's own real loop length
+  borderCycleMs: 3640, // match the icon GIF's own real loop length, if it has one
   closeAllWindows: true,
   endCombat: true,
   steps: [
-    { wait: { units: 2, clock: "text" }, text: "A MANNEQUIN BEGINS TO TWITCH" },
+    { wait: { units: 2, clock: "text" }, text: "SOMETHING STIRS" },
     { wait: { units: 1.45, clock: "text" }, text: "...AND SUDDENLY...", freeze: true },
-    { wait: { units: 0.5, clock: "border" }, audio: "curtain-call/audio/sting.ogg" },
-    { wait: { units: 0.25, clock: "border" }, video: "curtain-call/art/bk2/father-skinsaw.webm", hideIcon: true, blankText: true },
+    { wait: { units: 0.5, clock: "border" }, audio: "modules/my-module/audio/sting.ogg" },
+    { wait: { units: 0.25, clock: "border" }, video: "modules/my-module/video/reveal.webm", hideIcon: true, blankText: true },
     { waitForVideoEnd: true },
     { wait: { units: 1.5, clock: "border" }, closeVideo: true, showIcon: true, resume: true },
-    { wait: { units: 1, clock: "border" }, macro: "Chandelier Falls" },
+    { wait: { units: 1, clock: "border" }, macro: "Some Existing Macro" },
   ],
 });
 ```
@@ -60,12 +53,11 @@ not worth mocking wholesale just to re-prove what a live run already proved more
 See `scripts/pause-fx.test.mjs`'s own header comment for the reasoning.
 
 Target one test (or a table-driven case within one, e.g. a single `clockMsFor` row) via
-`node --test --test-name-pattern=<regex>` -- also reachable as `hone test pause-fx
-<pattern>`. The pattern flag has to come *before* any positional test-path argument or
-Node silently ignores it (confirmed live 2026-09-07 -- this is exactly why the script above
-has no `scripts/` positional: `npm test -- --test-name-pattern=...` always appends after
-the script's own arguments, so a positional there would land in the wrong place and the
-pattern would never apply).
+`node --test --test-name-pattern=<regex>`. That flag has to come *before* any positional
+test-path argument or Node silently ignores it -- which is exactly why the script above has
+no `scripts/` positional: `npm test -- --test-name-pattern=...` always appends after the
+script's own arguments, so a positional there would land in the wrong place and the pattern
+would never apply.
 
 ## Known limitations
 
