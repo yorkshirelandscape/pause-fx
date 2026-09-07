@@ -11,10 +11,8 @@ const DEFAULT_BORDER_CYCLE_MS = 3640; // no icon-GIF-timing auto-detection yet -
 
 let socket;
 
-/**
- * Registers pause-fx's socketlib socket -- immediately if socketlib is already loaded,
- * otherwise once its "ready" hook fires.
- */
+// Registers pause-fx's socketlib socket -- immediately if socketlib is already loaded,
+// otherwise once its "ready" hook fires.
 function registerSocket() {
   socket = socketlib.registerModule(MODULE_ID);
   socket.register("closeAllWindows", closeAllWindowsHandler);
@@ -137,8 +135,8 @@ function removeStyles() {
 
 // ---- border colour: an inline custom property + class on <body>, local to this client ----
 
-/** Resolves any real CSS colour to "r, g, b" via the browser's own colour parser. */
 let colourProbe = null;
+// Resolves any real CSS colour to "r, g, b" via the browser's own colour parser.
 function resolveRgbTriplet(colour) {
   if (!colourProbe) {
     colourProbe = document.createElement("div");
