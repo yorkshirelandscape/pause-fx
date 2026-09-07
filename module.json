@@ -3,6 +3,8 @@
   "title": "Pause FX",
   "description": "Declarative, reusable themed pause-screen reveals -- border/icon/text/video/image/audio/macro steps on cycle-based clocks, plus closing every connected client's open windows via socketlib.",
   "version": "0.1.0",
+  "manifest": "https://forge.volfied.net/volfied/pause-fx/releases/download/v0.1.0/module.json",
+  "download": "https://forge.volfied.net/volfied/pause-fx/releases/download/v0.1.0/pause-fx.zip",
   "socket": true,
   "authors": [
     {
