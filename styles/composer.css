@@ -100,7 +100,7 @@
   color: var(--pfx-text-body);
   align-self: flex-start; /* don't stretch to the column's full width when standing alone */
 }
-/* Sized narrow (a handful of characters -- pulse counts, volumes, the media-type select). */
+/* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
 #pause-fx-step-editor .pfx-field-narrow select { width: 6rem; }
@@ -112,6 +112,10 @@
 #pause-fx-step-editor .pfx-field input[type="search"] { width: 12rem; }
 #pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
 #pause-fx-step-editor .pfx-with-picker input[type="text"] { width: 10rem; } /* leaves room for the browse button */
+/* Foundry's own <range-picker> (slider + linked number readout, the same element its
+   Playlist volume sliders use) needs real width for the slider to be usable -- narrower
+   than a free-text field, but not the 4.5rem a bare number box got away with. */
+#pause-fx-step-editor .pfx-field range-picker { width: 9rem; }
 
 /* ---- Startup ---- */
 #pause-fx-composer .pfx-startup { padding: 0.5rem 0.7rem 0.65rem; }
