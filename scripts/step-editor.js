@@ -9,13 +9,12 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 const BLOCK_FIELDS = {
   wait: ["waitUnits"],
-  text: ["text", "textNone"],
+  text: ["text", "textNone", "textPulse"],
   icon: ["icon", "iconSpin", "iconGlowEnabled", "iconGlow"],
   border: ["borderColorEnabled", "borderColor", "borderWidthPct"],
-  pulse: ["freeze", "resume"],
-  media: ["mediaType", "mediaPath", "videoVolume", "waitForVideoEnd"],
-  audio: ["audio", "audioVolume", "waitForAudioEnd"],
-  stop: ["closeVideo", "stopAudio", "hideIcon", "unpause"],
+  media: ["mediaType", "mediaPath", "videoVolume", "imagePulses", "loop", "waitForVideoEnd"],
+  audio: ["audio", "audioVolume", "audioLoop", "waitForAudioEnd"],
+  stop: ["closeVideo", "stopAudio", "hideIcon", "stopTextPulse", "stopIconSpin", "unpause"],
 };
 
 // Style defaults to solid; only entries that need the outline/regular variant override it
@@ -25,7 +24,6 @@ const BLOCK_META = {
   text: { icon: "fa-font", label: "Text" },
   icon: { icon: "fa-star", label: "Icon" },
   border: { icon: "fa-square", label: "Border", style: "fa-regular" },
-  pulse: { icon: "fa-snowflake", label: "Pulse" },
   media: { icon: "fa-video", label: "Media" },
   audio: { icon: "fa-volume-high", label: "Audio" },
   stop: { icon: "fa-circle-stop", label: "Stop" },
@@ -35,13 +33,14 @@ const BLOCK_META = {
 function isBlockActive(row, block) {
   switch (block) {
     case "wait": return row.waitUnits !== "";
-    case "text": return !!row.text || row.textNone;
+    case "text": return !!row.text || row.textNone || row.textPulse;
     case "icon": return !!row.icon || row.iconSpin || row.iconGlowEnabled;
     case "border": return row.borderColorEnabled || row.borderWidthPct !== "";
-    case "pulse": return row.freeze || row.resume;
     case "media": return row.mediaType !== "none" || row.waitForVideoEnd;
-    case "audio": return !!row.audio || row.waitForAudioEnd;
-    case "stop": return row.closeVideo || row.stopAudio || row.hideIcon || row.unpause;
+    case "audio": return !!row.audio || row.audioLoop || row.waitForAudioEnd;
+    case "stop":
+      return row.closeVideo || row.stopAudio || row.hideIcon || row.stopTextPulse
+        || row.stopIconSpin || row.unpause;
     default: return false;
   }
 }
@@ -88,12 +87,23 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
 
   _onRender(context, options) {
     super._onRender(context, options);
+    this.#syncMediaTypeFields(this.row.mediaType); // reflect the current type on every (re)render
     this.element.addEventListener("change", (event) => {
       const field = event.target.name;
       if (!field) return;
       const raw = event.target.type === "checkbox" ? event.target.checked : event.target.value;
       this.row[field] = coerceStepField(field, raw);
       this.#syncPairedField(event.target); // e.g. the "enable" checkbox next to a colour picker
+      if (field === "mediaType") this.#syncMediaTypeFields(this.row.mediaType);
+    });
+  }
+
+  // The Media block shows one set of fields for video, a different set for image (a slideshow
+  // timer instead of volume) -- toggled live via [hidden] rather than a re-render, same spirit
+  // as #syncPairedField below.
+  #syncMediaTypeFields(type) {
+    this.element.querySelectorAll("[data-media-show]").forEach((el) => {
+      el.hidden = el.dataset.mediaShow !== type;
     });
   }
 
@@ -121,6 +131,10 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
       for (const field of BLOCK_FIELDS[block]) this.row[field] = blank[field];
     } else {
       this.visibleBlocks.add(block);
+      // Media's own type toggle (video/image) needs a real value to have anything selected --
+      // "none" only means anything as "this block isn't in use," which no longer applies now
+      // that it's being opened.
+      if (block === "media" && this.row.mediaType === "none") this.row.mediaType = "video";
     }
     this.render({ parts: ["body"] });
   }

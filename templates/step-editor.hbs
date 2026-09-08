@@ -29,6 +29,9 @@
         <input type="search" name="text" value="{{row.text}}" {{#if row.textNone}}disabled{{/if}}>
       </div>
     </div>
+    <div class="pfx-row">
+      <label class="pfx-checkbox"><input type="checkbox" name="textPulse" {{checked row.textPulse}}> Pulse</label>
+    </div>
   </fieldset>
   {{/if}}
 
@@ -70,34 +73,25 @@
   </fieldset>
   {{/if}}
 
-  {{#if visible.pulse}}
-  <fieldset class="pfx-block">
-    <legend><i class="fa-solid fa-snowflake"></i> Pulse</legend>
-    <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="freeze" {{checked row.freeze}}> Freeze</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="resume" {{checked row.resume}}> Resume</label>
-    </div>
-  </fieldset>
-  {{/if}}
-
   {{#if visible.media}}
   <fieldset class="pfx-block">
     <legend><i class="fa-solid fa-video"></i> Media</legend>
     <div class="pfx-row">
-      <label class="pfx-field pfx-field-narrow">Type
-        <select name="mediaType">
-          <option value="none" {{#if (eq row.mediaType "none")}}selected{{/if}}>None</option>
-          <option value="video" {{#if (eq row.mediaType "video")}}selected{{/if}}>Video</option>
-          <option value="image" {{#if (eq row.mediaType "image")}}selected{{/if}}>Image</option>
-        </select>
-      </label>
+      <label class="pfx-checkbox"><input type="radio" name="mediaType" value="video" {{#if (eq row.mediaType "video")}}checked{{/if}}> Video</label>
+      <label class="pfx-checkbox"><input type="radio" name="mediaType" value="image" {{#if (eq row.mediaType "image")}}checked{{/if}}> Image</label>
+    </div>
+    <div class="pfx-row" data-media-show="video">
       <label class="pfx-field">Volume <range-picker name="videoVolume" min="0" max="1" step="0.1" value="{{row.videoVolume}}"></range-picker></label>
     </div>
-    <div class="pfx-row">
-      <label class="pfx-field">Path <input type="text" name="mediaPath" value="{{row.mediaPath}}"></label>
+    <div class="pfx-row" data-media-show="image">
+      <label class="pfx-field pfx-field-narrow">Pulses <input type="number" step="0.05" min="0" name="imagePulses" placeholder="manual" value="{{row.imagePulses}}"></label>
     </div>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="waitForVideoEnd" {{checked row.waitForVideoEnd}}> Don't Start Timer Until Video Ends</label>
+      <label class="pfx-field">Path <input type="text" name="mediaPath" value="{{row.mediaPath}}" placeholder="file or folder"></label>
+    </div>
+    <div class="pfx-row">
+      <label class="pfx-checkbox"><input type="checkbox" name="loop" {{checked row.loop}}> Loop</label>
+      <label class="pfx-checkbox" data-media-show="video"><input type="checkbox" name="waitForVideoEnd" {{checked row.waitForVideoEnd}}> Timer Waits</label>
     </div>
   </fieldset>
   {{/if}}
@@ -110,7 +104,8 @@
       <label class="pfx-field">Volume <range-picker name="audioVolume" min="0" max="1" step="0.1" value="{{row.audioVolume}}"></range-picker></label>
     </div>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="waitForAudioEnd" {{checked row.waitForAudioEnd}}> Don't Start Timer Until Audio Ends</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="audioLoop" {{checked row.audioLoop}}> Loop</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="waitForAudioEnd" {{checked row.waitForAudioEnd}}> Timer Waits</label>
     </div>
   </fieldset>
   {{/if}}
@@ -122,6 +117,8 @@
       <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Video/Image</label>
       <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Audio</label>
       <label class="pfx-checkbox"><input type="checkbox" name="hideIcon" {{checked row.hideIcon}}> Icon</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopIconSpin" {{checked row.stopIconSpin}}> Icon Spin</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopTextPulse" {{checked row.stopTextPulse}}> Text Pulse</label>
       <label class="pfx-checkbox"><input type="checkbox" name="unpause" {{checked row.unpause}}> Unpause</label>
     </div>
   </fieldset>

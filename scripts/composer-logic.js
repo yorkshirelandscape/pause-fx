@@ -30,11 +30,12 @@ export function stepFromRow(row) {
   }
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
-  if (row.freeze) step.freeze = true;
-  if (row.resume) step.resume = true;
+  if (row.textPulse) step.textPulse = true;
   if (row.closeVideo) step.closeVideo = true;
   if (row.stopAudio) step.stopAudio = true;
   if (row.hideIcon) step.iconVisible = false;
+  if (row.stopTextPulse) step.stopTextPulse = true;
+  if (row.stopIconSpin) step.stopIconSpin = true;
   if (row.unpause) step.unpause = true;
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
@@ -43,14 +44,22 @@ export function stepFromRow(row) {
     if (row.audioVolume !== "" && row.audioVolume !== null && row.audioVolume !== undefined) {
       step.audioVolume = Number(row.audioVolume);
     }
+    if (row.audioLoop) step.audioLoop = true;
   }
   if (row.mediaType === "video" && row.mediaPath) {
     step.video = row.mediaPath;
     if (row.videoVolume !== "" && row.videoVolume !== null && row.videoVolume !== undefined) {
       step.videoVolume = Number(row.videoVolume);
     }
+    if (row.loop) step.loop = true;
   }
-  if (row.mediaType === "image" && row.mediaPath) step.image = row.mediaPath;
+  if (row.mediaType === "image" && row.mediaPath) {
+    step.image = row.mediaPath;
+    if (row.imagePulses !== "" && row.imagePulses !== null && row.imagePulses !== undefined) {
+      step.imagePulses = Number(row.imagePulses);
+    }
+    if (row.loop) step.loop = true;
+  }
   if (row.icon) step.icon = row.icon;
   if (row.iconSpin) step.iconSpin = true;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
@@ -74,19 +83,23 @@ export function rowFromStep(step) {
     waitUnits: step.wait?.units ?? "",
     text: step.text ?? "",
     textNone: step.text === "",
-    freeze: !!step.freeze,
-    resume: !!step.resume,
+    textPulse: !!step.textPulse,
     closeVideo: !!step.closeVideo,
     stopAudio: !!step.stopAudio,
     hideIcon: step.iconVisible === false,
+    stopTextPulse: !!step.stopTextPulse,
+    stopIconSpin: !!step.stopIconSpin,
     unpause: !!step.unpause,
     waitForVideoEnd: !!step.waitForVideoEnd,
     waitForAudioEnd: !!step.waitForAudioEnd,
     audio: step.audio ?? "",
     audioVolume: step.audioVolume ?? "",
+    audioLoop: !!step.audioLoop,
     mediaType: step.video ? "video" : step.image ? "image" : "none",
     mediaPath: step.video ?? step.image ?? "",
     videoVolume: step.videoVolume ?? "",
+    imagePulses: step.imagePulses ?? "",
+    loop: !!step.loop,
     icon: step.icon ?? "",
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
@@ -97,10 +110,11 @@ export function rowFromStep(step) {
   };
 }
 
-const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct"]);
+const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses"]);
 const BOOL_FIELDS = new Set([
-  "textNone", "freeze", "resume", "closeVideo", "stopAudio", "hideIcon", "unpause",
-  "waitForVideoEnd", "waitForAudioEnd", "iconSpin", "iconGlowEnabled", "borderColorEnabled",
+  "textNone", "textPulse", "closeVideo", "stopAudio", "hideIcon", "stopTextPulse",
+  "stopIconSpin", "unpause", "waitForVideoEnd", "waitForAudioEnd", "iconSpin",
+  "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -139,8 +153,10 @@ export function stepBadges(step, pulseLengthS) {
   if (step.video) badges.push({ type: "video" });
   if (step.image) badges.push({ type: "image" });
   if (step.audio) badges.push({ type: "audio" });
-  if (step.freeze) badges.push({ type: "freeze" });
-  if (step.resume) badges.push({ type: "resume" });
+  if (step.loop || step.audioLoop) badges.push({ type: "loop" });
+  if (step.textPulse) badges.push({ type: "textPulse" });
+  if (step.stopTextPulse) badges.push({ type: "stopTextPulse" });
+  if (step.stopIconSpin) badges.push({ type: "stopIconSpin" });
   if (step.closeVideo) badges.push({ type: "closeVideo" });
   if (step.stopAudio) badges.push({ type: "stopAudio" });
   if (step.unpause) badges.push({ type: "unpause" });
