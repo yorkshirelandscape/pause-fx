@@ -1,8 +1,13 @@
 // Pure form<->config translation for the Composer UI (scripts/composer.js). Split out from
-// the ApplicationV2 class itself so this logic is unit-testable without a DOM/Foundry runtime
-// -- see composer-logic.test.mjs.
+// the ApplicationV2 classes themselves so this logic is unit-testable without a DOM/Foundry
+// runtime -- see composer-logic.test.mjs.
+//
+// Every row shares ONE schema, whether it's the first (undeletable) row or any other --
+// there's no separate "Startup" field set anymore. icon/iconGlow/borderColor/endCombat/
+// closeAllWindows are just step fields now, usable anywhere in the sequence, matching what
+// pause-fx.js's own steps[] schema accepts (see that file's PauseFX.run JSDoc).
 
-/** A blank step, used as the seed for "Add Step." */
+/** A blank step, used as the seed for "Add Step" and for a freshly-opened Composer's row 0. */
 export function defaultStep() {
   return { wait: { units: 1 } };
 }
@@ -22,7 +27,8 @@ export function stepFromRow(row) {
     step.wait = { units: Number(row.waitUnits) };
   }
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
-  if (row.text) step.text = row.text;
+  if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
+  else if (row.text) step.text = row.text;
   if (row.freeze) step.freeze = true;
   if (row.resume) step.resume = true;
   if (row.hideIcon) step.hideIcon = true;
@@ -43,15 +49,22 @@ export function stepFromRow(row) {
   }
   if (row.mediaType === "image" && row.mediaPath) step.image = row.mediaPath;
   if (row.macro) step.macro = row.macro;
+  if (row.icon) step.icon = row.icon;
+  if (row.iconSpin) step.iconSpin = true;
+  if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
+  if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
+  if (row.endCombat) step.endCombat = true;
+  if (row.closeWindowsPlayers || row.closeWindowsGM) {
+    step.closeAllWindows = { players: !!row.closeWindowsPlayers, gm: !!row.closeWindowsGM };
+  }
   return step;
 }
 
 /**
  * The inverse of stepFromRow -- a step object -> editable row fields, for populating the
- * form when a preset loads. `stepFromRow(rowFromStep(step))` round-trips `step` (a `clock` on
- * the original step is intentionally NOT preserved -- see stepFromRow; a preset saved before
- * the Composer dropped clock selection could carry `clock: "text"` on some step, and loading
- * it back into the Composer silently drops that down to the one clock the UI still exposes).
+ * dialog when a step (or a loaded macro's saved step) is opened for editing.
+ * `stepFromRow(rowFromStep(step))` round-trips `step` (a `clock` on the original step is
+ * intentionally NOT preserved -- the Composer has nowhere left to show or re-set it).
  * @param {object} step
  * @returns {object} row fields, all defined (never undefined) so they bind cleanly to inputs.
  */
@@ -60,6 +73,7 @@ export function rowFromStep(step) {
     waitUnits: step.wait?.units ?? "",
     waitForVideoEnd: !!step.waitForVideoEnd,
     text: step.text ?? "",
+    textNone: step.text === "",
     freeze: !!step.freeze,
     resume: !!step.resume,
     hideIcon: !!step.hideIcon,
@@ -72,12 +86,23 @@ export function rowFromStep(step) {
     mediaPath: step.video ?? step.image ?? "",
     videoVolume: step.videoVolume ?? "",
     macro: step.macro ?? "",
+    icon: step.icon ?? "",
+    iconSpin: !!step.iconSpin,
+    iconGlowEnabled: step.iconGlow !== undefined,
+    iconGlow: step.iconGlow ?? "#ff0000",
+    borderColorEnabled: step.borderColor !== undefined,
+    borderColor: step.borderColor ?? "#ff0000",
+    endCombat: !!step.endCombat,
+    closeWindowsPlayers: !!step.closeAllWindows?.players,
+    closeWindowsGM: !!step.closeAllWindows?.gm,
   };
 }
 
 const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume"]);
 const BOOL_FIELDS = new Set([
-  "waitForVideoEnd", "freeze", "resume", "hideIcon", "showIcon", "blankText", "closeVideo",
+  "waitForVideoEnd", "textNone", "freeze", "resume", "hideIcon", "showIcon", "blankText",
+  "closeVideo", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "endCombat",
+  "closeWindowsPlayers", "closeWindowsGM",
 ]);
 
 /**
@@ -92,42 +117,45 @@ export function coerceStepField(field, rawValue) {
   return rawValue;
 }
 
-/** A short, one-line human-readable summary of a step, for the collapsed list view. */
-export function stepSummary(step) {
-  const basename = (p) => p.split("/").pop();
-  const parts = [];
-  if (step.wait) parts.push(`wait ${step.wait.units} pulse${step.wait.units === 1 ? "" : "s"}`);
-  if (step.waitForVideoEnd) parts.push("wait for video end");
-  if (step.text) parts.push(`text: "${step.text}"`);
-  if (step.blankText) parts.push("blank text");
-  if (step.freeze) parts.push("freeze");
-  if (step.resume) parts.push("resume");
-  if (step.hideIcon) parts.push("hide icon");
-  if (step.showIcon) parts.push("show icon");
-  if (step.audio) parts.push(`audio: ${basename(step.audio)}`);
-  if (step.video) parts.push(`video: ${basename(step.video)}`);
-  if (step.image) parts.push(`image: ${basename(step.image)}`);
-  if (step.closeVideo) parts.push("close video");
-  if (step.macro) parts.push(`macro: ${step.macro}`);
-  return parts.join(" · ") || "(empty step)";
+/**
+ * A step's summary, as a list of small typed badges for the always-visible row (no more
+ * chevron/expand -- editing happens in a dialog now). The template renders each badge type
+ * as its own little icon/swatch; `text` is handled separately (see stepDisplayText) since it
+ * takes up the remaining width rather than sitting in the badge row.
+ * @param {object} step
+ * @param {number} [pulseLengthS] - to render the wait as real seconds, not just pulse units.
+ * @returns {Array<object>} badge descriptors, e.g. {type: "wait", label: "2.0s"}.
+ */
+export function stepBadges(step, pulseLengthS) {
+  const badges = [];
+  if (step.wait) {
+    const seconds = pulseLengthS ? (step.wait.units * Number(pulseLengthS)).toFixed(1) + "s" : `${step.wait.units}x`;
+    badges.push({ type: "wait", label: seconds });
+  }
+  if (step.waitForVideoEnd) badges.push({ type: "waitForVideoEnd" });
+  if (step.endCombat) badges.push({ type: "endCombat" });
+  if (step.closeAllWindows) badges.push({ type: "closeWindows" });
+  if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
+  if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined) {
+    badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin });
+  }
+  if (step.video) badges.push({ type: "video" });
+  if (step.image) badges.push({ type: "image" });
+  if (step.audio) badges.push({ type: "audio" });
+  if (step.macro) badges.push({ type: "macro", label: step.macro });
+  if (step.freeze) badges.push({ type: "freeze" });
+  if (step.resume) badges.push({ type: "resume" });
+  if (step.hideIcon) badges.push({ type: "hideIcon" });
+  if (step.showIcon) badges.push({ type: "showIcon" });
+  if (step.closeVideo) badges.push({ type: "closeVideo" });
+  return badges;
 }
 
-/**
- * Same idea as stepSummary, for the pinned "Startup" row (icon/glow/border/text -- the
- * top-level look-and-feel fields, not a real step). Kept separate from stepSummary rather
- * than shoehorned into it since these fields aren't part of the real `steps[]` schema at all.
- * @param {object} startup - a subset of `globals`.
- */
-export function startupSummary(startup) {
-  const basename = (p) => p.split("/").pop();
-  const parts = [];
-  if (startup.icon) parts.push(`icon: ${basename(startup.icon)}`);
-  if (startup.iconSpin) parts.push("spin");
-  if (startup.iconGlowEnabled && startup.iconGlow) parts.push(`glow: ${startup.iconGlow}`);
-  if (startup.borderColorEnabled && startup.borderColor) parts.push(`border: ${startup.borderColor}`);
-  if (startup.textNone) parts.push("text: (none)");
-  else if (startup.text) parts.push(`text: "${startup.text}"`);
-  return parts.join(" · ") || "(nothing set)";
+/** The text a step's row shows in its own remaining space, distinct from the badge list. */
+export function stepDisplayText(step) {
+  if (step.blankText) return "(blank)";
+  if (step.text === "") return "(none)";
+  return step.text ?? "";
 }
 
 /**
@@ -142,27 +170,17 @@ export function msToSeconds(ms) {
 }
 
 /**
- * The global (non-step) form fields -> the top-level PauseFX.run() config fields. Optional
- * fields are omitted when blank, same rationale as stepFromRow.
- * @param {object} globals - raw field values (strings/booleans), as read off the form.
+ * The Composer's only genuinely global (non-step) fields -> the top-level PauseFX.run()
+ * config. Everything else lives in `steps` now.
+ * @param {object} globals - `{ pulseLengthS }`.
  * @param {Array<object>} steps - already-built step objects (see stepFromRow).
  * @returns {object} a full config object, ready for PauseFX.run().
  */
 export function configFromGlobals(globals, steps) {
   const config = { steps };
-  if (globals.icon) config.icon = globals.icon;
-  if (globals.iconSpin) config.iconSpin = true;
-  if (globals.iconGlowEnabled && globals.iconGlow) config.iconGlow = globals.iconGlow;
-  if (globals.borderColorEnabled && globals.borderColor) config.borderColor = globals.borderColor;
-  if (globals.textNone) config.text = ""; // explicitly blank, not "untouched" (native default)
-  else if (globals.text) config.text = globals.text;
   if (globals.pulseLengthS !== "" && globals.pulseLengthS !== null && globals.pulseLengthS !== undefined) {
     config.borderCycleMs = secondsToMs(globals.pulseLengthS);
   }
-  if (globals.closeWindowsPlayers || globals.closeWindowsGM) {
-    config.closeAllWindows = { players: !!globals.closeWindowsPlayers, gm: !!globals.closeWindowsGM };
-  }
-  if (globals.endCombat) config.endCombat = true;
   return config;
 }
 

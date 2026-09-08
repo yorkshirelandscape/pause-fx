@@ -4,129 +4,48 @@
     <label>Pulse Time
       <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="5 sec" value="{{globals.pulseLengthS}}">
     </label>
-    <div class="pfx-close-windows">
-      <span>Close windows for:</span>
-      <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}> Players</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}> GM</label>
-    </div>
-    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active encounter</label>
   </fieldset>
 
   <fieldset class="pfx-steps-fieldset">
     <legend>Steps</legend>
-
-    <!-- Always first, no handle/trash -- the look-and-feel fields that used to be their own
-         "Look & feel" section, now presented the same way a real step is (so there's only
-         one field-editing pattern to learn), just pinned and unremovable. Doesn't literally
-         say "Step 0" anywhere -- its position alone says what it is. -->
-    <div class="pfx-step pfx-step-pinned">
-      <details class="pfx-step-details">
-        <summary>{{startupSummaryText}}</summary>
-        <div class="pfx-step-fields">
-          <label>Icon
-            <span class="pfx-with-picker">
-              <input type="text" name="icon" placeholder="ui/pause.svg" value="{{globals.icon}}">
-              <button type="button" data-action="browseFile" data-for="icon" data-picker-type="imagevideo">
-                <i class="fa-solid fa-folder-open"></i>
-              </button>
-            </span>
-          </label>
-          <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked globals.iconSpin}}> spin</label>
-
-          <label>Icon glow
-            <span class="pfx-with-toggle">
-              <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked globals.iconGlowEnabled}}>
-              <input type="color" name="iconGlow" value="{{globals.iconGlow}}" {{#unless globals.iconGlowEnabled}}disabled{{/unless}}>
-            </span>
-          </label>
-          <label>Border color
-            <span class="pfx-with-toggle">
-              <input type="checkbox" name="borderColorEnabled" data-enables="borderColor" {{checked globals.borderColorEnabled}}>
-              <input type="color" name="borderColor" value="{{globals.borderColor}}" {{#unless globals.borderColorEnabled}}disabled{{/unless}}>
-            </span>
-          </label>
-
-          <label>Text
-            <span class="pfx-with-toggle">
-              <input type="search" name="text" placeholder="Game Paused" value="{{globals.text}}" {{#if globals.textNone}}disabled{{/if}}>
-              <label class="pfx-checkbox pfx-none-toggle">
-                <input type="checkbox" name="textNone" data-disables="text" {{checked globals.textNone}}> none
-              </label>
-            </span>
-          </label>
-        </div>
-      </details>
-    </div>
-
     <ol class="pfx-steps">
       {{#each rows as |row|}}
       <li class="pfx-step" data-index="{{row.index}}">
         <i class="pfx-step-handle fa-solid fa-grip-vertical" draggable="true" title="Drag to reorder"></i>
-        <details class="pfx-step-details">
-          <summary>{{row.summary}}</summary>
-          <div class="pfx-step-fields">
-            <label>Wait (pulses)
-              <input type="number" step="0.05" min="0" data-index="{{row.index}}" data-field="waitUnits" value="{{row.waitUnits}}">
-            </label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="waitForVideoEnd" {{checked row.waitForVideoEnd}}>
-              wait for video end (ignores the wait above)
-            </label>
-
-            <label>Text <input type="text" data-index="{{row.index}}" data-field="text" value="{{row.text}}"></label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="blankText" {{checked row.blankText}}> blank text
-            </label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="freeze" {{checked row.freeze}}> freeze
-            </label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="resume" {{checked row.resume}}> resume
-            </label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="hideIcon" {{checked row.hideIcon}}> hide icon
-            </label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="showIcon" {{checked row.showIcon}}> show icon
-            </label>
-
-            <label>Audio <input type="text" data-index="{{row.index}}" data-field="audio" value="{{row.audio}}"></label>
-            <label>Audio volume
-              <input type="number" step="0.1" min="0" max="1" data-index="{{row.index}}" data-field="audioVolume" value="{{row.audioVolume}}">
-            </label>
-
-            <label>Media
-              <select data-index="{{row.index}}" data-field="mediaType">
-                <option value="none" {{#if (eq row.mediaType "none")}}selected{{/if}}>none</option>
-                <option value="video" {{#if (eq row.mediaType "video")}}selected{{/if}}>video</option>
-                <option value="image" {{#if (eq row.mediaType "image")}}selected{{/if}}>image</option>
-              </select>
-            </label>
-            <label>Media path <input type="text" data-index="{{row.index}}" data-field="mediaPath" value="{{row.mediaPath}}"></label>
-            <label>Video volume
-              <input type="number" step="0.1" min="0" max="1" data-index="{{row.index}}" data-field="videoVolume" value="{{row.videoVolume}}">
-            </label>
-            <label class="pfx-checkbox">
-              <input type="checkbox" data-index="{{row.index}}" data-field="closeVideo" {{checked row.closeVideo}}> close video/image
-            </label>
-
-            <label>Run macro
-              <select data-index="{{row.index}}" data-field="macro">
-                <option value="">-- none --</option>
-                {{#each ../macroNames as |name|}}
-                  <option value="{{name}}" {{#if (eq name row.macro)}}selected{{/if}}>{{name}}</option>
-                {{/each}}
-              </select>
-            </label>
-          </div>
-        </details>
+        <button type="button" class="pfx-step-open" data-action="editStep">
+          <span class="pfx-step-badges">
+            {{#each row.badges as |b|}}
+              {{#if (eq b.type "wait")}}<span class="pfx-badge pfx-badge-wait" title="wait">{{b.label}}</span>{{/if}}
+              {{#if (eq b.type "waitForVideoEnd")}}<i class="fa-solid fa-hourglass-half pfx-badge" title="wait for video end"></i>{{/if}}
+              {{#if (eq b.type "endCombat")}}<i class="fa-solid fa-swords pfx-badge" title="end combat"></i>{{/if}}
+              {{#if (eq b.type "closeWindows")}}<i class="fa-solid fa-window-restore pfx-badge" title="close windows"></i>{{/if}}
+              {{#if (eq b.type "border")}}<span class="pfx-badge pfx-badge-swatch" style="border-color:{{b.colour}}" title="border: {{b.colour}}"></span>{{/if}}
+              {{#if (eq b.type "icon")}}
+                <span class="pfx-badge pfx-badge-icon" style="border-color:{{b.glow}}" title="icon">
+                  {{#if b.icon}}<img src="{{b.icon}}" alt="">{{/if}}
+                  {{#if b.spin}}<i class="fa-solid fa-rotate pfx-badge-icon-spin"></i>{{/if}}
+                </span>
+              {{/if}}
+              {{#if (eq b.type "video")}}<i class="fa-solid fa-video pfx-badge" title="video"></i>{{/if}}
+              {{#if (eq b.type "image")}}<i class="fa-solid fa-image pfx-badge" title="image"></i>{{/if}}
+              {{#if (eq b.type "audio")}}<i class="fa-solid fa-volume-high pfx-badge" title="audio"></i>{{/if}}
+              {{#if (eq b.type "macro")}}<i class="fa-solid fa-wand-magic-sparkles pfx-badge" title="macro: {{b.label}}"></i>{{/if}}
+              {{#if (eq b.type "freeze")}}<i class="fa-solid fa-snowflake pfx-badge" title="freeze"></i>{{/if}}
+              {{#if (eq b.type "resume")}}<i class="fa-solid fa-play pfx-badge" title="resume"></i>{{/if}}
+              {{#if (eq b.type "hideIcon")}}<i class="fa-solid fa-eye-slash pfx-badge" title="hide icon"></i>{{/if}}
+              {{#if (eq b.type "showIcon")}}<i class="fa-solid fa-eye pfx-badge" title="show icon"></i>{{/if}}
+              {{#if (eq b.type "closeVideo")}}<i class="fa-solid fa-ban pfx-badge" title="close media"></i>{{/if}}
+            {{/each}}
+          </span>
+          <span class="pfx-step-text">{{row.text}}</span>
+        </button>
+        {{#unless (eq row.index 0)}}
         <button type="button" class="pfx-step-remove" data-index="{{row.index}}"
                 title="Click to remove (confirms) -- hold ~1.4s to skip the confirmation">
           <i class="fa-solid fa-trash"></i>
         </button>
+        {{/unless}}
       </li>
-      {{else}}
-      <li class="pfx-steps-empty">No steps yet -- add one below.</li>
       {{/each}}
     </ol>
     <button type="button" data-action="addStep"><i class="fa-solid fa-plus"></i> Add step</button>

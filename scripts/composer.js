@@ -4,9 +4,10 @@
 
 import { PauseFX } from "./pause-fx.js";
 import {
-  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, startupSummary,
+  defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig,
 } from "./composer-logic.js";
+import { PauseFXStepEditor } from "./step-editor.js";
 
 const MODULE_ID = "pause-fx";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -25,7 +26,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     form: { handler: PauseFXComposer.#onSubmit, submitOnChange: false, closeOnSubmit: false },
     actions: {
       addStep: PauseFXComposer.#onAddStep,
-      browseFile: PauseFXComposer.#onBrowseFile,
+      editStep: PauseFXComposer.#onEditStep,
       saveMacro: PauseFXComposer.#onSaveMacro,
       run: PauseFXComposer.#onRun,
     },
@@ -33,17 +34,15 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static PARTS = { body: { template: `modules/${MODULE_ID}/templates/composer.hbs` } };
 
-  /** @type {Array<object>} in-progress step rows -- see composer-logic.js's rowFromStep. */
-  rows = [];
+  /** @type {Array<object>} in-progress step rows -- see composer-logic.js's rowFromStep.
+   *  rows[0] is always present and can't be deleted (it can still be dragged elsewhere --
+   *  whichever row currently sits first loses/gains that protection, not a specific row). */
+  rows = [rowFromStep(defaultStep())];
 
-  // Global (non-step) fields, tracked as instance state like `rows` -- a render() reads only
-  // from here, so an untracked field would get wiped on the next one.
-  globals = {
-    icon: "", iconSpin: false,
-    iconGlowEnabled: false, iconGlow: "#ff0000", borderColorEnabled: false, borderColor: "#ff0000",
-    text: "", textNone: false, pulseLengthS: "",
-    closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false, macroName: "",
-  };
+  // The Composer's only genuinely global fields now -- everything else (icon/glow/border/
+  // text/endCombat/closeWindows/wait/media/audio/macro/...) lives on a step, including the
+  // first one, edited the same way as any other via the step-editor dialog.
+  globals = { pulseLengthS: "", macroName: "" };
 
   #dragDrop = new foundry.applications.ux.DragDrop({
     dragSelector: ".pfx-step-handle",
@@ -59,9 +58,11 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext() {
     return {
       globals: this.globals,
-      startupSummaryText: startupSummary(this.globals),
-      rows: this.rows.map((row, index) => ({ index, summary: stepSummary(stepFromRow(row)), ...row })),
-      macroNames: game.macros.contents.map((m) => m.name).sort(), // for a step's own "Run macro" field
+      rows: this.rows.map((row, index) => ({
+        index,
+        badges: stepBadges(stepFromRow(row), this.globals.pulseLengthS),
+        text: stepDisplayText(stepFromRow(row)),
+      })),
     };
   }
 
@@ -70,21 +71,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
     this.#ensureHeaderButtons();
     this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
-    // Delegated: covers both step-row fields and named global fields in one listener.
+    // Only pulseLengthS/macroName live here now -- everything else is in the step editor.
     this.element.addEventListener("change", (event) => {
-      const stepRow = event.target.closest("[data-index]");
-      const field = event.target.dataset.field;
-      const raw = event.target.type === "checkbox" ? event.target.checked : event.target.value;
-
-      if (stepRow && field) {
-        this.rows[Number(stepRow.dataset.index)][field] = coerceStepField(field, raw);
-        this.render({ parts: ["body"] }); // re-render to refresh this row's own summary line
-        return;
-      }
       if (event.target.name && event.target.name in this.globals) {
-        this.globals[event.target.name] = raw;
-        this.#syncPairedField(event.target); // e.g. the "enable" checkbox next to a colour picker
-        // No further re-render needed -- nothing else on the page derives from this value.
+        this.globals[event.target.name] = event.target.value;
       }
     });
   }
@@ -107,15 +97,6 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     };
     header.insertBefore(makeButton("run", "fa-solid fa-play", "Run"), ellipsis);
     header.insertBefore(makeButton("saveMacro", "fa-solid fa-floppy-disk", "Save as Macro"), ellipsis);
-  }
-
-  // A checkbox with data-enables="name"/data-disables="name" toggles that field's `disabled`
-  // live, without waiting on a re-render -- e.g. the colour picker next to "enable glow".
-  #syncPairedField(el) {
-    const enables = this.element.querySelector(`[name="${el.dataset.enables}"]`);
-    if (enables) enables.disabled = !el.checked;
-    const disables = this.element.querySelector(`[name="${el.dataset.disables}"]`);
-    if (disables) disables.disabled = el.checked;
   }
 
   #onDragStart(event) {
@@ -147,16 +128,17 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async #confirmAndRemoveStep(index) {
-    const summary = stepSummary(stepFromRow(this.rows[index]));
+    const text = stepDisplayText(stepFromRow(this.rows[index]));
     const confirmed = await foundry.applications.api.DialogV2.confirm({
       window: { title: "Remove step" },
-      content: `<p>Remove this step (${summary})? This can't be undone.</p>`,
+      content: `<p>Remove this step${text ? ` ("${text}")` : ""}? This can't be undone.</p>`,
     });
     if (confirmed) this.#removeStepAt(index);
   }
 
   // Quick click confirms; holding HOLD_MS bypasses the dialog (wedge = progress). `start`
   // clears the instant a hold completes, so that hold's own pointerup won't double-remove.
+  // Row 0 has no remove button at all (see composer.hbs) -- nothing to wire here for it.
   #wireStepRemove(button) {
     const HOLD_MS = 1400;
     const index = () => Number(button.dataset.index);
@@ -201,20 +183,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     const macro = game.macros.get(macroId);
     const config = macro && isPauseFxMacro(macro) ? macro.getFlag(MODULE_ID, "config") : null;
     if (!config) return;
-    this.rows = (config.steps ?? []).map(rowFromStep);
-    // Most of these don't map 1:1 to config keys -- see configFromGlobals for the reverse.
-    this.globals.icon = config.icon ?? "";
-    this.globals.iconSpin = !!config.iconSpin;
-    this.globals.iconGlowEnabled = config.iconGlow !== undefined;
-    if (config.iconGlow !== undefined) this.globals.iconGlow = config.iconGlow;
-    this.globals.borderColorEnabled = config.borderColor !== undefined;
-    if (config.borderColor !== undefined) this.globals.borderColor = config.borderColor;
-    this.globals.textNone = config.text === "";
-    this.globals.text = config.text || "";
-    this.globals.endCombat = !!config.endCombat;
+    this.rows = (config.steps?.length ? config.steps : [defaultStep()]).map(rowFromStep);
     this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
-    this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
-    this.globals.closeWindowsGM = !!config.closeAllWindows?.gm;
     this.globals.macroName = macro.name; // re-saving under this same name overwrites this macro
     this.render({ parts: ["body"] });
   }
@@ -224,18 +194,12 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     this.render({ parts: ["body"] });
   }
 
-  static async #onBrowseFile(event, target) {
-    const field = target.dataset.for;
-    const input = this.element.querySelector(`[name="${field}"]`);
-    if (!input) return;
-    const FilePicker = foundry.applications.apps.FilePicker.implementation;
-    new FilePicker({
-      type: target.dataset.pickerType || "imagevideo",
-      current: input.value,
-      callback: (path) => {
-        input.value = path;
-        this.globals[field] = path; // bypasses the change listener -- FilePicker sets .value directly
-      },
+  static #onEditStep(event, target) {
+    const index = Number(target.closest("[data-index]").dataset.index);
+    const macroNames = game.macros.contents.map((m) => m.name).sort();
+    new PauseFXStepEditor(this.rows[index], {
+      macroNames,
+      onClose: () => this.render({ parts: ["body"] }), // refresh this row's summary badges
     }).render(true);
   }
 

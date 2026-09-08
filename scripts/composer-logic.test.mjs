@@ -4,38 +4,39 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, startupSummary,
+  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig,
 } from "./composer-logic.js";
+
+const BLANK_ROW = {
+  waitUnits: "", waitForVideoEnd: false, text: "", textNone: false, freeze: false,
+  resume: false, hideIcon: false, showIcon: false, blankText: false, closeVideo: false,
+  audio: "", audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
+  icon: "", iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
+  borderColorEnabled: false, borderColor: "#ff0000", endCombat: false,
+  closeWindowsPlayers: false, closeWindowsGM: false,
+};
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
   assert.deepEqual(defaultStep(), { wait: { units: 1 } });
 });
 
 test("stepFromRow: blank optional fields are omitted, not set to '' / false", () => {
-  const row = {
-    waitUnits: "", waitForVideoEnd: false, text: "", freeze: false, resume: false,
-    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "",
-    audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
-  };
-  assert.deepEqual(stepFromRow(row), {});
+  assert.deepEqual(stepFromRow(BLANK_ROW), {});
 });
 
 test("stepFromRow: wait, text and flags all come through when set -- wait carries no clock", () => {
-  const row = {
-    waitUnits: "2.5", waitForVideoEnd: false, text: "Hello", freeze: true, resume: false,
-    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "",
-    audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
-  };
+  const row = { ...BLANK_ROW, waitUnits: "2.5", text: "Hello", freeze: true };
   assert.deepEqual(stepFromRow(row), { wait: { units: 2.5 }, text: "Hello", freeze: true });
 });
 
+test("stepFromRow: textNone forces an explicit blank, even if text also has a value", () => {
+  const row = { ...BLANK_ROW, textNone: true, text: "ignored" };
+  assert.deepEqual(stepFromRow(row), { text: "" });
+});
+
 test("stepFromRow: mediaType picks video vs. image, and only carries videoVolume for video", () => {
-  const videoRow = {
-    waitUnits: "", waitForVideoEnd: false, text: "", freeze: false, resume: false,
-    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "",
-    audioVolume: "", mediaType: "video", mediaPath: "a.webm", videoVolume: "0.3", macro: "",
-  };
+  const videoRow = { ...BLANK_ROW, mediaType: "video", mediaPath: "a.webm", videoVolume: "0.3" };
   assert.deepEqual(stepFromRow(videoRow), { video: "a.webm", videoVolume: 0.3 });
 
   const imageRow = { ...videoRow, mediaType: "image", mediaPath: "a.webp", videoVolume: "" };
@@ -43,25 +44,37 @@ test("stepFromRow: mediaType picks video vs. image, and only carries videoVolume
 });
 
 test("stepFromRow: audio carries its own volume, independent of media fields", () => {
-  const row = {
-    waitUnits: "", waitForVideoEnd: false, text: "", freeze: false, resume: false,
-    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "sting.ogg",
-    audioVolume: "0.5", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
-  };
+  const row = { ...BLANK_ROW, audio: "sting.ogg", audioVolume: "0.5" };
   assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5 });
+});
+
+test("stepFromRow: icon/glow/border/spin -- same rules as the old startup fields, now per-step", () => {
+  const row = {
+    ...BLANK_ROW, icon: "eye.gif", iconSpin: true,
+    iconGlowEnabled: true, iconGlow: "#00ff00", borderColorEnabled: true, borderColor: "#0000ff",
+  };
+  assert.deepEqual(stepFromRow(row), {
+    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff",
+  });
+});
+
+test("stepFromRow: a colour set but not enabled is left out, same as blank", () => {
+  const row = { ...BLANK_ROW, iconGlow: "#123456", borderColor: "#654321" };
+  assert.deepEqual(stepFromRow(row), {});
+});
+
+test("stepFromRow: endCombat and closeAllWindows are per-step now too", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, endCombat: true }), { endCombat: true });
+  assert.deepEqual(
+    stepFromRow({ ...BLANK_ROW, closeWindowsPlayers: true }),
+    { closeAllWindows: { players: true, gm: false } },
+  );
 });
 
 test("rowFromStep: fills every field with a defined default, never undefined", () => {
   const row = rowFromStep({});
   for (const value of Object.values(row)) assert.notEqual(value, undefined);
   assert.equal(row.mediaType, "none");
-});
-
-test("rowFromStep: a step saved with a clock (from before the Composer dropped it) just drops it", () => {
-  assert.deepEqual(rowFromStep({ wait: { units: 2, clock: "text" } }).waitUnits, 2);
-  // stepFromRow(rowFromStep(...)) is a round-trip for CURRENT steps, not a guarantee that
-  // every possible hand-authored/legacy step shape survives unchanged -- `clock` specifically
-  // doesn't, since the Composer has nowhere left to show or re-set it.
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
@@ -73,6 +86,9 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     { macro: "Chandelier Falls" },
     { closeVideo: true, showIcon: true, resume: true },
     { waitForVideoEnd: true },
+    { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000" },
+    { endCombat: true, closeAllWindows: { players: true, gm: false } },
+    { text: "" }, // explicit blank
   ];
   for (const step of steps) assert.deepEqual(stepFromRow(rowFromStep(step)), step);
 });
@@ -80,6 +96,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
 test("coerceStepField: bool fields always become real booleans", () => {
   assert.equal(coerceStepField("freeze", true), true);
   assert.equal(coerceStepField("freeze", ""), false); // an unchecked box's raw value
+  assert.equal(coerceStepField("iconGlowEnabled", true), true);
 });
 
 test("coerceStepField: number fields parse, but stay '' when blank (not NaN/0)", () => {
@@ -90,41 +107,7 @@ test("coerceStepField: number fields parse, but stay '' when blank (not NaN/0)",
 test("coerceStepField: everything else passes through untouched", () => {
   assert.equal(coerceStepField("text", "hello"), "hello");
   assert.equal(coerceStepField("mediaType", "video"), "video");
-});
-
-const SUMMARY_CASES = [
-  { step: {}, expected: "(empty step)" },
-  { step: { wait: { units: 2 } }, expected: "wait 2 pulses" },
-  { step: { wait: { units: 1 } }, expected: "wait 1 pulse" }, // singular
-  { step: { text: "A MANNEQUIN BEGINS TO TWITCH" }, expected: 'text: "A MANNEQUIN BEGINS TO TWITCH"' },
-  { step: { audio: "curtain-call/audio/sting.ogg" }, expected: "audio: sting.ogg" }, // basename only
-  { step: { video: "art/bk2/father-skinsaw.webm", hideIcon: true }, expected: "hide icon · video: father-skinsaw.webm" },
-  { step: { macro: "Chandelier Falls" }, expected: "macro: Chandelier Falls" },
-];
-for (const { step, expected } of SUMMARY_CASES) {
-  test(`stepSummary: ${expected}`, () => assert.equal(stepSummary(step), expected));
-}
-
-test("startupSummary: nothing set", () => {
-  assert.equal(startupSummary({}), "(nothing set)");
-});
-
-test("startupSummary: basenames the icon path, includes spin/glow/border/text", () => {
-  const startup = {
-    icon: "curtain-call/art/eye.gif", iconSpin: true,
-    iconGlowEnabled: true, iconGlow: "#FF0000", borderColorEnabled: true, borderColor: "#960018",
-    text: "SOMETHING STIRS",
-  };
-  assert.equal(startupSummary(startup), 'icon: eye.gif · spin · glow: #FF0000 · border: #960018 · text: "SOMETHING STIRS"');
-});
-
-test("startupSummary: glow/border colours set but not enabled are left out", () => {
-  const startup = { iconGlowEnabled: false, iconGlow: "#FF0000", borderColorEnabled: false, borderColor: "#960018" };
-  assert.equal(startupSummary(startup), "(nothing set)");
-});
-
-test("startupSummary: textNone wins over whatever's typed in text", () => {
-  assert.equal(startupSummary({ textNone: true, text: "ignored" }), "text: (none)");
+  assert.equal(coerceStepField("borderColor", "#ff0000"), "#ff0000");
 });
 
 test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", () => {
@@ -133,59 +116,58 @@ test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", 
   assert.equal(msToSeconds(3640), 3.64);
 });
 
-const BLANK_GLOBALS = {
-  icon: "", iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
-  borderColorEnabled: false, borderColor: "#ff0000", text: "", textNone: false, pulseLengthS: "",
-  closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false,
-};
-
-test("configFromGlobals: blank optional globals are omitted", () => {
-  assert.deepEqual(configFromGlobals(BLANK_GLOBALS, []), { steps: [] });
+test("stepBadges: empty step has no badges", () => {
+  assert.deepEqual(stepBadges({}), []);
 });
 
-test("configFromGlobals: a colour set but not enabled is left out, same as blank", () => {
-  const globals = { ...BLANK_GLOBALS, iconGlow: "#123456", borderColor: "#654321" };
-  assert.deepEqual(configFromGlobals(globals, []), { steps: [] });
+test("stepBadges: wait renders in real seconds when pulseLengthS is given, else raw pulse units", () => {
+  assert.deepEqual(stepBadges({ wait: { units: 2 } }, "3.64"), [{ type: "wait", label: "7.3s" }]);
+  assert.deepEqual(stepBadges({ wait: { units: 2 } }), [{ type: "wait", label: "2x" }]);
+});
+
+test("stepBadges: one badge per active field, in a stable order", () => {
+  const step = {
+    endCombat: true, closeAllWindows: { players: true, gm: true }, borderColor: "#FF0000",
+    icon: "eye.gif", video: "a.webm", audio: "sting.ogg", macro: "Chandelier Falls", freeze: true,
+  };
+  assert.deepEqual(stepBadges(step), [
+    { type: "endCombat" },
+    { type: "closeWindows" },
+    { type: "border", colour: "#FF0000" },
+    { type: "icon", icon: "eye.gif", glow: undefined, spin: false },
+    { type: "video" },
+    { type: "audio" },
+    { type: "macro", label: "Chandelier Falls" },
+    { type: "freeze" },
+  ]);
+});
+
+test("stepBadges: an icon badge appears even with only glow/spin set, no icon path", () => {
+  assert.deepEqual(stepBadges({ iconSpin: true }), [{ type: "icon", icon: undefined, glow: undefined, spin: true }]);
+});
+
+test("stepDisplayText: blankText wins, then explicit '', then the real text, then ''", () => {
+  assert.equal(stepDisplayText({ blankText: true, text: "ignored" }), "(blank)");
+  assert.equal(stepDisplayText({ text: "" }), "(none)");
+  assert.equal(stepDisplayText({ text: "hi" }), "hi");
+  assert.equal(stepDisplayText({}), "");
+});
+
+test("configFromGlobals: blank pulseLengthS is omitted", () => {
+  assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, []), { steps: [] });
 });
 
 test("configFromGlobals: pulseLengthS converts to borderCycleMs in whole ms", () => {
-  assert.deepEqual(
-    configFromGlobals({ ...BLANK_GLOBALS, pulseLengthS: "3.64" }, []),
-    { steps: [], borderCycleMs: 3640 },
-  );
+  assert.deepEqual(configFromGlobals({ pulseLengthS: "3.64" }, []), { steps: [], borderCycleMs: 3640 });
 });
 
-test("configFromGlobals: textNone forces an explicit blank, even if text also has a value", () => {
-  assert.deepEqual(
-    configFromGlobals({ ...BLANK_GLOBALS, textNone: true, text: "ignored" }, []),
-    { steps: [], text: "" },
-  );
-});
-
-test("configFromGlobals: closeAllWindows only appears if at least one target is checked", () => {
-  assert.deepEqual(configFromGlobals(BLANK_GLOBALS, []), { steps: [] });
-  assert.deepEqual(
-    configFromGlobals({ ...BLANK_GLOBALS, closeWindowsPlayers: true }, []),
-    { steps: [], closeAllWindows: { players: true, gm: false } },
-  );
-});
-
-test("configFromGlobals: the rest of the fields, all set", () => {
-  const globals = {
-    icon: "art/eye.gif", iconSpin: true, iconGlowEnabled: true, iconGlow: "#ff0000",
-    borderColorEnabled: true, borderColor: "#960018", text: "SOMETHING STIRS",
-    pulseLengthS: "3.64", closeWindowsPlayers: true, closeWindowsGM: true, endCombat: true,
-  };
+test("configFromGlobals: passes steps through untouched", () => {
   const steps = [{ text: "hi" }];
-  assert.deepEqual(configFromGlobals(globals, steps), {
-    steps, icon: "art/eye.gif", iconSpin: true, iconGlow: "#ff0000", borderColor: "#960018",
-    text: "SOMETHING STIRS", borderCycleMs: 3640,
-    closeAllWindows: { players: true, gm: true }, endCombat: true,
-  });
+  assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, steps), { steps });
 });
 
 test("commandForConfig: guards on the module being active, then calls the real API with the config", () => {
-  const config = { borderColor: "#FF0000", steps: [{ text: "hi" }] };
+  const config = { borderCycleMs: 3640, steps: [{ text: "hi" }] };
   const command = commandForConfig(config);
   assert.match(command, /game\.modules\.get\("pause-fx"\)\?\.active/);
   assert.match(command, /ui\.notifications\.error/);
