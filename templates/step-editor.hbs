@@ -24,13 +24,13 @@
       <div class="pfx-field">
         <span class="pfx-field-label-row">
           <span>Message</span>
-          <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
+          <span class="pfx-checkbox-group">
+            <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
+            <label class="pfx-checkbox"><input type="checkbox" name="textPulse" {{checked row.textPulse}}> Pulse</label>
+          </span>
         </span>
         <input type="search" name="text" value="{{row.text}}" {{#if row.textNone}}disabled{{/if}}>
       </div>
-    </div>
-    <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="textPulse" {{checked row.textPulse}}> Pulse</label>
     </div>
   </fieldset>
   {{/if}}

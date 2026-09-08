@@ -119,9 +119,13 @@
   color: var(--pfx-text-body);
   align-self: flex-start; /* don't stretch to the column's full width when standing alone */
 }
-/* A field whose label carries a second control (Text's "None" checkbox) alongside the label
-   text itself, instead of that control sitting off to the side of the whole field. */
+/* A field whose label carries extra controls (Text's "None"/"Pulse" checkboxes) alongside
+   the label text itself, instead of those controls sitting off to the side of the whole
+   field. The checkboxes group together as one unit at the row's far end (space-between
+   between just the two: the label text, and that group) rather than getting spread out
+   individually across the row's own width. */
 #pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+#pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
 /* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
