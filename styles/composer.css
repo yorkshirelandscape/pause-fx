@@ -1,0 +1,52 @@
+/* Composer UI -- utilitarian, not themed; relies on Foundry's own app chrome for everything
+   else. See scripts/composer.js / templates/composer.hbs. */
+
+#pause-fx-composer .pfx-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem;
+}
+
+#pause-fx-composer fieldset {
+  border: 1px solid var(--color-border-light-tertiary, #7a7971);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+#pause-fx-composer .pfx-presets {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+#pause-fx-composer .pfx-presets select { flex: 1; min-width: 8rem; }
+#pause-fx-composer .pfx-presets input[name="presetName"] { flex: 1; min-width: 8rem; }
+
+#pause-fx-composer .pfx-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem 0.75rem;
+}
+#pause-fx-composer .pfx-grid label { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
+#pause-fx-composer .pfx-grid label.pfx-checkbox { flex-direction: row; align-items: center; gap: 0.4rem; }
+#pause-fx-composer .pfx-with-picker { display: flex; gap: 0.25rem; }
+#pause-fx-composer .pfx-with-picker input { flex: 1; }
+
+#pause-fx-composer .pfx-steps { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+#pause-fx-composer .pfx-steps-empty { font-style: italic; opacity: 0.7; padding: 0.3rem 0; }
+#pause-fx-composer .pfx-step { display: flex; align-items: flex-start; gap: 0.4rem; }
+#pause-fx-composer .pfx-step-toolbar { display: flex; flex-direction: column; gap: 0.15rem; }
+#pause-fx-composer .pfx-step-toolbar button { line-height: 1; padding: 0.15rem 0.35rem; }
+#pause-fx-composer .pfx-step-details { flex: 1; border: 1px solid var(--color-border-light-tertiary, #7a7971); border-radius: 4px; padding: 0.3rem 0.5rem; }
+#pause-fx-composer .pfx-step-details summary { cursor: pointer; }
+#pause-fx-composer .pfx-step-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.3rem 0.75rem;
+  margin-top: 0.4rem;
+}
+#pause-fx-composer .pfx-step-fields label { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; }
+#pause-fx-composer .pfx-step-fields label.pfx-checkbox { flex-direction: row; align-items: center; gap: 0.4rem; }
+
+#pause-fx-composer .pfx-run { font-weight: 600; }

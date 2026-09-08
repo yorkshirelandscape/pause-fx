@@ -12,6 +12,13 @@ reveal.
 Nothing else -- the border-glow overlay is entirely `pause-fx`'s own, so it looks the same
 whether or not another pause-screen module (e.g. Monk's Little Details) is also installed.
 
+## Composer UI
+
+Building a sequence doesn't require writing JS: the GM-only "Pause FX" scene-control button
+(clapperboard icon) opens a Composer for the same config below -- look/feel fields, an
+add/reorder/remove step list, and named presets saved per world. `game.modules.get("pause-fx")
+.api.openComposer()` opens it too, if you'd rather bind that to a macro/hotkey.
+
 ## Usage
 
 ```js
@@ -45,12 +52,13 @@ See `scripts/pause-fx.js`'s own JSDoc on `PauseFX.run` for the full step vocabul
 ## Testing
 
 `npm test` (or `node --test`, no path argument -- Node's own default test-file discovery
-finds `scripts/pause-fx.test.mjs`) runs the unit suite -- node's built-in test runner, no
-dependencies. It covers the pure/isolable logic (the `hasFrame` window-close filter and the
-clock/wait math), not the full `PauseFX.run()` sequence itself -- that's covered by live
-two-client testing instead (Hooks/game/togglePause/ApplicationV2 are real Foundry globals,
-not worth mocking wholesale just to re-prove what a live run already proved more directly).
-See `scripts/pause-fx.test.mjs`'s own header comment for the reasoning.
+finds every `scripts/*.test.mjs`) runs the unit suite -- node's built-in test runner, no
+dependencies. It covers the pure/isolable logic (the `hasFrame` window-close filter, the
+clock/wait math, and the Composer's form<->config translation), not the full `PauseFX.run()`
+sequence or the Composer's own rendering -- those are covered by live two-client testing
+instead (Hooks/game/togglePause/ApplicationV2 are real Foundry globals, not worth mocking
+wholesale just to re-prove what a live run already proved more directly). See
+`scripts/pause-fx.test.mjs`'s own header comment for the reasoning.
 
 Target one test (or a table-driven case within one, e.g. a single `clockMsFor` row) via
 `node --test --test-name-pattern=<regex>`. That flag has to come *before* any positional
