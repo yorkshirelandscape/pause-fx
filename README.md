@@ -16,9 +16,15 @@ whether or not another pause-screen module (e.g. Monk's Little Details) is also 
 
 Building a sequence doesn't require writing JS: the GM-only "Pause FX" scene-control button
 (clapperboard icon) opens a Composer for the same config below -- a Startup section (pulse
-length, close-windows targeting, end combat), a pinned look/feel entry, named presets saved
-per world, and an add/reorder/remove step list. `game.modules.get("pause-fx").api.openComposer()`
-opens it too, if you'd rather bind that to a macro/hotkey.
+time, close-windows targeting, end encounter), a pinned look/feel entry, and an add/reorder/
+remove step list. `game.modules.get("pause-fx").api.openComposer()` opens it too, if you'd
+rather bind that to a macro/hotkey.
+
+"Save as macro" turns whatever's built into a real world macro -- folderable, draggable to
+the hotbar, compendium-packable, portable to another world. The config itself lives in a
+flag on that macro (`getFlag("pause-fx", "config")`), so loading it back into the Composer
+to keep editing doesn't involve parsing the macro's own JS back apart; the generated
+`command` is just an independently-readable/runnable copy of the same call.
 
 `icon`/`iconGlow`/`borderColor` are all opt-in -- omit them entirely and a run looks like
 Foundry's own native pause screen (its own default icon, no glow, no border overlay, no

@@ -161,3 +161,24 @@ export function configFromGlobals(globals, steps) {
   if (globals.endCombat) config.endCombat = true;
   return config;
 }
+
+/**
+ * A saved vignette is a real Foundry macro (not a bespoke settings-backed "preset") -- it
+ * already gets a directory, folders, drag-to-hotbar, and compendium packing for free that
+ * way, none of which a from-scratch storage mechanism would. The macro's `command` is human-
+ * readable/independently runnable JS (works even if you hand-edit it and never touch the
+ * Composer again); the *config* the Composer reads back for editing lives in a flag instead
+ * of getting parsed back out of that JS text, which would be far more brittle.
+ * @param {object} config - see configFromGlobals.
+ * @returns {string} the macro's `command` body.
+ */
+export function commandForConfig(config) {
+  const json = JSON.stringify(config, null, 2);
+  return [
+    'if (!game.modules.get("pause-fx")?.active) {',
+    '  ui.notifications.error("This macro needs the Pause FX module active.");',
+    "  return;",
+    "}",
+    `await game.modules.get("pause-fx").api.run(${json});`,
+  ].join("\n");
+}

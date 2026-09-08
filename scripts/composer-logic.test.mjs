@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, startupSummary,
-  secondsToMs, msToSeconds, configFromGlobals,
+  secondsToMs, msToSeconds, configFromGlobals, commandForConfig,
 } from "./composer-logic.js";
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
@@ -158,4 +158,16 @@ test("configFromGlobals: the rest of the fields, all set", () => {
     steps, icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018", text: "SOMETHING STIRS",
     borderCycleMs: 3640, closeAllWindows: { players: true, gm: true }, endCombat: true,
   });
+});
+
+test("commandForConfig: guards on the module being active, then calls the real API with the config", () => {
+  const config = { borderColor: "#FF0000", steps: [{ text: "hi" }] };
+  const command = commandForConfig(config);
+  assert.match(command, /game\.modules\.get\("pause-fx"\)\?\.active/);
+  assert.match(command, /ui\.notifications\.error/);
+  assert.match(command, /game\.modules\.get\("pause-fx"\)\.api\.run\(/);
+  // The embedded JSON has to be the exact config, parseable back out -- not just
+  // string-matched fragments, in case key order or formatting ever drifts.
+  const jsonMatch = command.match(/api\.run\((\{[\s\S]*\})\);$/);
+  assert.deepEqual(JSON.parse(jsonMatch[1]), config);
 });

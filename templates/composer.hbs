@@ -12,18 +12,18 @@
     </div>
   </fieldset>
 
-  <fieldset class="pfx-presets">
-    <legend>Presets</legend>
-    <select data-role="preset-select">
-      <option value="">-- load a saved preset --</option>
-      {{#each presetNames as |name|}}<option value="{{name}}">{{name}}</option>{{/each}}
+  <fieldset class="pfx-vignettes">
+    <legend>Vignettes</legend>
+    <select data-role="vignette-select">
+      <option value="">-- load a saved vignette --</option>
+      {{#each savedVignettes as |v|}}<option value="{{v.id}}">{{v.name}}</option>{{/each}}
     </select>
-    <button type="button" data-action="deletePreset" title="Delete the selected preset">
+    <button type="button" data-action="deleteVignette" title="Delete the selected vignette">
       <i class="fa-solid fa-trash"></i>
     </button>
-    <input type="text" name="presetName" placeholder="preset name..." value="{{globals.presetName}}">
-    <button type="button" data-action="savePreset">
-      <i class="fa-solid fa-floppy-disk"></i> Save as preset
+    <input type="text" name="macroName" placeholder="vignette name..." value="{{globals.macroName}}">
+    <button type="button" data-action="saveVignette">
+      <i class="fa-solid fa-floppy-disk"></i> Save as macro
     </button>
   </fieldset>
 
