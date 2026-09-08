@@ -4,7 +4,8 @@
 
 import { PauseFX } from "./pause-fx.js";
 import {
-  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, configFromGlobals,
+  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, startupSummary,
+  msToSeconds, configFromGlobals,
 } from "./composer-logic.js";
 
 const MODULE_ID = "pause-fx";
@@ -26,9 +27,6 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     form: { handler: PauseFXComposer.#onSubmit, submitOnChange: false, closeOnSubmit: false },
     actions: {
       addStep: PauseFXComposer.#onAddStep,
-      removeStep: PauseFXComposer.#onRemoveStep,
-      moveStepUp: PauseFXComposer.#onMoveStep,
-      moveStepDown: PauseFXComposer.#onMoveStep,
       browseFile: PauseFXComposer.#onBrowseFile,
       savePreset: PauseFXComposer.#onSavePreset,
       deletePreset: PauseFXComposer.#onDeletePreset,
@@ -49,14 +47,26 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   // them here, and that's exactly what broke: editing a step, then loading a preset, blanked
   // every global field because the template never bound them to anything in the first place.
   globals = {
-    icon: "", iconGlow: "", borderColor: "", text: "", borderCycleMs: "", textCycleMs: "",
-    textCycleMultiplier: "", closeAllWindows: false, endCombat: false, presetName: "",
+    icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "",
+    closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false, presetName: "",
   };
+
+  #dragDrop = new foundry.applications.ux.DragDrop({
+    dragSelector: ".pfx-step-handle",
+    dropSelector: ".pfx-step",
+    callbacks: {
+      dragstart: this.#onDragStart.bind(this),
+      dragenter: this.#onDragEnter.bind(this),
+      dragleave: this.#onDragLeave.bind(this),
+      drop: this.#onDrop.bind(this),
+    },
+  });
 
   async _prepareContext() {
     const presets = game.settings.get(MODULE_ID, PRESETS_SETTING);
     return {
       globals: this.globals,
+      startupSummaryText: startupSummary(this.globals),
       rows: this.rows.map((row, index) => ({ index, summary: stepSummary(stepFromRow(row)), ...row })),
       presetNames: Object.keys(presets).sort(),
       macroNames: game.macros.contents.map((m) => m.name).sort(),
@@ -65,8 +75,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
   _onRender(context, options) {
     super._onRender(context, options);
+    this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
     this.element.querySelector('[data-role="preset-select"]')
       ?.addEventListener("change", (event) => this.#loadPreset(event.target.value));
+    this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
     // Delegated so per-row fields don't need a listener wired up on every re-render, and so
     // this one listener covers both step-row fields (data-field/data-index) and the plain
     // named global fields alike.
@@ -87,34 +99,108 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
+  #onDragStart(event) {
+    const index = event.currentTarget.closest("[data-index]")?.dataset.index;
+    event.dataTransfer.setData("text/plain", index);
+  }
+
+  #onDragEnter(event) {
+    event.currentTarget.classList.add("pfx-step-dragover");
+  }
+
+  #onDragLeave(event) {
+    event.currentTarget.classList.remove("pfx-step-dragover");
+  }
+
+  #onDrop(event) {
+    event.currentTarget.classList.remove("pfx-step-dragover");
+    const from = Number(event.dataTransfer.getData("text/plain"));
+    const to = Number(event.currentTarget.dataset.index);
+    if (Number.isNaN(from) || Number.isNaN(to) || from === to) return;
+    const [dragged] = this.rows.splice(from, 1);
+    this.rows.splice(to, 0, dragged);
+    this.render({ parts: ["body"] });
+  }
+
+  #removeStepAt(index) {
+    this.rows.splice(index, 1);
+    this.render({ parts: ["body"] });
+  }
+
+  async #confirmAndRemoveStep(index) {
+    const summary = stepSummary(stepFromRow(this.rows[index]));
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      window: { title: "Remove step" },
+      content: `<p>Remove this step (${summary})? This can't be undone.</p>`,
+    });
+    if (confirmed) this.#removeStepAt(index);
+  }
+
+  // A quick click always confirms (the trash sits fully exposed with no border around it,
+  // so it needs a real guard against misclicks) -- but holding it down for HOLD_MS skips
+  // the dialog, for building/pruning a sequence quickly once you trust your own aim. The
+  // wedge (--pfx-hold-progress, drawn in CSS as a conic-gradient) is the only warning that's
+  // possible before the hold completes. No separate click listener needed: by the time a
+  // completed hold's eventual pointerup fires, `start` is already null (cleared the moment
+  // the hold finished), so the "held" check below naturally skips a second, redundant removal.
+  #wireStepRemove(button) {
+    const HOLD_MS = 1400;
+    const index = () => Number(button.dataset.index);
+    let start = null;
+    let raf = null;
+
+    const cancelHold = () => {
+      start = null;
+      if (raf) cancelAnimationFrame(raf);
+      raf = null;
+      button.style.setProperty("--pfx-hold-progress", "0");
+    };
+    const tick = (now) => {
+      if (start === null) return;
+      const progress = Math.min((now - start) / HOLD_MS, 1);
+      button.style.setProperty("--pfx-hold-progress", String(progress));
+      if (progress >= 1) {
+        cancelHold();
+        this.#removeStepAt(index()); // bypasses the confirmation entirely
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return; // left-click/primary touch only
+      start = performance.now();
+      raf = requestAnimationFrame(tick);
+    });
+    button.addEventListener("pointerup", () => {
+      const wasHolding = start !== null; // false if the hold already completed above
+      cancelHold();
+      if (wasHolding) this.#confirmAndRemoveStep(index());
+    });
+    button.addEventListener("pointerleave", cancelHold);
+    button.addEventListener("pointercancel", cancelHold);
+  }
+
   #loadPreset(name) {
     if (!name) return;
     const config = game.settings.get(MODULE_ID, PRESETS_SETTING)[name];
     if (!config) return;
     this.rows = (config.steps ?? []).map(rowFromStep);
-    for (const field of Object.keys(this.globals)) {
-      if (field === "presetName") continue; // keep whatever name is currently typed
+    // icon/iconGlow/borderColor/text/endCombat map 1:1 by name; pulseLengthS and the two
+    // closeWindows* checkboxes don't -- configFromGlobals nests/converts those on the way
+    // out (borderCycleMs in ms, closeAllWindows:{players,gm}), so loading has to reverse it.
+    for (const field of ["icon", "iconGlow", "borderColor", "text", "endCombat"]) {
       this.globals[field] = config[field] ?? (typeof this.globals[field] === "boolean" ? false : "");
     }
+    this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
+    this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
+    this.globals.closeWindowsGM = !!config.closeAllWindows?.gm;
+    // presetName is deliberately left alone -- keep whatever name is currently typed.
     this.render({ parts: ["body"] });
   }
 
   static #onAddStep() {
     this.rows.push(rowFromStep(defaultStep()));
-    this.render({ parts: ["body"] });
-  }
-
-  static #onRemoveStep(event, target) {
-    this.rows.splice(Number(target.dataset.index), 1);
-    this.render({ parts: ["body"] });
-  }
-
-  static #onMoveStep(event, target) {
-    const index = Number(target.dataset.index);
-    const delta = target.dataset.action === "moveStepUp" ? -1 : 1;
-    const neighbor = index + delta;
-    if (neighbor < 0 || neighbor >= this.rows.length) return;
-    [this.rows[index], this.rows[neighbor]] = [this.rows[neighbor], this.rows[index]];
     this.render({ parts: ["body"] });
   }
 

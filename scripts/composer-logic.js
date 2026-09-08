@@ -4,20 +4,22 @@
 
 /** A blank step, used as the seed for "Add Step." */
 export function defaultStep() {
-  return { wait: { units: 1, clock: "border" } };
+  return { wait: { units: 1 } };
 }
 
 /**
  * One editable step-row's fields -> a clean PauseFX step object. Optional fields are OMITTED
  * (not set to "" / false) when left blank, matching PauseFX.run's own `step.text !== undefined`
- * style checks -- an omitted field means "don't touch," not "clear."
+ * style checks -- an omitted field means "don't touch," not "clear." No `clock` on the wait --
+ * the Composer only ever exposes one clock ("Pulse Cycles"); pause-fx.js's own default (an
+ * omitted clock means "border") already does the right thing without the Composer saying so.
  * @param {object} row - see rowFromStep for the field shape.
  * @returns {object} a step object per pause-fx.js's `steps` schema.
  */
 export function stepFromRow(row) {
   const step = {};
   if (row.waitUnits !== "" && row.waitUnits !== null && row.waitUnits !== undefined) {
-    step.wait = { units: Number(row.waitUnits), clock: row.waitClock || "border" };
+    step.wait = { units: Number(row.waitUnits) };
   }
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.text) step.text = row.text;
@@ -46,14 +48,16 @@ export function stepFromRow(row) {
 
 /**
  * The inverse of stepFromRow -- a step object -> editable row fields, for populating the
- * form when a preset loads. `stepFromRow(rowFromStep(step))` round-trips `step`.
+ * form when a preset loads. `stepFromRow(rowFromStep(step))` round-trips `step` (a `clock` on
+ * the original step is intentionally NOT preserved -- see stepFromRow; a preset saved before
+ * the Composer dropped clock selection could carry `clock: "text"` on some step, and loading
+ * it back into the Composer silently drops that down to the one clock the UI still exposes).
  * @param {object} step
  * @returns {object} row fields, all defined (never undefined) so they bind cleanly to inputs.
  */
 export function rowFromStep(step) {
   return {
     waitUnits: step.wait?.units ?? "",
-    waitClock: step.wait?.clock ?? "border",
     waitForVideoEnd: !!step.waitForVideoEnd,
     text: step.text ?? "",
     freeze: !!step.freeze,
@@ -92,7 +96,7 @@ export function coerceStepField(field, rawValue) {
 export function stepSummary(step) {
   const basename = (p) => p.split("/").pop();
   const parts = [];
-  if (step.wait) parts.push(`wait ${step.wait.units}× ${step.wait.clock ?? "border"}`);
+  if (step.wait) parts.push(`wait ${step.wait.units} pulse${step.wait.units === 1 ? "" : "s"}`);
   if (step.waitForVideoEnd) parts.push("wait for video end");
   if (step.text) parts.push(`text: "${step.text}"`);
   if (step.blankText) parts.push("blank text");
@@ -109,6 +113,33 @@ export function stepSummary(step) {
 }
 
 /**
+ * Same idea as stepSummary, for the pinned "Startup" row (icon/glow/border/text -- the
+ * top-level look-and-feel fields, not a real step). Kept separate from stepSummary rather
+ * than shoehorned into it since these fields aren't part of the real `steps[]` schema at all.
+ * @param {object} startup - a subset of `globals`: icon, iconGlow, borderColor, text.
+ */
+export function startupSummary(startup) {
+  const basename = (p) => p.split("/").pop();
+  const parts = [];
+  if (startup.icon) parts.push(`icon: ${basename(startup.icon)}`);
+  if (startup.iconGlow) parts.push(`glow: ${startup.iconGlow}`);
+  if (startup.borderColor) parts.push(`border: ${startup.borderColor}`);
+  if (startup.text) parts.push(`text: "${startup.text}"`);
+  return parts.join(" · ") || "(nothing set)";
+}
+
+/**
+ * Pulse Length is shown to the user in decimal seconds; PauseFX.run() wants borderCycleMs.
+ * Kept as real functions (not inlined) so the rounding is unit-tested, not just eyeballed.
+ */
+export function secondsToMs(seconds) {
+  return Math.round(Number(seconds) * 1000);
+}
+export function msToSeconds(ms) {
+  return ms / 1000;
+}
+
+/**
  * The global (non-step) form fields -> the top-level PauseFX.run() config fields. Optional
  * fields are omitted when blank, same rationale as stepFromRow.
  * @param {object} globals - raw field values (strings/booleans), as read off the form.
@@ -121,12 +152,12 @@ export function configFromGlobals(globals, steps) {
   if (globals.iconGlow) config.iconGlow = globals.iconGlow;
   if (globals.borderColor) config.borderColor = globals.borderColor;
   if (globals.text) config.text = globals.text;
-  for (const field of ["borderCycleMs", "textCycleMs", "textCycleMultiplier"]) {
-    if (globals[field] !== "" && globals[field] !== null && globals[field] !== undefined) {
-      config[field] = Number(globals[field]);
-    }
+  if (globals.pulseLengthS !== "" && globals.pulseLengthS !== null && globals.pulseLengthS !== undefined) {
+    config.borderCycleMs = secondsToMs(globals.pulseLengthS);
   }
-  if (globals.closeAllWindows) config.closeAllWindows = true;
+  if (globals.closeWindowsPlayers || globals.closeWindowsGM) {
+    config.closeAllWindows = { players: !!globals.closeWindowsPlayers, gm: !!globals.closeWindowsGM };
+  }
   if (globals.endCombat) config.endCombat = true;
   return config;
 }

@@ -1,4 +1,17 @@
 <div class="pfx-composer">
+  <fieldset class="pfx-startup">
+    <legend>Startup</legend>
+    <label>Pulse Length (s)
+      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="3.64" value="{{globals.pulseLengthS}}">
+    </label>
+    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active combat</label>
+    <div class="pfx-close-windows">
+      <span>Close all windows for:</span>
+      <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}> Players</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}> GM</label>
+    </div>
+  </fieldset>
+
   <fieldset class="pfx-presets">
     <legend>Presets</legend>
     <select data-role="preset-select">
@@ -14,52 +27,42 @@
     </button>
   </fieldset>
 
-  <fieldset class="pfx-grid">
-    <legend>Look &amp; feel</legend>
-    <label>Icon
-      <span class="pfx-with-picker">
-        <input type="text" name="icon" placeholder="curtain-call/art/eye.gif" value="{{globals.icon}}">
-        <button type="button" data-action="browseFile" data-for="icon" data-picker-type="imagevideo">
-          <i class="fa-solid fa-folder-open"></i>
-        </button>
-      </span>
-    </label>
-    <label>Icon glow <input type="text" name="iconGlow" placeholder="red" value="{{globals.iconGlow}}"></label>
-    <label>Border color <input type="text" name="borderColor" placeholder="red" value="{{globals.borderColor}}"></label>
-    <label>Initial text <input type="text" name="text" value="{{globals.text}}"></label>
-    <label>Border cycle (ms) <input type="number" name="borderCycleMs" placeholder="3640" value="{{globals.borderCycleMs}}"></label>
-    <label>Text cycle (ms) <input type="number" name="textCycleMs" placeholder="auto (2× border)" value="{{globals.textCycleMs}}"></label>
-    <label>Text cycle × <input type="number" name="textCycleMultiplier" step="0.1" placeholder="2" value="{{globals.textCycleMultiplier}}"></label>
-    <label class="pfx-checkbox"><input type="checkbox" name="closeAllWindows" {{checked globals.closeAllWindows}}> Close all windows first</label>
-    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active combat first</label>
-  </fieldset>
-
   <fieldset class="pfx-steps-fieldset">
     <legend>Steps</legend>
+
+    <!-- Always first, no handle/trash -- the look-and-feel fields that used to be their own
+         "Look & feel" section, now presented the same way a real step is (so there's only
+         one field-editing pattern to learn), just pinned and unremovable. Doesn't literally
+         say "Step 0" anywhere -- its position alone says what it is. -->
+    <div class="pfx-step pfx-step-pinned">
+      <details class="pfx-step-details">
+        <summary>{{startupSummaryText}}</summary>
+        <div class="pfx-step-fields">
+          <label>Icon
+            <span class="pfx-with-picker">
+              <input type="text" name="icon" placeholder="curtain-call/art/eye.gif" value="{{globals.icon}}">
+              <button type="button" data-action="browseFile" data-for="icon" data-picker-type="imagevideo">
+                <i class="fa-solid fa-folder-open"></i>
+              </button>
+            </span>
+          </label>
+          <label>Icon glow <input type="text" name="iconGlow" placeholder="red" value="{{globals.iconGlow}}"></label>
+          <label>Border color <input type="text" name="borderColor" placeholder="red" value="{{globals.borderColor}}"></label>
+          <label>Initial text <input type="text" name="text" value="{{globals.text}}"></label>
+        </div>
+      </details>
+    </div>
+
     <ol class="pfx-steps">
       {{#each rows as |row|}}
-      <li class="pfx-step">
-        <div class="pfx-step-toolbar">
-          <button type="button" data-action="moveStepUp" data-index="{{row.index}}" title="Move up">
-            <i class="fa-solid fa-arrow-up"></i>
-          </button>
-          <button type="button" data-action="moveStepDown" data-index="{{row.index}}" title="Move down">
-            <i class="fa-solid fa-arrow-down"></i>
-          </button>
-          <button type="button" data-action="removeStep" data-index="{{row.index}}" title="Remove step">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
+      <li class="pfx-step" data-index="{{row.index}}">
+        <i class="pfx-step-handle fa-solid fa-grip-vertical" draggable="true" title="Drag to reorder"></i>
         <details class="pfx-step-details">
-          <summary>{{row.index}}. {{row.summary}}</summary>
+          <summary>{{row.summary}}</summary>
           <div class="pfx-step-fields">
-            <label>Wait
+            <label>Wait (pulses)
               <input type="number" step="0.05" min="0" data-index="{{row.index}}" data-field="waitUnits" value="{{row.waitUnits}}">
             </label>
-            <select data-index="{{row.index}}" data-field="waitClock">
-              <option value="border" {{#if (eq row.waitClock "border")}}selected{{/if}}>border cycles</option>
-              <option value="text" {{#if (eq row.waitClock "text")}}selected{{/if}}>text cycles</option>
-            </select>
             <label class="pfx-checkbox">
               <input type="checkbox" data-index="{{row.index}}" data-field="waitForVideoEnd" {{checked row.waitForVideoEnd}}>
               wait for video end (ignores the wait above)
@@ -112,6 +115,10 @@
             </label>
           </div>
         </details>
+        <button type="button" class="pfx-step-remove" data-index="{{row.index}}"
+                title="Click to remove (confirms) -- hold ~1.4s to skip the confirmation">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </li>
       {{else}}
       <li class="pfx-steps-empty">No steps yet -- add one below.</li>

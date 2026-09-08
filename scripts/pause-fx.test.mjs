@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 
 globalThis.ui = { windows: {} };
 globalThis.foundry = { applications: { instances: new Map() } };
+globalThis.game = { user: { isGM: false } };
 // socketlib isn't present in this test env, so the module's top-level code falls back to
 // Hooks.once("socketlib.ready", ...) on import -- stub just enough for that to no-op cleanly.
 globalThis.Hooks = { once() {} };
@@ -41,6 +42,40 @@ test("closeAllWindowsHandler: closes real floating windows, leaves docked UI chr
   closeAllWindowsHandler();
 
   assert.deepEqual(closed.sort(), ["legacy-dialog", "user-config"]);
+});
+
+test("closeAllWindowsHandler: a client skips entirely when its own role isn't targeted", () => {
+  // Every connected client runs this handler regardless of who a reveal meant to target --
+  // each one has to decide for itself whether to act, based on game.user.isGM locally.
+  const closed = [];
+  const mkApp = (id) => ({ id, hasFrame: true, close: () => closed.push(id) });
+  globalThis.ui.windows = { dialog: mkApp("dialog") };
+  globalThis.foundry.applications.instances = new Map();
+
+  globalThis.game.user.isGM = true;
+  closeAllWindowsHandler({ players: true, gm: false }); // targets players only
+  assert.deepEqual(closed, [], "a GM client must not close anything when gm:false");
+
+  closeAllWindowsHandler({ players: true, gm: true });
+  assert.deepEqual(closed, ["dialog"], "the same GM client acts once gm:true");
+
+  closed.length = 0;
+  globalThis.game.user.isGM = false;
+  closeAllWindowsHandler({ players: false, gm: true }); // targets GMs only
+  assert.deepEqual(closed, [], "a player client must not close anything when players:false");
+
+  globalThis.game.user.isGM = false; // restore the module-wide default for later tests
+});
+
+test("closeAllWindowsHandler: no target argument defaults to acting on every role", () => {
+  const closed = [];
+  globalThis.ui.windows = { dialog: { id: "dialog", hasFrame: true, close: () => closed.push("dialog") } };
+  globalThis.foundry.applications.instances = new Map();
+
+  globalThis.game.user.isGM = true;
+  closeAllWindowsHandler();
+  assert.deepEqual(closed, ["dialog"]);
+  globalThis.game.user.isGM = false;
 });
 
 test("resolveTextCycleMs: explicit textCycleMs always wins over the multiplier", () => {

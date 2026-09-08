@@ -15,9 +15,10 @@ whether or not another pause-screen module (e.g. Monk's Little Details) is also 
 ## Composer UI
 
 Building a sequence doesn't require writing JS: the GM-only "Pause FX" scene-control button
-(clapperboard icon) opens a Composer for the same config below -- look/feel fields, an
-add/reorder/remove step list, and named presets saved per world. `game.modules.get("pause-fx")
-.api.openComposer()` opens it too, if you'd rather bind that to a macro/hotkey.
+(clapperboard icon) opens a Composer for the same config below -- a Startup section (pulse
+length, close-windows targeting, end combat), a pinned look/feel entry, named presets saved
+per world, and an add/reorder/remove step list. `game.modules.get("pause-fx").api.openComposer()`
+opens it too, if you'd rather bind that to a macro/hotkey.
 
 ## Usage
 
@@ -27,7 +28,7 @@ await game.modules.get("pause-fx").api.run({
   iconGlow: "#960018",
   borderColor: "#FF0000",
   borderCycleMs: 3640, // match the icon GIF's own real loop length, if it has one
-  closeAllWindows: true,
+  closeAllWindows: { players: true, gm: false }, // gm:false -- a connected GM keeps their windows
   endCombat: true,
   steps: [
     { wait: { units: 2, clock: "text" }, text: "SOMETHING STIRS" },

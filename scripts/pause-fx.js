@@ -41,9 +41,16 @@ export function isRealWindow(app) {
 /**
  * Closes every real floating window (legacy and ApplicationV2) on whichever client runs
  * this -- called via socket.executeForEveryone so every connected client closes its own.
- * Leaves Foundry's own docked UI chrome untouched.
+ * Leaves Foundry's own docked UI chrome untouched. Runs on EVERY connected client, but each
+ * one decides for itself whether to actually act, based on its own role vs. `target` -- a GM
+ * client may well have windows open (a sheet mid-edit, a compendium) that it doesn't want
+ * closed just because a reveal broadcast closeAllWindows for players.
+ * @param {object} [target]
+ * @param {boolean} [target.players=true] - act on this client if its user is not a GM.
+ * @param {boolean} [target.gm=true] - act on this client if its user is a GM.
  */
-export function closeAllWindowsHandler() {
+export function closeAllWindowsHandler({ players = true, gm = true } = {}) {
+  if (game.user.isGM ? !gm : !players) return;
   Object.values(ui.windows).forEach((app) => app.close());
   for (const app of foundry.applications.instances.values()) {
     if (isRealWindow(app)) app.close();
@@ -176,8 +183,13 @@ export class PauseFX {
    * @param {number} [config.textCycleMs] - text pulse period. Defaults to
    *   borderCycleMs * textCycleMultiplier.
    * @param {number} [config.textCycleMultiplier=2] - only used if textCycleMs is omitted.
-   * @param {boolean} [config.closeAllWindows=false] - broadcast closeAllWindows to every
-   *   connected client (via socketlib) before the sequence starts.
+   * @param {object} [config.closeAllWindows] - broadcast closeAllWindows (via socketlib)
+   *   before the sequence starts. Omit entirely to skip it; otherwise each connected client
+   *   decides for itself whether to act, based on its own role.
+   * @param {boolean} [config.closeAllWindows.players=true] - act on non-GM clients.
+   * @param {boolean} [config.closeAllWindows.gm=true] - act on GM clients -- a GM may have
+   *   windows open on purpose (a sheet mid-edit, a compendium) that shouldn't vanish just
+   *   because a reveal closed everyone else's.
    * @param {boolean} [config.endCombat=false] - end the active encounter, if any, before
    *   the sequence starts.
    * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
@@ -199,16 +211,16 @@ export class PauseFX {
       borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
       textCycleMs,
       textCycleMultiplier = 2,
-      closeAllWindows: shouldCloseAllWindows = false,
+      closeAllWindows,
       endCombat: shouldEndCombat = false,
       steps = [],
     } = config;
     const resolvedTextCycle = resolveTextCycleMs({ textCycleMs, borderCycleMs, textCycleMultiplier });
 
     if (shouldEndCombat) await game.combat?.endCombat();
-    if (shouldCloseAllWindows) {
+    if (closeAllWindows) {
       if (!socket) ui.notifications.warn("pause-fx: socketlib isn't ready yet, skipping closeAllWindows.");
-      else await socket.executeForEveryone("closeAllWindows");
+      else await socket.executeForEveryone("closeAllWindows", closeAllWindows);
     }
 
     setBorderColour(borderColor);

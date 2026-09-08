@@ -23,23 +23,110 @@
 #pause-fx-composer .pfx-presets select { flex: 1; min-width: 8rem; }
 #pause-fx-composer .pfx-presets input[name="presetName"] { flex: 1; min-width: 8rem; }
 
-#pause-fx-composer .pfx-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.4rem 0.75rem;
+#pause-fx-composer .pfx-startup {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  flex-wrap: wrap;
 }
-#pause-fx-composer .pfx-grid label { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
-#pause-fx-composer .pfx-grid label.pfx-checkbox { flex-direction: row; align-items: center; gap: 0.4rem; }
+#pause-fx-composer .pfx-startup label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+#pause-fx-composer .pfx-startup input[name="pulseLengthS"] { width: 4.5rem; }
+#pause-fx-composer .pfx-close-windows { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
 #pause-fx-composer .pfx-with-picker { display: flex; gap: 0.25rem; }
 #pause-fx-composer .pfx-with-picker input { flex: 1; }
 
-#pause-fx-composer .pfx-steps { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+/* Tighter than the shared `fieldset` rule -- the step list distinguishes its own rows by
+   abutting alternating backgrounds (below), not by spacing/bordering each one like a card,
+   so the extra breathing room a generic fieldset gets isn't doing anything useful here. */
+#pause-fx-composer .pfx-steps-fieldset { padding: 0.3rem 0.4rem 0.4rem; }
+
+#pause-fx-composer .pfx-steps { list-style: none; margin: 0 0 0.4rem; padding: 0; display: flex; flex-direction: column; }
 #pause-fx-composer .pfx-steps-empty { font-style: italic; opacity: 0.7; padding: 0.3rem 0; }
-#pause-fx-composer .pfx-step { display: flex; align-items: flex-start; gap: 0.4rem; }
-#pause-fx-composer .pfx-step-toolbar { display: flex; flex-direction: column; gap: 0.15rem; }
-#pause-fx-composer .pfx-step-toolbar button { line-height: 1; padding: 0.15rem 0.35rem; }
-#pause-fx-composer .pfx-step-details { flex: 1; border: 1px solid var(--color-border-light-tertiary, #7a7971); border-radius: 4px; padding: 0.3rem 0.5rem; }
-#pause-fx-composer .pfx-step-details summary { cursor: pointer; }
+#pause-fx-composer .pfx-step { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.15rem 0.3rem; }
+/* Rows abut with no gap between them -- alternating background is what separates one step
+   from the next, instead of a border+gap per row. !important because Foundry loads every
+   module's CSS inside @layer modules, and foundry2.css's own (unlayered) styles win over
+   ANY layered rule regardless of specificity -- confirmed live: something in core sets a
+   competing `background` on this element, and an unlayered test rule beat this one outright
+   until given !important, which uniquely inverts priority back in a layered rule's favor.
+   Scoped to .pfx-steps' own direct children only -- the pinned Startup row above the <ol>
+   also carries the .pfx-step class, and un-scoped nth-child(even) would catch it too purely
+   by virtue of its position among the fieldset's children (legend, pinned row, ol, button). */
+#pause-fx-composer .pfx-steps > .pfx-step:nth-child(even) { background: rgba(255, 255, 255, 0.06) !important; }
+/* The pinned Startup row: same step-row look, but visually set apart (a firm separator, no
+   handle/trash) since it can't be dragged or removed the way the steps below it can. */
+#pause-fx-composer .pfx-step-pinned {
+  border-bottom: 1px solid var(--color-border-light-tertiary, #7a7971);
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.35rem;
+}
+#pause-fx-composer .pfx-step-handle {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  width: 1rem;
+  cursor: grab;
+  opacity: 0.6;
+}
+#pause-fx-composer .pfx-step-handle:hover { opacity: 1; }
+#pause-fx-composer .pfx-step-handle:active { cursor: grabbing; }
+#pause-fx-composer .pfx-step.pfx-step-dragover { outline: 2px dashed var(--color-border-highlight, #ff6400); outline-offset: -2px; }
+#pause-fx-composer .pfx-step-remove {
+  align-self: flex-start;
+  position: relative; /* anchors the hold-progress wedge below */
+  line-height: 1;
+  padding: 0.3rem 0.45rem;
+  border: none;
+  background: transparent;
+  --pfx-hold-progress: 0;
+}
+#pause-fx-composer .pfx-step-remove:hover { background: rgba(255, 255, 255, 0.08); }
+#pause-fx-composer .pfx-step-remove i { position: relative; } /* paints above the wedge, which is a sibling ::before */
+/* Click-and-hold (see composer.js) skips the confirmation dialog; this wedge is the only
+   indication that's possible before the hold completes. Angle is driven by JS setting
+   --pfx-hold-progress (0-1) every frame; a bare number times an angle is valid in calc(). */
+#pause-fx-composer .pfx-step-remove::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: conic-gradient(var(--color-level-error, #a32929) calc(var(--pfx-hold-progress) * 360deg), transparent 0deg);
+  opacity: var(--pfx-hold-progress);
+  pointer-events: none;
+}
+#pause-fx-composer .pfx-step-details { flex: 1; }
+/* min-height matches the trash button's own rendered cross-section (padding 0.3rem*2 + a
+   1em icon), so the summary line centers against the handle/trash row instead of sitting
+   flush to the top of it. display:flex is what centers it -- but a <summary> only gets its
+   native disclosure marker while it's display:list-item (the UA default), so flex silently
+   drops the marker; replaced with a manual ::before chevron below. */
+#pause-fx-composer .pfx-step-details summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-height: 1.6rem;
+  list-style: none; /* Firefox marker, belt-and-suspenders alongside the -webkit rule below */
+}
+#pause-fx-composer .pfx-step-details summary::-webkit-details-marker { display: none; }
+/* A CSS border-triangle instead of a "▶" glyph -- Andrew still saw the glyph version as too
+   high after it measured as centered (0.002px) in this environment, most likely because "▶"
+   isn't in the app's own font and falls back to a symbol font whose vertical metrics differ
+   between environments -- chasing a translateY tuned to one rendering wouldn't necessarily
+   match another. A border-triangle is geometrically symmetric by construction (equal top/
+   bottom border widths) and renders identically everywhere, so centering it needs no
+   per-pixel offset at all -- align-items:center on summary is enough on its own. */
+#pause-fx-composer .pfx-step-details summary::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: 0.32em solid transparent;
+  border-bottom: 0.32em solid transparent;
+  border-left: 0.42em solid currentColor;
+  margin-right: 0.55rem;
+  transition: transform 0.1s ease;
+}
+#pause-fx-composer .pfx-step-details[open] > summary::before { transform: rotate(90deg); }
 #pause-fx-composer .pfx-step-fields {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

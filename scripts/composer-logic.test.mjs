@@ -4,36 +4,37 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, configFromGlobals,
+  defaultStep, stepFromRow, rowFromStep, coerceStepField, stepSummary, startupSummary,
+  secondsToMs, msToSeconds, configFromGlobals,
 } from "./composer-logic.js";
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
-  assert.deepEqual(defaultStep(), { wait: { units: 1, clock: "border" } });
+  assert.deepEqual(defaultStep(), { wait: { units: 1 } });
 });
 
 test("stepFromRow: blank optional fields are omitted, not set to '' / false", () => {
   const row = {
-    waitUnits: "", waitClock: "border", waitForVideoEnd: false, text: "", freeze: false,
-    resume: false, hideIcon: false, showIcon: false, blankText: false, closeVideo: false,
-    audio: "", audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
+    waitUnits: "", waitForVideoEnd: false, text: "", freeze: false, resume: false,
+    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "",
+    audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
   };
   assert.deepEqual(stepFromRow(row), {});
 });
 
-test("stepFromRow: wait, text and flags all come through when set", () => {
+test("stepFromRow: wait, text and flags all come through when set -- wait carries no clock", () => {
   const row = {
-    waitUnits: "2.5", waitClock: "text", waitForVideoEnd: false, text: "Hello", freeze: true,
-    resume: false, hideIcon: false, showIcon: false, blankText: false, closeVideo: false,
-    audio: "", audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
+    waitUnits: "2.5", waitForVideoEnd: false, text: "Hello", freeze: true, resume: false,
+    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "",
+    audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
   };
-  assert.deepEqual(stepFromRow(row), { wait: { units: 2.5, clock: "text" }, text: "Hello", freeze: true });
+  assert.deepEqual(stepFromRow(row), { wait: { units: 2.5 }, text: "Hello", freeze: true });
 });
 
 test("stepFromRow: mediaType picks video vs. image, and only carries videoVolume for video", () => {
   const videoRow = {
-    waitUnits: "", waitClock: "border", waitForVideoEnd: false, text: "", freeze: false,
-    resume: false, hideIcon: false, showIcon: false, blankText: false, closeVideo: false,
-    audio: "", audioVolume: "", mediaType: "video", mediaPath: "a.webm", videoVolume: "0.3", macro: "",
+    waitUnits: "", waitForVideoEnd: false, text: "", freeze: false, resume: false,
+    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "",
+    audioVolume: "", mediaType: "video", mediaPath: "a.webm", videoVolume: "0.3", macro: "",
   };
   assert.deepEqual(stepFromRow(videoRow), { video: "a.webm", videoVolume: 0.3 });
 
@@ -43,9 +44,9 @@ test("stepFromRow: mediaType picks video vs. image, and only carries videoVolume
 
 test("stepFromRow: audio carries its own volume, independent of media fields", () => {
   const row = {
-    waitUnits: "", waitClock: "border", waitForVideoEnd: false, text: "", freeze: false,
-    resume: false, hideIcon: false, showIcon: false, blankText: false, closeVideo: false,
-    audio: "sting.ogg", audioVolume: "0.5", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
+    waitUnits: "", waitForVideoEnd: false, text: "", freeze: false, resume: false,
+    hideIcon: false, showIcon: false, blankText: false, closeVideo: false, audio: "sting.ogg",
+    audioVolume: "0.5", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
   };
   assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5 });
 });
@@ -53,13 +54,19 @@ test("stepFromRow: audio carries its own volume, independent of media fields", (
 test("rowFromStep: fills every field with a defined default, never undefined", () => {
   const row = rowFromStep({});
   for (const value of Object.values(row)) assert.notEqual(value, undefined);
-  assert.equal(row.waitClock, "border");
   assert.equal(row.mediaType, "none");
+});
+
+test("rowFromStep: a step saved with a clock (from before the Composer dropped it) just drops it", () => {
+  assert.deepEqual(rowFromStep({ wait: { units: 2, clock: "text" } }).waitUnits, 2);
+  // stepFromRow(rowFromStep(...)) is a round-trip for CURRENT steps, not a guarantee that
+  // every possible hand-authored/legacy step shape survives unchanged -- `clock` specifically
+  // doesn't, since the Composer has nowhere left to show or re-set it.
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
   const steps = [
-    { wait: { units: 1.45, clock: "text" }, text: "...AND SUDDENLY...", freeze: true },
+    { wait: { units: 1.45 }, text: "...AND SUDDENLY...", freeze: true },
     { video: "father-skinsaw.webm", videoVolume: 0.5, hideIcon: true },
     { image: "spooky.webp" },
     { audio: "sting.ogg", audioVolume: 0.8 },
@@ -87,8 +94,8 @@ test("coerceStepField: everything else passes through untouched", () => {
 
 const SUMMARY_CASES = [
   { step: {}, expected: "(empty step)" },
-  { step: { wait: { units: 2, clock: "text" } }, expected: "wait 2× text" },
-  { step: { wait: { units: 1 } }, expected: "wait 1× border" }, // clock defaults for display too
+  { step: { wait: { units: 2 } }, expected: "wait 2 pulses" },
+  { step: { wait: { units: 1 } }, expected: "wait 1 pulse" }, // singular
   { step: { text: "A MANNEQUIN BEGINS TO TWITCH" }, expected: 'text: "A MANNEQUIN BEGINS TO TWITCH"' },
   { step: { audio: "curtain-call/audio/sting.ogg" }, expected: "audio: sting.ogg" }, // basename only
   { step: { video: "art/bk2/father-skinsaw.webm", hideIcon: true }, expected: "hide icon · video: father-skinsaw.webm" },
@@ -98,22 +105,57 @@ for (const { step, expected } of SUMMARY_CASES) {
   test(`stepSummary: ${expected}`, () => assert.equal(stepSummary(step), expected));
 }
 
+test("startupSummary: nothing set", () => {
+  assert.equal(startupSummary({}), "(nothing set)");
+});
+
+test("startupSummary: basenames the icon path, includes glow/border/text verbatim", () => {
+  const startup = { icon: "curtain-call/art/eye.gif", iconGlow: "red", borderColor: "#FF0000", text: "SOMETHING STIRS" };
+  assert.equal(startupSummary(startup), 'icon: eye.gif · glow: red · border: #FF0000 · text: "SOMETHING STIRS"');
+});
+
+test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", () => {
+  assert.equal(secondsToMs("3.64"), 3640);
+  assert.equal(secondsToMs(3.6401), 3640); // rounds -- borderCycleMs is always a whole ms count
+  assert.equal(msToSeconds(3640), 3.64);
+});
+
 test("configFromGlobals: blank optional globals are omitted", () => {
   const globals = {
-    icon: "", iconGlow: "", borderColor: "", text: "", borderCycleMs: "", textCycleMs: "",
-    textCycleMultiplier: "", closeAllWindows: false, endCombat: false,
+    icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "",
+    closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false,
   };
   assert.deepEqual(configFromGlobals(globals, []), { steps: [] });
 });
 
-test("configFromGlobals: numeric fields parse, checkboxes only appear when true", () => {
+test("configFromGlobals: pulseLengthS converts to borderCycleMs in whole ms", () => {
   const globals = {
-    icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018", text: "", borderCycleMs: "3640",
-    textCycleMs: "", textCycleMultiplier: "2", closeAllWindows: true, endCombat: false,
+    icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "3.64",
+    closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false,
+  };
+  assert.deepEqual(configFromGlobals(globals, []), { steps: [], borderCycleMs: 3640 });
+});
+
+test("configFromGlobals: closeAllWindows only appears if at least one target is checked", () => {
+  const base = { icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "", endCombat: false };
+  assert.deepEqual(
+    configFromGlobals({ ...base, closeWindowsPlayers: false, closeWindowsGM: false }, []),
+    { steps: [] },
+  );
+  assert.deepEqual(
+    configFromGlobals({ ...base, closeWindowsPlayers: true, closeWindowsGM: false }, []),
+    { steps: [], closeAllWindows: { players: true, gm: false } },
+  );
+});
+
+test("configFromGlobals: the rest of the fields, all set", () => {
+  const globals = {
+    icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018", text: "SOMETHING STIRS",
+    pulseLengthS: "3.64", closeWindowsPlayers: true, closeWindowsGM: true, endCombat: true,
   };
   const steps = [{ text: "hi" }];
   assert.deepEqual(configFromGlobals(globals, steps), {
-    steps, icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018",
-    borderCycleMs: 3640, textCycleMultiplier: 2, closeAllWindows: true,
+    steps, icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018", text: "SOMETHING STIRS",
+    borderCycleMs: 3640, closeAllWindows: { players: true, gm: true }, endCombat: true,
   });
 });
