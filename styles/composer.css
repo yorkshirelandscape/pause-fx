@@ -13,6 +13,16 @@
    value, not a toggle; every other badge is a square because it represents a fixed region of
    the pause screen). */
 
+/* Foundry's ApplicationV2 .window-content is plain overflow:hidden by default (confirmed in
+   foundry2.css -- not overflow:hidden auto, that's a legacy V1 .window-app rule that doesn't
+   match these windows at all) -- so a resizable dialog with variable content silently clips
+   instead of scrolling unless a module opts in itself. */
+#pause-fx-composer .window-content,
+#pause-fx-step-editor .window-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 #pause-fx-composer .pfx-composer,
 #pause-fx-step-editor .pfx-step-editor {
   --pfx-surface: var(--color-data-background, #302831);
@@ -109,6 +119,9 @@
   color: var(--pfx-text-body);
   align-self: flex-start; /* don't stretch to the column's full width when standing alone */
 }
+/* A field whose label carries a second control (Text's "None" checkbox) alongside the label
+   text itself, instead of that control sitting off to the side of the whole field. */
+#pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 /* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }

@@ -21,8 +21,13 @@
   <fieldset class="pfx-block">
     <legend><i class="fa-solid fa-font"></i> Text</legend>
     <div class="pfx-row">
-      <label class="pfx-field">Text <input type="search" name="text" value="{{row.text}}" {{#if row.textNone}}disabled{{/if}}></label>
-      <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
+      <div class="pfx-field">
+        <span class="pfx-field-label-row">
+          <span>Message</span>
+          <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
+        </span>
+        <input type="search" name="text" value="{{row.text}}" {{#if row.textNone}}disabled{{/if}}>
+      </div>
     </div>
   </fieldset>
   {{/if}}
@@ -42,17 +47,12 @@
     </div>
     <div class="pfx-row">
       <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked row.iconSpin}}> Spin</label>
+    </div>
+    <div class="pfx-row">
       <span class="pfx-with-toggle" title="Icon Glow">
         <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked row.iconGlowEnabled}}>
         <input type="color" name="iconGlow" value="{{row.iconGlow}}" {{#unless row.iconGlowEnabled}}disabled{{/unless}}>
       </span>
-      <label class="pfx-field pfx-field-narrow">Visibility
-        <select name="iconVisibility">
-          <option value="" {{#if (eq row.iconVisibility "")}}selected{{/if}}>Unchanged</option>
-          <option value="visible" {{#if (eq row.iconVisibility "visible")}}selected{{/if}}>Show</option>
-          <option value="hidden" {{#if (eq row.iconVisibility "hidden")}}selected{{/if}}>Hide</option>
-        </select>
-      </label>
     </div>
   </fieldset>
   {{/if}}
@@ -61,11 +61,11 @@
   <fieldset class="pfx-block">
     <legend><i class="fa-regular fa-square"></i> Border</legend>
     <div class="pfx-row">
+      <label class="pfx-field pfx-field-narrow">Width % <input type="number" step="5" min="-100" placeholder="0" name="borderWidthPct" value="{{row.borderWidthPct}}"></label>
       <span class="pfx-with-toggle">
         <input type="checkbox" name="borderColorEnabled" data-enables="borderColor" {{checked row.borderColorEnabled}}>
         <input type="color" name="borderColor" value="{{row.borderColor}}" {{#unless row.borderColorEnabled}}disabled{{/unless}}>
       </span>
-      <label class="pfx-field pfx-field-narrow">Width % <input type="number" step="5" min="0" name="borderWidthPct" placeholder="100" value="{{row.borderWidthPct}}"></label>
     </div>
   </fieldset>
   {{/if}}
@@ -121,6 +121,7 @@
     <div class="pfx-row">
       <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Video/Image</label>
       <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Audio</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="hideIcon" {{checked row.hideIcon}}> Icon</label>
       <label class="pfx-checkbox"><input type="checkbox" name="unpause" {{checked row.unpause}}> Unpause</label>
     </div>
   </fieldset>

@@ -10,7 +10,7 @@ import {
 
 const BLANK_ROW = {
   waitUnits: "", text: "", textNone: false, freeze: false, resume: false,
-  iconVisibility: "", closeVideo: false, stopAudio: false, unpause: false,
+  closeVideo: false, stopAudio: false, hideIcon: false, unpause: false,
   waitForVideoEnd: false, waitForAudioEnd: false, audio: "", audioVolume: "",
   mediaType: "none", mediaPath: "", videoVolume: "", icon: "", iconSpin: false,
   iconGlowEnabled: false, iconGlow: "#ff0000", borderColorEnabled: false,
@@ -35,10 +35,9 @@ test("stepFromRow: textNone forces an explicit blank, even if text also has a va
   assert.deepEqual(stepFromRow(row), { text: "" });
 });
 
-test("stepFromRow: iconVisibility picks hidden vs. visible vs. untouched", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconVisibility: "hidden" }), { iconVisible: false });
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconVisibility: "visible" }), { iconVisible: true });
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconVisibility: "" }), {});
+test("stepFromRow: hideIcon (Stop block) maps to iconVisible: false -- there's no 'show' in the UI anymore", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, hideIcon: true }), { iconVisible: false });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, hideIcon: false }), {});
 });
 
 test("stepFromRow: waitForVideoEnd/waitForAudioEnd are gates, independent of wait itself", () => {
@@ -94,7 +93,7 @@ test("rowFromStep: fills every field with a defined default, never undefined", (
   const row = rowFromStep({});
   for (const value of Object.values(row)) assert.notEqual(value, undefined);
   assert.equal(row.mediaType, "none");
-  assert.equal(row.iconVisibility, "");
+  assert.equal(row.hideIcon, false);
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
@@ -103,7 +102,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     { video: "father-skinsaw.webm", videoVolume: 0.5, iconVisible: false },
     { image: "spooky.webp" },
     { audio: "sting.ogg", audioVolume: 0.8, waitForAudioEnd: true },
-    { closeVideo: true, stopAudio: true, unpause: true, iconVisible: true, resume: true },
+    { closeVideo: true, stopAudio: true, unpause: true, resume: true },
     { waitForVideoEnd: true },
     { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150 },
     { text: "" }, // explicit blank
@@ -115,6 +114,7 @@ test("coerceStepField: bool fields always become real booleans", () => {
   assert.equal(coerceStepField("freeze", true), true);
   assert.equal(coerceStepField("freeze", ""), false); // an unchecked box's raw value
   assert.equal(coerceStepField("iconGlowEnabled", true), true);
+  assert.equal(coerceStepField("hideIcon", true), true);
 });
 
 test("coerceStepField: number fields parse, but stay '' when blank (not NaN/0)", () => {
@@ -127,7 +127,6 @@ test("coerceStepField: everything else passes through untouched", () => {
   assert.equal(coerceStepField("text", "hello"), "hello");
   assert.equal(coerceStepField("mediaType", "video"), "video");
   assert.equal(coerceStepField("borderColor", "#ff0000"), "#ff0000");
-  assert.equal(coerceStepField("iconVisibility", "hidden"), "hidden");
 });
 
 test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", () => {

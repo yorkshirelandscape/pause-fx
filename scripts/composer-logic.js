@@ -32,10 +32,9 @@ export function stepFromRow(row) {
   else if (row.text) step.text = row.text;
   if (row.freeze) step.freeze = true;
   if (row.resume) step.resume = true;
-  if (row.iconVisibility === "hidden") step.iconVisible = false;
-  else if (row.iconVisibility === "visible") step.iconVisible = true;
   if (row.closeVideo) step.closeVideo = true;
   if (row.stopAudio) step.stopAudio = true;
+  if (row.hideIcon) step.iconVisible = false;
   if (row.unpause) step.unpause = true;
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
@@ -77,9 +76,9 @@ export function rowFromStep(step) {
     textNone: step.text === "",
     freeze: !!step.freeze,
     resume: !!step.resume,
-    iconVisibility: step.iconVisible === undefined ? "" : step.iconVisible ? "visible" : "hidden",
     closeVideo: !!step.closeVideo,
     stopAudio: !!step.stopAudio,
+    hideIcon: step.iconVisible === false,
     unpause: !!step.unpause,
     waitForVideoEnd: !!step.waitForVideoEnd,
     waitForAudioEnd: !!step.waitForAudioEnd,
@@ -100,8 +99,8 @@ export function rowFromStep(step) {
 
 const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct"]);
 const BOOL_FIELDS = new Set([
-  "textNone", "freeze", "resume", "closeVideo", "stopAudio", "unpause", "waitForVideoEnd",
-  "waitForAudioEnd", "iconSpin", "iconGlowEnabled", "borderColorEnabled",
+  "textNone", "freeze", "resume", "closeVideo", "stopAudio", "hideIcon", "unpause",
+  "waitForVideoEnd", "waitForAudioEnd", "iconSpin", "iconGlowEnabled", "borderColorEnabled",
 ]);
 
 /**

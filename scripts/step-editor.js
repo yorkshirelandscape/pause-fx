@@ -10,12 +10,12 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const BLOCK_FIELDS = {
   wait: ["waitUnits"],
   text: ["text", "textNone"],
-  icon: ["icon", "iconSpin", "iconGlowEnabled", "iconGlow", "iconVisibility"],
+  icon: ["icon", "iconSpin", "iconGlowEnabled", "iconGlow"],
   border: ["borderColorEnabled", "borderColor", "borderWidthPct"],
   pulse: ["freeze", "resume"],
   media: ["mediaType", "mediaPath", "videoVolume", "waitForVideoEnd"],
   audio: ["audio", "audioVolume", "waitForAudioEnd"],
-  stop: ["closeVideo", "stopAudio", "unpause"],
+  stop: ["closeVideo", "stopAudio", "hideIcon", "unpause"],
 };
 
 // Style defaults to solid; only entries that need the outline/regular variant override it
@@ -36,12 +36,12 @@ function isBlockActive(row, block) {
   switch (block) {
     case "wait": return row.waitUnits !== "";
     case "text": return !!row.text || row.textNone;
-    case "icon": return !!row.icon || row.iconSpin || row.iconGlowEnabled || row.iconVisibility !== "";
+    case "icon": return !!row.icon || row.iconSpin || row.iconGlowEnabled;
     case "border": return row.borderColorEnabled || row.borderWidthPct !== "";
     case "pulse": return row.freeze || row.resume;
     case "media": return row.mediaType !== "none" || row.waitForVideoEnd;
     case "audio": return !!row.audio || row.waitForAudioEnd;
-    case "stop": return row.closeVideo || row.stopAudio || row.unpause;
+    case "stop": return row.closeVideo || row.stopAudio || row.hideIcon || row.unpause;
     default: return false;
   }
 }

@@ -168,10 +168,13 @@ function clearBorderColour() {
   document.body.style.removeProperty(BORDER_COLOUR_VAR);
 }
 
-// A percentage of the border glow's default size -- 100 (or unset) is the size baked into
-// the keyframes below; setBorderWidth just scales it via a CSS var, no re-injection needed.
-function setBorderWidth(pct) {
-  document.body.style.setProperty(BORDER_SCALE_VAR, String(pct / 100));
+// A percentage DIFFERENCE from the border glow's default size -- 0 (or unset) is the size
+// baked into the keyframes below, -100 shrinks it to nothing, +100 doubles it. setBorderWidth
+// just scales that default via a CSS var, no re-injection needed. Clamped to >= 0: a macro
+// hand-authoring JSON directly could pass something below the UI's own -100 floor.
+function setBorderWidth(deltaPct) {
+  const scale = Math.max(0, 1 + deltaPct / 100);
+  document.body.style.setProperty(BORDER_SCALE_VAR, String(scale));
 }
 
 function clearBorderWidth() {
@@ -206,9 +209,10 @@ export class PauseFX {
    * @param {string} [config.borderColor] - any real CSS colour for pause-fx's own border-glow
    *   overlay. Omitted, no border overlay (and the label's pulsing text-colour rides on this
    *   too -- one themed effect, not two independent knobs).
-   * @param {number} [config.borderWidth] - a percentage of the border glow's default size.
-   *   Omitted or 100, that default; works independently of borderColor (a later step can
-   *   resize a glow an earlier step already activated).
+   * @param {number} [config.borderWidth] - a percentage DIFFERENCE from the border glow's
+   *   default size: 0 or omitted is that default, -100 shrinks it to nothing, +100 doubles
+   *   it. Works independently of borderColor (a later step can resize a glow an earlier step
+   *   already activated).
    * @param {boolean} [config.iconSpin=false] - keep Foundry's native spin animation on a
    *   custom icon. Omitted icon entirely, native always spins regardless of this.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's own "Game Paused"
@@ -230,8 +234,8 @@ export class PauseFX {
    *   have `wait: {units, clock: "border"|"text"}`, plus any of: `text`, `freeze`, `resume`,
    *   `iconVisible`, `video`, `image`, `audio` (+ optional `audioVolume`), `videoVolume`,
    *   `closeVideo`, `stopAudio`, `unpause`, `icon`, `iconSpin`, `iconGlow`, `borderColor`,
-   *   `borderWidth` (a percentage of the glow's default size -- 100 or omitted is that
-   *   default) -- the last five are the same fields `config` itself takes, just applicable at
+   *   `borderWidth` (a percentage difference from the glow's default size -- 0 or omitted is
+   *   that default) -- the last five are the same fields `config` itself takes, just applicable at
    *   any point in the sequence, not only at the start (sparse: a step touches only the
    *   fields it sets). `closeVideo`/`stopAudio` tear down whatever `video`/`image`/`audio` an
    *   earlier step started -- symmetric pair, same idea, different media. `unpause` ends the
