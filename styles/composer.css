@@ -118,8 +118,14 @@
 #pause-fx-composer .pfx-inline-label {
   font-size: var(--font-size-12, 0.75rem);
   color: var(--pfx-text-body);
-  align-self: flex-end; /* matches the row's own alignment -- was "center", which floated this
-    above the checkbox baseline everything else in the row sits on */
+  /* Foundry's own checkbox is 20px + 3px top/bottom margin (~27px total), and its label
+     centers text against that via align-items:center -- so bottom-aligning this plain-text
+     span's own (much shorter) box against the row, as before, put its text ~6px below the
+     checkboxes' actual visual centre, not level with it. Padding this box out to the same
+     ~27px height first, so flex-end bottom-alignment makes the two centres coincide instead
+     of just the two box edges. */
+  padding: 6px 0;
+  align-self: flex-end;
   white-space: nowrap;
 }
 
