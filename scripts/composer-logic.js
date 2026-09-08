@@ -163,12 +163,8 @@ export function configFromGlobals(globals, steps) {
 }
 
 /**
- * A saved vignette is a real Foundry macro (not a bespoke settings-backed "preset") -- it
- * already gets a directory, folders, drag-to-hotbar, and compendium packing for free that
- * way, none of which a from-scratch storage mechanism would. The macro's `command` is human-
- * readable/independently runnable JS (works even if you hand-edit it and never touch the
- * Composer again); the *config* the Composer reads back for editing lives in a flag instead
- * of getting parsed back out of that JS text, which would be far more brittle.
+ * A saved sequence is a real Foundry macro. `command` is independently readable/runnable JS;
+ * the Composer reads the config back from a flag instead, not by re-parsing this text.
  * @param {object} config - see configFromGlobals.
  * @returns {string} the macro's `command` body.
  */

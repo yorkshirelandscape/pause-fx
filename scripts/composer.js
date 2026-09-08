@@ -1,6 +1,6 @@
 // Composer -- the GM-facing UI for building/running a PauseFX sequence, so authoring a
-// reveal doesn't require hand-writing a macro's worth of JS. Reachable via a "Pause FX"
-// scene-control button (registered below) or `game.modules.get("pause-fx").api.openComposer()`.
+// reveal doesn't require hand-writing a macro's worth of JS. Reachable via the "Pause FX"
+// scene-control buttons (registered below) or `game.modules.get("pause-fx").api.openComposer()`.
 
 import { PauseFX } from "./pause-fx.js";
 import {
@@ -11,8 +11,8 @@ import {
 const MODULE_ID = "pause-fx";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/** A real macro this class saved -- one it can load/overwrite -- vs. anyone else's. */
-function isVignette(macro) {
+/** A macro this class saved -- one it can load/overwrite -- vs. any other macro in the world. */
+function isPauseFxMacro(macro) {
   return !!macro.getFlag(MODULE_ID, "config");
 }
 
@@ -26,8 +26,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     actions: {
       addStep: PauseFXComposer.#onAddStep,
       browseFile: PauseFXComposer.#onBrowseFile,
-      saveVignette: PauseFXComposer.#onSaveVignette,
-      deleteVignette: PauseFXComposer.#onDeleteVignette,
+      saveMacro: PauseFXComposer.#onSaveMacro,
       run: PauseFXComposer.#onRun,
     },
   };
@@ -37,13 +36,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {Array<object>} in-progress step rows -- see composer-logic.js's rowFromStep. */
   rows = [];
 
-  // Global (non-step) fields, tracked the same way as `rows` and for the same reason: the
-  // template is the ONLY thing that survives a re-render, so anything not fed back into it
-  // via _prepareContext gets silently wiped on the next render({parts:["body"]}) -- which
-  // happens on every step add/remove/reorder/edit, not just on a vignette load. A first version
-  // of this class read globals straight off the DOM via FormDataExtended instead of tracking
-  // them here, and that's exactly what broke: editing a step, then loading a vignette, blanked
-  // every global field because the template never bound them to anything in the first place.
+  // Global (non-step) fields, tracked as instance state like `rows` -- a render() reads only
+  // from here, so an untracked field would get wiped on the next one.
   globals = {
     icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "",
     closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false, macroName: "",
@@ -61,14 +55,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   });
 
   async _prepareContext() {
-    const savedVignettes = game.macros.filter(isVignette)
-      .map((m) => ({ id: m.id, name: m.name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
     return {
       globals: this.globals,
       startupSummaryText: startupSummary(this.globals),
       rows: this.rows.map((row, index) => ({ index, summary: stepSummary(stepFromRow(row)), ...row })),
-      savedVignettes,
       macroNames: game.macros.contents.map((m) => m.name).sort(), // for a step's own "Run macro" field
     };
   }
@@ -76,12 +66,9 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   _onRender(context, options) {
     super._onRender(context, options);
     this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
-    this.element.querySelector('[data-role="vignette-select"]')
-      ?.addEventListener("change", (event) => this.#loadVignette(event.target.value));
+    this.#ensureHeaderButtons();
     this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
-    // Delegated so per-row fields don't need a listener wired up on every re-render, and so
-    // this one listener covers both step-row fields (data-field/data-index) and the plain
-    // named global fields alike.
+    // Delegated: covers both step-row fields and named global fields in one listener.
     this.element.addEventListener("change", (event) => {
       const stepRow = event.target.closest("[data-index]");
       const field = event.target.dataset.field;
@@ -97,6 +84,26 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
         // No re-render needed -- nothing else on the page derives from a global field's value.
       }
     });
+  }
+
+  // Foundry's own header only ever renders the toggle-controls/close buttons directly --
+  // window.controls entries land in the dropdown behind the ellipsis, not the bar itself.
+  // Inserted once (idempotent) rather than in PARTS, since the header isn't a part at all.
+  #ensureHeaderButtons() {
+    const header = this.element.querySelector(".window-header");
+    if (!header || header.querySelector('[data-action="run"]')) return;
+    const ellipsis = header.querySelector('[data-action="toggleControls"]');
+    const makeButton = (action, icon, tooltip) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `header-control icon ${icon}`;
+      btn.dataset.action = action;
+      btn.dataset.tooltip = tooltip;
+      btn.setAttribute("aria-label", tooltip);
+      return btn;
+    };
+    header.insertBefore(makeButton("run", "fa-solid fa-play", "Run"), ellipsis);
+    header.insertBefore(makeButton("saveMacro", "fa-solid fa-floppy-disk", "Save as Macro"), ellipsis);
   }
 
   #onDragStart(event) {
@@ -136,13 +143,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     if (confirmed) this.#removeStepAt(index);
   }
 
-  // A quick click always confirms (the trash sits fully exposed with no border around it,
-  // so it needs a real guard against misclicks) -- but holding it down for HOLD_MS skips
-  // the dialog, for building/pruning a sequence quickly once you trust your own aim. The
-  // wedge (--pfx-hold-progress, drawn in CSS as a conic-gradient) is the only warning that's
-  // possible before the hold completes. No separate click listener needed: by the time a
-  // completed hold's eventual pointerup fires, `start` is already null (cleared the moment
-  // the hold finished), so the "held" check below naturally skips a second, redundant removal.
+  // Quick click confirms; holding HOLD_MS bypasses the dialog (wedge = progress). `start`
+  // clears the instant a hold completes, so that hold's own pointerup won't double-remove.
   #wireStepRemove(button) {
     const HOLD_MS = 1400;
     const index = () => Number(button.dataset.index);
@@ -181,15 +183,14 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     button.addEventListener("pointercancel", cancelHold);
   }
 
-  #loadVignette(macroId) {
+  /** Public -- called from the toolbar's "Load a saved macro" picker, not just from within. */
+  loadMacro(macroId) {
     if (!macroId) return;
     const macro = game.macros.get(macroId);
-    const config = macro && isVignette(macro) ? macro.getFlag(MODULE_ID, "config") : null;
+    const config = macro && isPauseFxMacro(macro) ? macro.getFlag(MODULE_ID, "config") : null;
     if (!config) return;
     this.rows = (config.steps ?? []).map(rowFromStep);
-    // icon/iconGlow/borderColor/text/endCombat map 1:1 by name; pulseLengthS and the two
-    // closeWindows* checkboxes don't -- configFromGlobals nests/converts those on the way
-    // out (borderCycleMs in ms, closeAllWindows:{players,gm}), so loading has to reverse it.
+    // pulseLengthS/closeWindows* don't map 1:1 to config keys -- see configFromGlobals.
     for (const field of ["icon", "iconGlow", "borderColor", "text", "endCombat"]) {
       this.globals[field] = config[field] ?? (typeof this.globals[field] === "boolean" ? false : "");
     }
@@ -220,39 +221,36 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     }).render(true);
   }
 
-  static async #onSaveVignette() {
-    const name = this.globals.macroName?.trim();
+  static async #onSaveMacro() {
+    const result = await foundry.applications.api.DialogV2.input({
+      window: { title: "Save as Macro" },
+      content: '<input type="text" name="macroName" placeholder="macro name..." autofocus>',
+      render: (event, dialog) => {
+        const input = dialog.element.querySelector('[name="macroName"]');
+        input.value = this.globals.macroName; // prefilled, not interpolated -- no escaping to get wrong
+        input.select();
+      },
+    });
+    if (!result) return; // cancelled
+    const name = result.macroName?.trim();
     if (!name) {
-      ui.notifications.warn("Give the vignette a name first.");
+      ui.notifications.warn("Give the macro a name first.");
       return;
     }
+
     const steps = this.rows.map(stepFromRow);
     const config = configFromGlobals(this.globals, steps);
     const command = commandForConfig(config);
 
-    // Overwrite in place if a vignette we made already has this exact name; otherwise create
-    // a new macro. Checking isVignette (not just the name) means a same-named macro a GM made
-    // for something else entirely is never silently overwritten.
-    const existing = game.macros.find((m) => m.name === name && isVignette(m));
+    // Overwrites a same-named macro only if WE made it -- never clobbers an unrelated one.
+    const existing = game.macros.find((m) => m.name === name && isPauseFxMacro(m));
     if (existing) {
       await existing.update({ command, flags: { [MODULE_ID]: { config } } });
     } else {
       await Macro.create({ name, type: "script", scope: "global", command, flags: { [MODULE_ID]: { config } } });
     }
+    this.globals.macroName = name;
     ui.notifications.info(`pause-fx: saved "${name}" as a macro.`);
-    this.render({ parts: ["body"] });
-  }
-
-  static async #onDeleteVignette() {
-    const select = this.element.querySelector('[data-role="vignette-select"]');
-    const macro = game.macros.get(select?.value);
-    if (!macro) return;
-    const confirmed = await foundry.applications.api.DialogV2.confirm({
-      window: { title: "Delete vignette" },
-      content: `<p>Delete the "${macro.name}" vignette? This deletes the macro too, and can't be undone.</p>`,
-    });
-    if (!confirmed) return;
-    await macro.delete();
     this.render({ parts: ["body"] });
   }
 
@@ -262,6 +260,43 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async #onSubmit() {} // form never actually submits -- every action handles its own save
+}
+
+// Shared by the two "pick a saved macro" toolbar buttons below.
+async function pickSavedMacro(title, ok) {
+  const macros = game.macros.filter(isPauseFxMacro).sort((a, b) => a.name.localeCompare(b.name));
+  if (!macros.length) {
+    ui.notifications.warn("pause-fx: no saved macros yet -- build one in the Composer and save it first.");
+    return null;
+  }
+  const result = await foundry.applications.api.DialogV2.input({
+    window: { title },
+    content: '<select name="macroId" autofocus></select>',
+    render: (event, dialog) => {
+      const select = dialog.element.querySelector('[name="macroId"]');
+      for (const m of macros) {
+        const option = document.createElement("option");
+        option.value = m.id;
+        option.textContent = m.name; // set as a property, not interpolated -- no escaping to get wrong
+        select.appendChild(option);
+      }
+    },
+    ok,
+  });
+  return result?.macroId ? game.macros.get(result.macroId) : null;
+}
+
+async function pickMacroToLoad() {
+  const macro = await pickSavedMacro("Load a Saved Macro", { label: "Load", icon: "fa-solid fa-folder-open" });
+  if (!macro) return;
+  const composer = new PauseFXComposer();
+  await composer.render(true);
+  composer.loadMacro(macro.id);
+}
+
+async function pickMacroToRun() {
+  const macro = await pickSavedMacro("Run a Saved Macro", { label: "Run", icon: "fa-solid fa-play" });
+  await macro?.execute();
 }
 
 Hooks.on("getSceneControlButtons", (controls) => {
@@ -274,10 +309,24 @@ Hooks.on("getSceneControlButtons", (controls) => {
     tools: {
       open: {
         name: "open",
-        title: "Open the Pause FX composer",
+        title: "New Pause FX sequence",
         icon: "fa-solid fa-clapperboard",
         button: true,
         onChange: () => new PauseFXComposer().render(true),
+      },
+      loadSaved: {
+        name: "loadSaved",
+        title: "Load a saved Pause FX macro",
+        icon: "fa-solid fa-folder-open",
+        button: true,
+        onChange: () => pickMacroToLoad(),
+      },
+      runSaved: {
+        name: "runSaved",
+        title: "Run a saved Pause FX macro",
+        icon: "fa-solid fa-play",
+        button: true,
+        onChange: () => pickMacroToRun(),
       },
     },
   };

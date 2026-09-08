@@ -14,15 +14,6 @@
   padding: 0.5rem 0.75rem 0.75rem;
 }
 
-#pause-fx-composer .pfx-vignettes {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-#pause-fx-composer .pfx-vignettes select { flex: 1; min-width: 8rem; }
-#pause-fx-composer .pfx-vignettes input[name="macroName"] { flex: 1; min-width: 8rem; }
-
 #pause-fx-composer .pfx-startup {
   display: flex;
   align-items: center;
@@ -136,5 +127,3 @@
 }
 #pause-fx-composer .pfx-step-fields label { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; }
 #pause-fx-composer .pfx-step-fields label.pfx-checkbox { flex-direction: row; align-items: center; gap: 0.4rem; }
-
-#pause-fx-composer .pfx-run { font-weight: 600; }

@@ -14,21 +14,13 @@ whether or not another pause-screen module (e.g. Monk's Little Details) is also 
 
 ## Composer UI
 
-Building a sequence doesn't require writing JS: the GM-only "Pause FX" scene-control button
-(clapperboard icon) opens a Composer for the same config below -- a Startup section (pulse
-time, close-windows targeting, end encounter), a pinned look/feel entry, and an add/reorder/
-remove step list. `game.modules.get("pause-fx").api.openComposer()` opens it too, if you'd
-rather bind that to a macro/hotkey.
+Three GM-only scene-control buttons: new sequence, load a saved macro into the Composer, or
+run one directly. `game.modules.get("pause-fx").api.openComposer()` opens a blank one too.
+Run and Save (as a real, draggable/compendium-packable macro) live in the window's own
+header controls.
 
-"Save as macro" turns whatever's built into a real world macro -- folderable, draggable to
-the hotbar, compendium-packable, portable to another world. The config itself lives in a
-flag on that macro (`getFlag("pause-fx", "config")`), so loading it back into the Composer
-to keep editing doesn't involve parsing the macro's own JS back apart; the generated
-`command` is just an independently-readable/runnable copy of the same call.
-
-`icon`/`iconGlow`/`borderColor` are all opt-in -- omit them entirely and a run looks like
-Foundry's own native pause screen (its own default icon, no glow, no border overlay, no
-pulsing text), rather than pause-fx's own themed look bleeding in unasked for.
+`icon`/`iconGlow`/`borderColor` are all opt-in -- omit them and a run looks like Foundry's
+own native pause screen, not pause-fx's themed one.
 
 ## Usage
 
@@ -62,28 +54,16 @@ See `scripts/pause-fx.js`'s own JSDoc on `PauseFX.run` for the full step vocabul
 
 ## Testing
 
-`npm test` (or `node --test`, no path argument -- Node's own default test-file discovery
-finds every `scripts/*.test.mjs`) runs the unit suite -- node's built-in test runner, no
-dependencies. It covers the pure/isolable logic (the `hasFrame` window-close filter, the
-clock/wait math, and the Composer's form<->config translation), not the full `PauseFX.run()`
-sequence or the Composer's own rendering -- those are covered by live two-client testing
-instead (Hooks/game/togglePause/ApplicationV2 are real Foundry globals, not worth mocking
-wholesale just to re-prove what a live run already proved more directly). See
-`scripts/pause-fx.test.mjs`'s own header comment for the reasoning.
+`npm test` (or bare `node --test`) runs the unit suite -- pure logic only (clock/wait math,
+the Composer's form<->config translation); `PauseFX.run()` and the Composer's own rendering
+are covered by live testing instead.
 
-Target one test (or a table-driven case within one, e.g. a single `clockMsFor` row) via
-`node --test --test-name-pattern=<regex>`. That flag has to come *before* any positional
-test-path argument or Node silently ignores it -- which is exactly why the script above has
-no `scripts/` positional: `npm test -- --test-name-pattern=...` always appends after the
-script's own arguments, so a positional there would land in the wrong place and the pattern
-would never apply.
+Target one test via `node --test --test-name-pattern=<regex>` (must come before any
+positional path argument, or Node silently ignores it).
 
 ## Known limitations
 
-- **No automatic icon-GIF-timing detection.** `borderCycleMs` has to be supplied by the
-  caller if it should match a specific asset's real loop length -- read the source GIF's
-  frame delays yourself (e.g. Python's Pillow: `im.info["duration"]` per frame) and pass
-  the total. A future version could do this client-side; not done yet.
-- **`macro` steps aren't sandboxed.** `pause-fx` just calls `.execute()` at the right beat
-  -- it's on whoever authors the sequence to confirm the macro they picked actually plays
-  nicely with an active pause overlay.
+- **No automatic icon-GIF-timing detection.** Pass `borderCycleMs` explicitly to match a
+  specific asset's real loop length.
+- **`macro` steps aren't sandboxed.** `pause-fx` just calls `.execute()` at the right beat --
+  it's on the sequence's author to confirm that plays nicely with an active pause overlay.

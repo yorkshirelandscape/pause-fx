@@ -40,11 +40,9 @@ export function isRealWindow(app) {
 
 /**
  * Closes every real floating window (legacy and ApplicationV2) on whichever client runs
- * this -- called via socket.executeForEveryone so every connected client closes its own.
- * Leaves Foundry's own docked UI chrome untouched. Runs on EVERY connected client, but each
- * one decides for itself whether to actually act, based on its own role vs. `target` -- a GM
- * client may well have windows open (a sheet mid-edit, a compendium) that it doesn't want
- * closed just because a reveal broadcast closeAllWindows for players.
+ * this -- called via socket.executeForEveryone so every connected client closes its own,
+ * each deciding for itself whether to act based on its own role vs. `target`. Leaves
+ * Foundry's own docked UI chrome untouched.
  * @param {object} [target]
  * @param {boolean} [target.players=true] - act on this client if its user is not a GM.
  * @param {boolean} [target.gm=true] - act on this client if its user is a GM.
@@ -172,16 +170,12 @@ function clearBorderColour() {
 export class PauseFX {
   /**
    * @param {object} config
-   * @param {string} [config.icon] - image/GIF path for the pause icon. Omitted entirely,
-   *   Foundry's own default pause icon stays untouched.
-   * @param {string} [config.iconGlow] - CSS colour for the icon's drop-shadow. Omitted, the
-   *   icon gets no glow at all -- there's no "default" colour to fall back to, since this is
-   *   pause-fx's own opinionated effect, not something Foundry's native pause screen has.
+   * @param {string} [config.icon] - image/GIF path for the pause icon. Omitted, Foundry's own
+   *   default icon stays untouched.
+   * @param {string} [config.iconGlow] - CSS colour for the icon's drop-shadow. Omitted, no glow.
    * @param {string} [config.borderColor] - any real CSS colour for pause-fx's own border-glow
-   *   overlay (hex, a named colour, rgb()/hsl(), ...). Omitted, no border overlay renders at
-   *   all -- same reasoning as iconGlow, plus the label's pulsing text-colour effect is tied
-   *   to this too (they were always meant to read as one themed effect, not two independent
-   *   ones), so omitting it also leaves the label's own text alone.
+   *   overlay. Omitted, no border overlay (and the label's pulsing text-colour rides on this
+   *   too -- one themed effect, not two independent knobs).
    * @param {string} [config.text=""] - initial label text.
    * @param {number} [config.borderCycleMs] - border/eye pulse period, in ms. Defaults to
    *   3640ms if not given -- pass this explicitly to sync against a specific icon's own
@@ -193,9 +187,7 @@ export class PauseFX {
    *   before the sequence starts. Omit entirely to skip it; otherwise each connected client
    *   decides for itself whether to act, based on its own role.
    * @param {boolean} [config.closeAllWindows.players=true] - act on non-GM clients.
-   * @param {boolean} [config.closeAllWindows.gm=true] - act on GM clients -- a GM may have
-   *   windows open on purpose (a sheet mid-edit, a compendium) that shouldn't vanish just
-   *   because a reveal closed everyone else's.
+   * @param {boolean} [config.closeAllWindows.gm=true] - act on GM clients.
    * @param {boolean} [config.endCombat=false] - end the active encounter, if any, before
    *   the sequence starts.
    * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
@@ -229,10 +221,7 @@ export class PauseFX {
       else await socket.executeForEveryone("closeAllWindows", closeAllWindows);
     }
 
-    // Opt-in, not a default -- an un-customized run should look like Foundry's own native
-    // pause screen, not pause-fx's themed one. The label's pulsing text-colour effect rides
-    // along with this rather than getting its own separate on/off switch: it was always meant
-    // to read as half of one themed effect together with the border, not an independent knob.
+    // Opt-in -- an un-customized run looks like Foundry's own pause screen, not a themed one.
     if (borderColor) {
       setBorderColour(borderColor);
       injectStyles({ borderCycleMs, textCycleMs: resolvedTextCycle });

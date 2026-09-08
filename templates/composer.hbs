@@ -12,21 +12,6 @@
     </div>
   </fieldset>
 
-  <fieldset class="pfx-vignettes">
-    <legend>Vignettes</legend>
-    <select data-role="vignette-select">
-      <option value="">-- load a saved vignette --</option>
-      {{#each savedVignettes as |v|}}<option value="{{v.id}}">{{v.name}}</option>{{/each}}
-    </select>
-    <button type="button" data-action="deleteVignette" title="Delete the selected vignette">
-      <i class="fa-solid fa-trash"></i>
-    </button>
-    <input type="text" name="macroName" placeholder="vignette name..." value="{{globals.macroName}}">
-    <button type="button" data-action="saveVignette">
-      <i class="fa-solid fa-floppy-disk"></i> Save as macro
-    </button>
-  </fieldset>
-
   <fieldset class="pfx-steps-fieldset">
     <legend>Steps</legend>
 
@@ -126,8 +111,4 @@
     </ol>
     <button type="button" data-action="addStep"><i class="fa-solid fa-plus"></i> Add step</button>
   </fieldset>
-
-  <button type="button" data-action="run" class="pfx-run">
-    <i class="fa-solid fa-play"></i> Run
-  </button>
 </div>
