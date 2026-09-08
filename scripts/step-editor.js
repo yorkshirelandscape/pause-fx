@@ -8,44 +8,37 @@ const MODULE_ID = "pause-fx";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 const BLOCK_FIELDS = {
-  wait: ["waitUnits", "waitForVideoEnd"],
+  wait: ["waitUnits"],
   text: ["text", "textNone"],
-  icon: ["icon", "iconSpin", "iconGlowEnabled", "iconGlow", "hideIcon", "showIcon"],
-  border: ["borderColorEnabled", "borderColor"],
+  icon: ["icon", "iconSpin", "iconGlowEnabled", "iconGlow", "iconVisibility"],
+  border: ["borderColorEnabled", "borderColor", "borderWidthPct"],
   pulse: ["freeze", "resume"],
-  media: ["mediaType", "mediaPath", "videoVolume", "closeVideo"],
-  audio: ["audio", "audioVolume"],
-  macro: ["macro"],
-  endCombat: ["endCombat"],
-  closeWindows: ["closeWindowsPlayers", "closeWindowsGM"],
+  media: ["mediaType", "mediaPath", "videoVolume", "closeVideo", "waitForVideoEnd"],
+  audio: ["audio", "audioVolume", "waitForAudioEnd"],
 };
 
+// Style defaults to solid; only entries that need the outline/regular variant override it
+// (Font Awesome Free ships both styles for a handful of common glyphs, square included).
 const BLOCK_META = {
-  wait: { icon: "fa-hourglass-half", label: "Wait" },
+  wait: { icon: "fa-hourglass-half", label: "Timer" },
   text: { icon: "fa-font", label: "Text" },
   icon: { icon: "fa-star", label: "Icon" },
-  border: { icon: "fa-square", label: "Border" },
+  border: { icon: "fa-square", label: "Border", style: "fa-regular" },
   pulse: { icon: "fa-snowflake", label: "Pulse" },
   media: { icon: "fa-video", label: "Media" },
   audio: { icon: "fa-volume-high", label: "Audio" },
-  macro: { icon: "fa-wand-magic-sparkles", label: "Macro" },
-  endCombat: { icon: "fa-swords", label: "End Combat" },
-  closeWindows: { icon: "fa-window-restore", label: "Close Windows" },
 };
 
 /** Whether a block should start expanded -- true if the row already has content for it. */
 function isBlockActive(row, block) {
   switch (block) {
-    case "wait": return row.waitUnits !== "" || row.waitForVideoEnd;
+    case "wait": return row.waitUnits !== "";
     case "text": return !!row.text || row.textNone;
-    case "icon": return !!row.icon || row.iconSpin || row.iconGlowEnabled || row.hideIcon || row.showIcon;
-    case "border": return row.borderColorEnabled;
+    case "icon": return !!row.icon || row.iconSpin || row.iconGlowEnabled || row.iconVisibility !== "";
+    case "border": return row.borderColorEnabled || row.borderWidthPct !== "";
     case "pulse": return row.freeze || row.resume;
-    case "media": return row.mediaType !== "none";
-    case "audio": return !!row.audio;
-    case "macro": return !!row.macro;
-    case "endCombat": return row.endCombat;
-    case "closeWindows": return row.closeWindowsPlayers || row.closeWindowsGM;
+    case "media": return row.mediaType !== "none" || row.waitForVideoEnd;
+    case "audio": return !!row.audio || row.waitForAudioEnd;
     default: return false;
   }
 }
@@ -69,13 +62,11 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
    * @param {object} row - mutated directly as fields change; the caller owns re-rendering
    *   its own summary off this same object once we're done (see `onClose`).
    * @param {object} [opts]
-   * @param {Array<string>} [opts.macroNames]
    * @param {Function} [opts.onClose]
    */
-  constructor(row, { macroNames = [], onClose } = {}) {
+  constructor(row, { onClose } = {}) {
     super();
     this.row = row;
-    this.macroNames = macroNames;
     this.onClose = onClose;
     this.visibleBlocks = new Set(Object.keys(BLOCK_FIELDS).filter((b) => isBlockActive(row, b)));
   }
@@ -85,8 +76,9 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     for (const key of Object.keys(BLOCK_META)) visible[key] = this.visibleBlocks.has(key);
     return {
       row: this.row,
-      macroNames: this.macroNames,
-      blocks: Object.keys(BLOCK_META).map((key) => ({ key, ...BLOCK_META[key], visible: visible[key] })),
+      blocks: Object.keys(BLOCK_META).map((key) => ({
+        key, ...BLOCK_META[key], style: BLOCK_META[key].style ?? "fa-solid", visible: visible[key],
+      })),
       visible, // flat, keyed by block -- simpler {{#if visible.wait}} than searching `blocks`
     };
   }
@@ -102,11 +94,17 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     });
   }
 
-  // Same pattern as the Composer's own -- a checkbox with data-enables="name" toggles that
-  // field's `disabled` live, without waiting on a re-render.
+  // Same pattern as the Composer's own -- a checkbox with data-enables="name" (or the inverse,
+  // data-disables="name") toggles that field's `disabled` live, without waiting on a re-render.
   #syncPairedField(el) {
-    const target = this.element.querySelector(`[name="${el.dataset.enables}"]`);
-    if (target) target.disabled = !el.checked;
+    if (el.dataset.enables) {
+      const target = this.element.querySelector(`[name="${el.dataset.enables}"]`);
+      if (target) target.disabled = !el.checked;
+    }
+    if (el.dataset.disables) {
+      const target = this.element.querySelector(`[name="${el.dataset.disables}"]`);
+      if (target) target.disabled = el.checked;
+    }
   }
 
   // Hiding a block clears its fields back to blank rather than just collapsing the UI --

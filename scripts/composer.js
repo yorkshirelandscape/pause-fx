@@ -39,10 +39,11 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
    *  whichever row currently sits first loses/gains that protection, not a specific row). */
   rows = [rowFromStep(defaultStep())];
 
-  // The Composer's only genuinely global fields now -- everything else (icon/glow/border/
-  // text/endCombat/closeWindows/wait/media/audio/macro/...) lives on a step, including the
-  // first one, edited the same way as any other via the step-editor dialog.
-  globals = { pulseLengthS: "", macroName: "" };
+  // Startup-only fields -- everything else (icon/glow/border/text/wait/media/audio/macro/...)
+  // lives on a step, including the first one, edited the same way as any other via the
+  // step-editor dialog. endCombat/closeWindows stay here rather than on a step -- see
+  // composer-logic.js's top comment for why.
+  globals = { pulseLengthS: "", macroName: "", endCombat: false, closeWindowsPlayers: false, closeWindowsGM: false };
 
   #dragDrop = new foundry.applications.ux.DragDrop({
     dragSelector: ".pfx-step-handle",
@@ -71,10 +72,11 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
     this.#ensureHeaderButtons();
     this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
-    // Only pulseLengthS/macroName live here now -- everything else is in the step editor.
+    // Only Startup's own fields live here -- everything else is in the step editor.
     this.element.addEventListener("change", (event) => {
       if (event.target.name && event.target.name in this.globals) {
-        this.globals[event.target.name] = event.target.value;
+        this.globals[event.target.name] =
+          event.target.type === "checkbox" ? event.target.checked : event.target.value;
       }
     });
   }
@@ -185,6 +187,9 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!config) return;
     this.rows = (config.steps?.length ? config.steps : [defaultStep()]).map(rowFromStep);
     this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
+    this.globals.endCombat = !!config.endCombat;
+    this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
+    this.globals.closeWindowsGM = !!config.closeAllWindows?.gm;
     this.globals.macroName = macro.name; // re-saving under this same name overwrites this macro
     this.render({ parts: ["body"] });
   }
@@ -196,9 +201,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static #onEditStep(event, target) {
     const index = Number(target.closest("[data-index]").dataset.index);
-    const macroNames = game.macros.contents.map((m) => m.name).sort();
     new PauseFXStepEditor(this.rows[index], {
-      macroNames,
       onClose: () => this.render({ parts: ["body"] }), // refresh this row's summary badges
     }).render(true);
   }

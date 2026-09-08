@@ -9,12 +9,11 @@ import {
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
-  waitUnits: "", waitForVideoEnd: false, text: "", textNone: false, freeze: false,
-  resume: false, hideIcon: false, showIcon: false, blankText: false, closeVideo: false,
-  audio: "", audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "", macro: "",
+  waitUnits: "", text: "", textNone: false, freeze: false, resume: false,
+  iconVisibility: "", closeVideo: false, waitForVideoEnd: false, waitForAudioEnd: false,
+  audio: "", audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "",
   icon: "", iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
-  borderColorEnabled: false, borderColor: "#ff0000", endCombat: false,
-  closeWindowsPlayers: false, closeWindowsGM: false,
+  borderColorEnabled: false, borderColor: "#ff0000", borderWidthPct: "",
 };
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
@@ -35,6 +34,17 @@ test("stepFromRow: textNone forces an explicit blank, even if text also has a va
   assert.deepEqual(stepFromRow(row), { text: "" });
 });
 
+test("stepFromRow: iconVisibility picks hidden vs. visible vs. untouched", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconVisibility: "hidden" }), { iconVisible: false });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconVisibility: "visible" }), { iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconVisibility: "" }), {});
+});
+
+test("stepFromRow: waitForVideoEnd/waitForAudioEnd are gates, independent of wait itself", () => {
+  const row = { ...BLANK_ROW, waitUnits: "1", waitForVideoEnd: true, waitForAudioEnd: true };
+  assert.deepEqual(stepFromRow(row), { wait: { units: 1 }, waitForVideoEnd: true, waitForAudioEnd: true });
+});
+
 test("stepFromRow: mediaType picks video vs. image, and only carries videoVolume for video", () => {
   const videoRow = { ...BLANK_ROW, mediaType: "video", mediaPath: "a.webm", videoVolume: "0.3" };
   assert.deepEqual(stepFromRow(videoRow), { video: "a.webm", videoVolume: 0.3 });
@@ -48,14 +58,18 @@ test("stepFromRow: audio carries its own volume, independent of media fields", (
   assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5 });
 });
 
-test("stepFromRow: icon/glow/border/spin -- same rules as the old startup fields, now per-step", () => {
+test("stepFromRow: icon/glow/border/spin/width -- same rules as the old startup fields, now per-step", () => {
   const row = {
-    ...BLANK_ROW, icon: "eye.gif", iconSpin: true,
-    iconGlowEnabled: true, iconGlow: "#00ff00", borderColorEnabled: true, borderColor: "#0000ff",
+    ...BLANK_ROW, icon: "eye.gif", iconSpin: true, iconGlowEnabled: true, iconGlow: "#00ff00",
+    borderColorEnabled: true, borderColor: "#0000ff", borderWidthPct: "150",
   };
   assert.deepEqual(stepFromRow(row), {
-    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff",
+    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff", borderWidth: 150,
   });
+});
+
+test("stepFromRow: borderWidth works even without borderColorEnabled -- resizing a glow set earlier", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, borderWidthPct: "50" }), { borderWidth: 50 });
 });
 
 test("stepFromRow: a colour set but not enabled is left out, same as blank", () => {
@@ -63,31 +77,22 @@ test("stepFromRow: a colour set but not enabled is left out, same as blank", () 
   assert.deepEqual(stepFromRow(row), {});
 });
 
-test("stepFromRow: endCombat and closeAllWindows are per-step now too", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, endCombat: true }), { endCombat: true });
-  assert.deepEqual(
-    stepFromRow({ ...BLANK_ROW, closeWindowsPlayers: true }),
-    { closeAllWindows: { players: true, gm: false } },
-  );
-});
-
 test("rowFromStep: fills every field with a defined default, never undefined", () => {
   const row = rowFromStep({});
   for (const value of Object.values(row)) assert.notEqual(value, undefined);
   assert.equal(row.mediaType, "none");
+  assert.equal(row.iconVisibility, "");
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
   const steps = [
     { wait: { units: 1.45 }, text: "...AND SUDDENLY...", freeze: true },
-    { video: "father-skinsaw.webm", videoVolume: 0.5, hideIcon: true },
+    { video: "father-skinsaw.webm", videoVolume: 0.5, iconVisible: false },
     { image: "spooky.webp" },
-    { audio: "sting.ogg", audioVolume: 0.8 },
-    { macro: "Chandelier Falls" },
-    { closeVideo: true, showIcon: true, resume: true },
+    { audio: "sting.ogg", audioVolume: 0.8, waitForAudioEnd: true },
+    { closeVideo: true, iconVisible: true, resume: true },
     { waitForVideoEnd: true },
-    { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000" },
-    { endCombat: true, closeAllWindows: { players: true, gm: false } },
+    { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150 },
     { text: "" }, // explicit blank
   ];
   for (const step of steps) assert.deepEqual(stepFromRow(rowFromStep(step)), step);
@@ -102,12 +107,14 @@ test("coerceStepField: bool fields always become real booleans", () => {
 test("coerceStepField: number fields parse, but stay '' when blank (not NaN/0)", () => {
   assert.equal(coerceStepField("waitUnits", "2.5"), 2.5);
   assert.equal(coerceStepField("waitUnits", ""), "");
+  assert.equal(coerceStepField("borderWidthPct", "150"), 150);
 });
 
 test("coerceStepField: everything else passes through untouched", () => {
   assert.equal(coerceStepField("text", "hello"), "hello");
   assert.equal(coerceStepField("mediaType", "video"), "video");
   assert.equal(coerceStepField("borderColor", "#ff0000"), "#ff0000");
+  assert.equal(coerceStepField("iconVisibility", "hidden"), "hidden");
 });
 
 test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", () => {
@@ -127,27 +134,32 @@ test("stepBadges: wait renders in real seconds when pulseLengthS is given, else 
 
 test("stepBadges: one badge per active field, in a stable order", () => {
   const step = {
-    endCombat: true, closeAllWindows: { players: true, gm: true }, borderColor: "#FF0000",
-    icon: "eye.gif", video: "a.webm", audio: "sting.ogg", macro: "Chandelier Falls", freeze: true,
+    waitForVideoEnd: true, waitForAudioEnd: true, borderColor: "#FF0000", icon: "eye.gif",
+    video: "a.webm", audio: "sting.ogg", freeze: true,
   };
   assert.deepEqual(stepBadges(step), [
-    { type: "endCombat" },
-    { type: "closeWindows" },
+    { type: "waitForVideoEnd" },
+    { type: "waitForAudioEnd" },
     { type: "border", colour: "#FF0000" },
-    { type: "icon", icon: "eye.gif", glow: undefined, spin: false },
+    { type: "icon", icon: "eye.gif", glow: undefined, spin: false, visible: undefined },
     { type: "video" },
     { type: "audio" },
-    { type: "macro", label: "Chandelier Falls" },
     { type: "freeze" },
   ]);
 });
 
-test("stepBadges: an icon badge appears even with only glow/spin set, no icon path", () => {
-  assert.deepEqual(stepBadges({ iconSpin: true }), [{ type: "icon", icon: undefined, glow: undefined, spin: true }]);
+test("stepBadges: an icon badge appears even with only glow/spin/visibility set, no icon path", () => {
+  assert.deepEqual(
+    stepBadges({ iconSpin: true }),
+    [{ type: "icon", icon: undefined, glow: undefined, spin: true, visible: undefined }],
+  );
+  assert.deepEqual(
+    stepBadges({ iconVisible: false }),
+    [{ type: "icon", icon: undefined, glow: undefined, spin: false, visible: false }],
+  );
 });
 
-test("stepDisplayText: blankText wins, then explicit '', then the real text, then ''", () => {
-  assert.equal(stepDisplayText({ blankText: true, text: "ignored" }), "(blank)");
+test("stepDisplayText: explicit '' reads as none, otherwise the real text, then ''", () => {
   assert.equal(stepDisplayText({ text: "" }), "(none)");
   assert.equal(stepDisplayText({ text: "hi" }), "hi");
   assert.equal(stepDisplayText({}), "");
@@ -164,6 +176,23 @@ test("configFromGlobals: pulseLengthS converts to borderCycleMs in whole ms", ()
 test("configFromGlobals: passes steps through untouched", () => {
   const steps = [{ text: "hi" }];
   assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, steps), { steps });
+});
+
+test("configFromGlobals: endCombat and closeAllWindows are Startup-only, not per-step", () => {
+  assert.deepEqual(
+    configFromGlobals({ pulseLengthS: "", endCombat: true }, []),
+    { steps: [], endCombat: true },
+  );
+  assert.deepEqual(
+    configFromGlobals({ pulseLengthS: "", closeWindowsPlayers: true }, []),
+    { steps: [], closeAllWindows: { players: true, gm: false } },
+  );
+  assert.deepEqual(
+    configFromGlobals({ pulseLengthS: "", closeWindowsGM: true }, []),
+    { steps: [], closeAllWindows: { players: false, gm: true } },
+  );
+  // neither set -- omitted entirely, same as the other optional globals
+  assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, []), { steps: [] });
 });
 
 test("commandForConfig: guards on the module being active, then calls the real API with the config", () => {

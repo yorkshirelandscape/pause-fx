@@ -7,6 +7,7 @@
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered";
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
+const BORDER_SCALE_VAR = "--pause-fx-border-scale";
 // No icon-GIF-timing auto-detection yet -- pass borderCycleMs explicitly to sync against a
 // specific asset's real loop length (see README "Known limitations").
 const DEFAULT_BORDER_CYCLE_MS = 3640;
@@ -98,13 +99,15 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       z-index: 90000; /* above the game canvas, below the video/image overlay's 100000 */
     }
 
+    /* ${BORDER_SCALE_VAR} defaults to 1 (its keyframe-local fallback below) when never set --
+       setBorderWidth() is the only thing that ever sets it, and it's entirely opt-in. */
     @keyframes pause-fx-border-pulse {
-      0%, 100% { box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.15) 0px 0px 30px 15px inset; }
-      50% { box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.35) 0px 0px 70px 45px inset; }
+      0%, 100% { box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.15) 0px 0px calc(30px * var(${BORDER_SCALE_VAR}, 1)) calc(15px * var(${BORDER_SCALE_VAR}, 1)) inset; }
+      50% { box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.35) 0px 0px calc(70px * var(${BORDER_SCALE_VAR}, 1)) calc(45px * var(${BORDER_SCALE_VAR}, 1)) inset; }
     }
     @media (prefers-reduced-motion: reduce) {
       body.${BORDER_CLASS}:before {
-        box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.25) 0px 0px 40px 20px inset !important;
+        box-shadow: rgba(var(${BORDER_COLOUR_VAR}), 0.25) 0px 0px calc(40px * var(${BORDER_SCALE_VAR}, 1)) calc(20px * var(${BORDER_SCALE_VAR}, 1)) inset !important;
       }
     }
     @media (prefers-reduced-motion: no-preference) {
@@ -165,6 +168,16 @@ function clearBorderColour() {
   document.body.style.removeProperty(BORDER_COLOUR_VAR);
 }
 
+// A percentage of the border glow's default size -- 100 (or unset) is the size baked into
+// the keyframes below; setBorderWidth just scales it via a CSS var, no re-injection needed.
+function setBorderWidth(pct) {
+  document.body.style.setProperty(BORDER_SCALE_VAR, String(pct / 100));
+}
+
+function clearBorderWidth() {
+  document.body.style.removeProperty(BORDER_SCALE_VAR);
+}
+
 // ---- shared by initial setup AND any step that touches icon/border, not just the first ----
 
 /** Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps. */
@@ -193,6 +206,9 @@ export class PauseFX {
    * @param {string} [config.borderColor] - any real CSS colour for pause-fx's own border-glow
    *   overlay. Omitted, no border overlay (and the label's pulsing text-colour rides on this
    *   too -- one themed effect, not two independent knobs).
+   * @param {number} [config.borderWidth] - a percentage of the border glow's default size.
+   *   Omitted or 100, that default; works independently of borderColor (a later step can
+   *   resize a glow an earlier step already activated).
    * @param {boolean} [config.iconSpin=false] - keep Foundry's native spin animation on a
    *   custom icon. Omitted icon entirely, native always spins regardless of this.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's own "Game Paused"
@@ -211,12 +227,16 @@ export class PauseFX {
    * @param {boolean} [config.endCombat=false] - end the active encounter, if any, before
    *   the sequence starts.
    * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
-   *   have `wait: {units, clock: "border"|"text"}` or `waitForVideoEnd: true`, plus any of:
-   *   `text`, `freeze`, `resume`, `hideIcon`, `showIcon`, `blankText`, `video`, `image`,
-   *   `audio` (+ optional `audioVolume`), `videoVolume`, `closeVideo`, `macro`, `icon`,
-   *   `iconSpin`, `iconGlow`, `borderColor`, `endCombat`, `closeAllWindows` -- the last six
-   *   are the same fields `config` itself takes, just applicable at any point in the
-   *   sequence, not only at the start (sparse: a step touches only the fields it sets).
+   *   have `wait: {units, clock: "border"|"text"}`, plus any of: `text`, `freeze`, `resume`,
+   *   `iconVisible`, `video`, `image`, `audio` (+ optional `audioVolume`), `videoVolume`,
+   *   `closeVideo`, `icon`, `iconSpin`, `iconGlow`, `borderColor`, `borderWidth` (a percentage
+   *   of the glow's default size -- 100 or omitted is that default) -- the last five are the
+   *   same fields `config` itself takes, just applicable at any point in the sequence, not
+   *   only at the start (sparse: a step touches only the fields it sets). `waitForVideoEnd`/
+   *   `waitForAudioEnd` gate the step's OWN `wait` from starting until the video/audio
+   *   currently playing (started by an earlier step) fires its `ended`/`end` event -- they
+   *   don't replace `wait`, they delay when it starts counting. `endCombat`/`closeAllWindows`
+   *   are `config`-level only -- there's no per-step equivalent.
    */
   static async run(config) {
     if (!game.user.isGM) {
@@ -228,6 +248,7 @@ export class PauseFX {
       icon,
       iconGlow,
       borderColor,
+      borderWidth,
       iconSpin = false,
       text: initialText,
       borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
@@ -250,10 +271,12 @@ export class PauseFX {
       setBorderColour(borderColor);
       injectStyles({ borderCycleMs, textCycleMs: resolvedTextCycle });
     }
+    if (borderWidth !== undefined) setBorderWidth(borderWidth);
 
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
       clearBorderColour();
+      clearBorderWidth();
       removeStyles();
       document.body.classList.remove("pause-fx-frozen");
       Hooks.off("pauseGame", resetOnUnpause);
@@ -316,13 +339,16 @@ export class PauseFX {
     }
 
     let overlay = null; // the current video/image element, if any
+    let activeAudio = null; // the current standalone Sound, if any (see step.audio)
 
     for (const step of steps) {
-      if (step.waitForVideoEnd) {
-        if (overlay instanceof HTMLVideoElement) {
-          await new Promise((resolve) => overlay.addEventListener("ended", resolve, { once: true }));
-        }
-        continue;
+      // Gates, not replacements -- a step's own `wait` still runs afterward, it just doesn't
+      // START counting until whichever event this step is gated on fires.
+      if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
+        await new Promise((resolve) => overlay.addEventListener("ended", resolve, { once: true }));
+      }
+      if (step.waitForAudioEnd && activeAudio) {
+        await new Promise((resolve) => activeAudio.addEventListener("end", resolve, { once: true }));
       }
       if (step.wait) {
         await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }));
@@ -337,9 +363,9 @@ export class PauseFX {
         label.style.animationPlayState = "running";
         document.body.classList.remove("pause-fx-frozen");
       }
-      if (step.hideIcon && iconEl) iconEl.style.visibility = "hidden";
-      if (step.showIcon && iconEl) iconEl.style.visibility = "visible";
-      if (step.blankText) label.textContent = "";
+      if (step.iconVisible !== undefined && iconEl) {
+        iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
+      }
 
       if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
         applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow });
@@ -347,26 +373,13 @@ export class PauseFX {
       if (step.borderColor) {
         activateBorder(step.borderColor, { borderCycleMs, textCycleMs: resolvedTextCycle, label });
       }
-      if (step.endCombat) await game.combat?.endCombat();
-      if (step.closeAllWindows) {
-        if (!socket) ui.notifications.warn("pause-fx: socketlib isn't ready yet, skipping closeAllWindows.");
-        else await socket.executeForEveryone("closeAllWindows", step.closeAllWindows);
-      }
+      if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
 
       if (step.audio) {
-        foundry.audio.AudioHelper.play(
+        activeAudio = await foundry.audio.AudioHelper.play(
           { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: false },
           false,
         );
-      }
-
-      if (step.macro) {
-        const m = game.macros.getName(step.macro);
-        // pause-fx only invokes it at the right beat -- it's on whoever authors the
-        // sequence to make sure the macro they picked actually plays nicely with an
-        // active pause overlay, not something pause-fx tries to guarantee.
-        if (m) m.execute();
-        else ui.notifications.warn(`pause-fx: no macro named "${step.macro}"`);
       }
 
       if (step.video || step.image) {

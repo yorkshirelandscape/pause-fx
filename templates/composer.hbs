@@ -1,9 +1,15 @@
 <div class="pfx-composer">
   <fieldset class="pfx-startup">
     <legend>Startup</legend>
-    <label>Pulse Time
-      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="5 sec" value="{{globals.pulseLengthS}}">
-    </label>
+    <div class="pfx-row">
+      <label class="pfx-field pfx-field-narrow">Pulse Time
+        <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="5 sec" value="{{globals.pulseLengthS}}">
+      </label>
+      <label class="pfx-checkbox">End Active Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
+      <span class="pfx-inline-label">Close windows:</span>
+      <label class="pfx-checkbox">Players <input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}></label>
+      <label class="pfx-checkbox">GMs <input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}></label>
+    </div>
   </fieldset>
 
   <fieldset class="pfx-steps-fieldset">
@@ -17,23 +23,21 @@
             {{#each row.badges as |b|}}
               {{#if (eq b.type "wait")}}<span class="pfx-badge pfx-badge-wait" title="wait">{{b.label}}</span>{{/if}}
               {{#if (eq b.type "waitForVideoEnd")}}<i class="fa-solid fa-hourglass-half pfx-badge" title="wait for video end"></i>{{/if}}
-              {{#if (eq b.type "endCombat")}}<i class="fa-solid fa-swords pfx-badge" title="end combat"></i>{{/if}}
-              {{#if (eq b.type "closeWindows")}}<i class="fa-solid fa-window-restore pfx-badge" title="close windows"></i>{{/if}}
+              {{#if (eq b.type "waitForAudioEnd")}}<i class="fa-solid fa-hourglass-end pfx-badge" title="wait for audio end"></i>{{/if}}
               {{#if (eq b.type "border")}}<span class="pfx-badge pfx-badge-swatch" style="border-color:{{b.colour}}" title="border: {{b.colour}}"></span>{{/if}}
               {{#if (eq b.type "icon")}}
                 <span class="pfx-badge pfx-badge-icon" style="border-color:{{b.glow}}" title="icon">
                   {{#if b.icon}}<img src="{{b.icon}}" alt="">{{/if}}
                   {{#if b.spin}}<i class="fa-solid fa-rotate pfx-badge-icon-spin"></i>{{/if}}
+                  {{#if (eq b.visible true)}}<i class="fa-solid fa-eye pfx-badge-icon-eye"></i>{{/if}}
+                  {{#if (eq b.visible false)}}<i class="fa-solid fa-eye-slash pfx-badge-icon-eye"></i>{{/if}}
                 </span>
               {{/if}}
               {{#if (eq b.type "video")}}<i class="fa-solid fa-video pfx-badge" title="video"></i>{{/if}}
               {{#if (eq b.type "image")}}<i class="fa-solid fa-image pfx-badge" title="image"></i>{{/if}}
               {{#if (eq b.type "audio")}}<i class="fa-solid fa-volume-high pfx-badge" title="audio"></i>{{/if}}
-              {{#if (eq b.type "macro")}}<i class="fa-solid fa-wand-magic-sparkles pfx-badge" title="macro: {{b.label}}"></i>{{/if}}
               {{#if (eq b.type "freeze")}}<i class="fa-solid fa-snowflake pfx-badge" title="freeze"></i>{{/if}}
               {{#if (eq b.type "resume")}}<i class="fa-solid fa-play pfx-badge" title="resume"></i>{{/if}}
-              {{#if (eq b.type "hideIcon")}}<i class="fa-solid fa-eye-slash pfx-badge" title="hide icon"></i>{{/if}}
-              {{#if (eq b.type "showIcon")}}<i class="fa-solid fa-eye pfx-badge" title="show icon"></i>{{/if}}
               {{#if (eq b.type "closeVideo")}}<i class="fa-solid fa-ban pfx-badge" title="close media"></i>{{/if}}
             {{/each}}
           </span>

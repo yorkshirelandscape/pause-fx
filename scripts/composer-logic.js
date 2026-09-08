@@ -3,9 +3,11 @@
 // runtime -- see composer-logic.test.mjs.
 //
 // Every row shares ONE schema, whether it's the first (undeletable) row or any other --
-// there's no separate "Startup" field set anymore. icon/iconGlow/borderColor/endCombat/
-// closeAllWindows are just step fields now, usable anywhere in the sequence, matching what
-// pause-fx.js's own steps[] schema accepts (see that file's PauseFX.run JSDoc).
+// icon/iconGlow/borderColor/borderWidth are just step fields, usable anywhere in the
+// sequence, matching what pause-fx.js's own steps[] schema accepts (see that file's
+// PauseFX.run JSDoc). endCombat and closeAllWindows stay Startup-only (globals, not a
+// per-step field) -- ending an encounter or closing windows partway through a sequence
+// isn't a thing pause-fx needs to support.
 
 /** A blank step, used as the seed for "Add Step" and for a freshly-opened Composer's row 0. */
 export function defaultStep() {
@@ -26,15 +28,15 @@ export function stepFromRow(row) {
   if (row.waitUnits !== "" && row.waitUnits !== null && row.waitUnits !== undefined) {
     step.wait = { units: Number(row.waitUnits) };
   }
-  if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
   if (row.freeze) step.freeze = true;
   if (row.resume) step.resume = true;
-  if (row.hideIcon) step.hideIcon = true;
-  if (row.showIcon) step.showIcon = true;
-  if (row.blankText) step.blankText = true;
+  if (row.iconVisibility === "hidden") step.iconVisible = false;
+  else if (row.iconVisibility === "visible") step.iconVisible = true;
   if (row.closeVideo) step.closeVideo = true;
+  if (row.waitForVideoEnd) step.waitForVideoEnd = true;
+  if (row.waitForAudioEnd) step.waitForAudioEnd = true;
   if (row.audio) {
     step.audio = row.audio;
     if (row.audioVolume !== "" && row.audioVolume !== null && row.audioVolume !== undefined) {
@@ -48,14 +50,12 @@ export function stepFromRow(row) {
     }
   }
   if (row.mediaType === "image" && row.mediaPath) step.image = row.mediaPath;
-  if (row.macro) step.macro = row.macro;
   if (row.icon) step.icon = row.icon;
   if (row.iconSpin) step.iconSpin = true;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
-  if (row.endCombat) step.endCombat = true;
-  if (row.closeWindowsPlayers || row.closeWindowsGM) {
-    step.closeAllWindows = { players: !!row.closeWindowsPlayers, gm: !!row.closeWindowsGM };
+  if (row.borderWidthPct !== "" && row.borderWidthPct !== null && row.borderWidthPct !== undefined) {
+    step.borderWidth = Number(row.borderWidthPct);
   }
   return step;
 }
@@ -71,38 +71,33 @@ export function stepFromRow(row) {
 export function rowFromStep(step) {
   return {
     waitUnits: step.wait?.units ?? "",
-    waitForVideoEnd: !!step.waitForVideoEnd,
     text: step.text ?? "",
     textNone: step.text === "",
     freeze: !!step.freeze,
     resume: !!step.resume,
-    hideIcon: !!step.hideIcon,
-    showIcon: !!step.showIcon,
-    blankText: !!step.blankText,
+    iconVisibility: step.iconVisible === undefined ? "" : step.iconVisible ? "visible" : "hidden",
     closeVideo: !!step.closeVideo,
+    waitForVideoEnd: !!step.waitForVideoEnd,
+    waitForAudioEnd: !!step.waitForAudioEnd,
     audio: step.audio ?? "",
     audioVolume: step.audioVolume ?? "",
     mediaType: step.video ? "video" : step.image ? "image" : "none",
     mediaPath: step.video ?? step.image ?? "",
     videoVolume: step.videoVolume ?? "",
-    macro: step.macro ?? "",
     icon: step.icon ?? "",
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
     iconGlow: step.iconGlow ?? "#ff0000",
     borderColorEnabled: step.borderColor !== undefined,
     borderColor: step.borderColor ?? "#ff0000",
-    endCombat: !!step.endCombat,
-    closeWindowsPlayers: !!step.closeAllWindows?.players,
-    closeWindowsGM: !!step.closeAllWindows?.gm,
+    borderWidthPct: step.borderWidth ?? "",
   };
 }
 
-const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume"]);
+const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct"]);
 const BOOL_FIELDS = new Set([
-  "waitForVideoEnd", "textNone", "freeze", "resume", "hideIcon", "showIcon", "blankText",
-  "closeVideo", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "endCombat",
-  "closeWindowsPlayers", "closeWindowsGM",
+  "textNone", "freeze", "resume", "closeVideo", "waitForVideoEnd", "waitForAudioEnd",
+  "iconSpin", "iconGlowEnabled", "borderColorEnabled",
 ]);
 
 /**
@@ -133,27 +128,22 @@ export function stepBadges(step, pulseLengthS) {
     badges.push({ type: "wait", label: seconds });
   }
   if (step.waitForVideoEnd) badges.push({ type: "waitForVideoEnd" });
-  if (step.endCombat) badges.push({ type: "endCombat" });
-  if (step.closeAllWindows) badges.push({ type: "closeWindows" });
+  if (step.waitForAudioEnd) badges.push({ type: "waitForAudioEnd" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
-  if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined) {
-    badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin });
+  if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible !== undefined) {
+    badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });
   }
   if (step.video) badges.push({ type: "video" });
   if (step.image) badges.push({ type: "image" });
   if (step.audio) badges.push({ type: "audio" });
-  if (step.macro) badges.push({ type: "macro", label: step.macro });
   if (step.freeze) badges.push({ type: "freeze" });
   if (step.resume) badges.push({ type: "resume" });
-  if (step.hideIcon) badges.push({ type: "hideIcon" });
-  if (step.showIcon) badges.push({ type: "showIcon" });
   if (step.closeVideo) badges.push({ type: "closeVideo" });
   return badges;
 }
 
 /** The text a step's row shows in its own remaining space, distinct from the badge list. */
 export function stepDisplayText(step) {
-  if (step.blankText) return "(blank)";
   if (step.text === "") return "(none)";
   return step.text ?? "";
 }
@@ -170,9 +160,9 @@ export function msToSeconds(ms) {
 }
 
 /**
- * The Composer's only genuinely global (non-step) fields -> the top-level PauseFX.run()
- * config. Everything else lives in `steps` now.
- * @param {object} globals - `{ pulseLengthS }`.
+ * The Composer's Startup-only (non-step) fields -> the top-level PauseFX.run() config.
+ * Everything else lives in `steps`.
+ * @param {object} globals - `{ pulseLengthS, endCombat, closeWindowsPlayers, closeWindowsGM }`.
  * @param {Array<object>} steps - already-built step objects (see stepFromRow).
  * @returns {object} a full config object, ready for PauseFX.run().
  */
@@ -180,6 +170,10 @@ export function configFromGlobals(globals, steps) {
   const config = { steps };
   if (globals.pulseLengthS !== "" && globals.pulseLengthS !== null && globals.pulseLengthS !== undefined) {
     config.borderCycleMs = secondsToMs(globals.pulseLengthS);
+  }
+  if (globals.endCombat) config.endCombat = true;
+  if (globals.closeWindowsPlayers || globals.closeWindowsGM) {
+    config.closeAllWindows = { players: !!globals.closeWindowsPlayers, gm: !!globals.closeWindowsGM };
   }
   return config;
 }

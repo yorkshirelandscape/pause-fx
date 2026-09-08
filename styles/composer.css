@@ -18,26 +18,46 @@
   padding: 0.5rem 0.75rem 0.75rem;
 }
 
-/* ---- shared field-pairing patterns (colour toggle, "none" toggle, file picker) ---- */
+/* ---- shared field-pairing patterns (colour toggle, file picker, compact rows) ---- */
 #pause-fx-composer .pfx-with-picker,
 #pause-fx-step-editor .pfx-with-picker { display: flex; gap: 0.25rem; }
-#pause-fx-composer .pfx-with-picker input,
-#pause-fx-step-editor .pfx-with-picker input { flex: 1; }
 #pause-fx-composer .pfx-with-toggle,
-#pause-fx-step-editor .pfx-with-toggle { display: flex; align-items: center; gap: 0.4rem; }
+#pause-fx-step-editor .pfx-with-toggle { display: flex; align-items: center; gap: 0.3rem; }
 #pause-fx-composer .pfx-with-toggle input[type="color"],
-#pause-fx-step-editor .pfx-with-toggle input[type="color"] { flex: 1; height: 1.7rem; padding: 0; }
-#pause-fx-composer .pfx-with-toggle input[type="search"],
-#pause-fx-step-editor .pfx-with-toggle input[type="search"] { flex: 1; }
-#pause-fx-composer .pfx-none-toggle,
-#pause-fx-step-editor .pfx-none-toggle { flex-direction: row; }
+#pause-fx-step-editor .pfx-with-toggle input[type="color"] { width: 2.4rem; height: 1.7rem; padding: 0; }
 #pause-fx-composer .pfx-checkbox,
-#pause-fx-step-editor .pfx-checkbox { display: flex; flex-direction: row; align-items: center; gap: 0.4rem; }
+#pause-fx-step-editor .pfx-checkbox { display: flex; flex-direction: row; align-items: center; gap: 0.4rem; white-space: nowrap; }
+
+/* A row packs several fields side by side instead of one-per-line; wraps if the dialog is
+   narrow. Each field keeps its own natural width (see .pfx-field below) rather than
+   stretching to fill the row -- that's what made every text box "almost universally too
+   big" before this. */
+#pause-fx-composer .pfx-row,
+#pause-fx-step-editor .pfx-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.4rem 0.75rem; }
+#pause-fx-composer .pfx-field,
+#pause-fx-step-editor .pfx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  align-self: flex-start; /* don't stretch to the column's full width when standing alone */
+}
+/* Sized narrow (a handful of characters -- pulse counts, volumes, the media-type select). */
+#pause-fx-composer .pfx-field-narrow input,
+#pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
+#pause-fx-step-editor .pfx-field-narrow select { width: 6rem; }
+/* Everything else (paths, free text, the macro picker) gets a real but bounded width --
+   not the dialog's full ~450px. */
+#pause-fx-composer .pfx-field input[type="text"],
+#pause-fx-composer .pfx-field input[type="search"],
+#pause-fx-step-editor .pfx-field input[type="text"],
+#pause-fx-step-editor .pfx-field input[type="search"] { width: 12rem; }
+#pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
+#pause-fx-step-editor .pfx-with-picker input[type="text"] { width: 10rem; } /* leaves room for the browse button */
 
 /* ---- Startup ---- */
 #pause-fx-composer .pfx-startup { padding: 0.4rem 0.5rem 0.5rem; }
-#pause-fx-composer .pfx-startup label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
-#pause-fx-composer .pfx-startup input[name="pulseLengthS"] { width: 4.5rem; }
+#pause-fx-composer .pfx-inline-label { font-size: 0.85rem; align-self: center; white-space: nowrap; }
 
 /* ---- Steps list ---- */
 #pause-fx-composer .pfx-steps-fieldset { padding: 0.3rem 0.4rem 0.4rem; }
@@ -101,15 +121,16 @@
   overflow: visible;
 }
 #pause-fx-composer .pfx-badge-icon img { width: 100%; height: 100%; object-fit: contain; }
-#pause-fx-composer .pfx-badge-icon-spin {
+#pause-fx-composer .pfx-badge-icon-spin,
+#pause-fx-composer .pfx-badge-icon-eye {
   position: absolute;
-  bottom: -0.3rem;
-  right: -0.3rem;
   font-size: 0.6rem;
   background: var(--color-cool-5, #1e1c18);
   border-radius: 50%;
   padding: 0.1rem;
 }
+#pause-fx-composer .pfx-badge-icon-spin { bottom: -0.3rem; right: -0.3rem; }
+#pause-fx-composer .pfx-badge-icon-eye { top: -0.3rem; left: -0.3rem; } /* opposite corner from spin -- both can be set at once */
 #pause-fx-composer .pfx-step-text {
   flex: 1;
   min-width: 0;
@@ -156,5 +177,4 @@
 #pause-fx-step-editor .pfx-block-toggle:hover { opacity: 0.85; }
 #pause-fx-step-editor .pfx-block-toggle-active { opacity: 1; background: rgba(255, 255, 255, 0.1); border-color: var(--color-border-highlight, #ff6400); }
 #pause-fx-step-editor .pfx-block { display: flex; flex-direction: column; gap: 0.4rem; }
-#pause-fx-step-editor .pfx-block label { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
 #pause-fx-step-editor .pfx-block legend { display: flex; align-items: center; gap: 0.4rem; }
