@@ -23,7 +23,7 @@ const BLOCK_FIELDS = {
 // Style defaults to solid; only entries that need the outline/regular variant override it
 // (Font Awesome Free ships both styles for a handful of common glyphs, square included).
 const BLOCK_META = {
-  wait: { icon: "fa-hourglass-half", label: "Timer" },
+  wait: { icon: "fa-hourglass-half", label: "Duration" },
   text: { icon: "fa-font", label: "Text" },
   icon: { icon: "fa-star", label: "Icon" },
   border: { icon: "fa-square", label: "Border", style: "fa-regular" },

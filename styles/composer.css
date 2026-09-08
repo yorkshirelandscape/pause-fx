@@ -126,6 +126,16 @@
    individually across the row's own width. */
 #pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
+/* Foundry suppresses every number input's native up/down spinner globally (confirmed in
+   foundry2.css) -- border width is a +/- delta around a default, where the spinner actually
+   earns its keep (nudging up/down matters more than for a plain pulse count), so it gets its
+   own override back. Scoped to this one field, not number inputs generally. */
+#pause-fx-step-editor input[name="borderWidthPct"]::-webkit-inner-spin-button,
+#pause-fx-step-editor input[name="borderWidthPct"]::-webkit-outer-spin-button {
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+#pause-fx-step-editor input[name="borderWidthPct"] { -moz-appearance: auto; }
 /* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
