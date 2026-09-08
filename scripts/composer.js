@@ -132,7 +132,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   async #confirmAndRemoveStep(index) {
     const text = stepDisplayText(stepFromRow(this.rows[index]));
     const confirmed = await foundry.applications.api.DialogV2.confirm({
-      window: { title: "Remove step" },
+      window: { title: "Remove Step" },
       content: `<p>Remove this step${text ? ` ("${text}")` : ""}? This can't be undone.</p>`,
     });
     if (confirmed) this.#removeStepAt(index);
@@ -209,7 +209,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onSaveMacro() {
     const result = await foundry.applications.api.DialogV2.input({
       window: { title: "Save as Macro" },
-      content: '<input type="text" name="macroName" placeholder="macro name..." autofocus>',
+      content: '<input type="text" name="macroName" placeholder="Macro Name..." autofocus>',
       render: (event, dialog) => {
         const input = dialog.element.querySelector('[name="macroName"]');
         input.value = this.globals.macroName; // prefilled, not interpolated -- no escaping to get wrong
@@ -294,21 +294,21 @@ Hooks.on("getSceneControlButtons", (controls) => {
     tools: {
       open: {
         name: "open",
-        title: "New Pause FX sequence",
+        title: "New Pause FX Sequence",
         icon: "fa-solid fa-clapperboard",
         button: true,
         onChange: () => new PauseFXComposer().render(true),
       },
       loadSaved: {
         name: "loadSaved",
-        title: "Load a saved Pause FX macro",
+        title: "Load a Saved Pause FX Macro",
         icon: "fa-solid fa-folder-open",
         button: true,
         onChange: () => pickMacroToLoad(),
       },
       runSaved: {
         name: "runSaved",
-        title: "Run a saved Pause FX macro",
+        title: "Run a Saved Pause FX Macro",
         icon: "fa-solid fa-play",
         button: true,
         onChange: () => pickMacroToRun(),

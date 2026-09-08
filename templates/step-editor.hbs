@@ -22,7 +22,7 @@
     <legend><i class="fa-solid fa-font"></i> Text</legend>
     <div class="pfx-row">
       <label class="pfx-field">Text <input type="search" name="text" value="{{row.text}}" {{#if row.textNone}}disabled{{/if}}></label>
-      <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> none</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
     </div>
   </fieldset>
   {{/if}}
@@ -41,16 +41,16 @@
       </label>
     </div>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked row.iconSpin}}> spin</label>
-      <span class="pfx-with-toggle" title="icon glow">
+      <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked row.iconSpin}}> Spin</label>
+      <span class="pfx-with-toggle" title="Icon Glow">
         <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked row.iconGlowEnabled}}>
         <input type="color" name="iconGlow" value="{{row.iconGlow}}" {{#unless row.iconGlowEnabled}}disabled{{/unless}}>
       </span>
       <label class="pfx-field pfx-field-narrow">Visibility
         <select name="iconVisibility">
-          <option value="" {{#if (eq row.iconVisibility "")}}selected{{/if}}>unchanged</option>
-          <option value="visible" {{#if (eq row.iconVisibility "visible")}}selected{{/if}}>show</option>
-          <option value="hidden" {{#if (eq row.iconVisibility "hidden")}}selected{{/if}}>hide</option>
+          <option value="" {{#if (eq row.iconVisibility "")}}selected{{/if}}>Unchanged</option>
+          <option value="visible" {{#if (eq row.iconVisibility "visible")}}selected{{/if}}>Show</option>
+          <option value="hidden" {{#if (eq row.iconVisibility "hidden")}}selected{{/if}}>Hide</option>
         </select>
       </label>
     </div>
@@ -74,8 +74,8 @@
   <fieldset class="pfx-block">
     <legend><i class="fa-solid fa-snowflake"></i> Pulse</legend>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="freeze" {{checked row.freeze}}> freeze</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="resume" {{checked row.resume}}> resume</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="freeze" {{checked row.freeze}}> Freeze</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="resume" {{checked row.resume}}> Resume</label>
     </div>
   </fieldset>
   {{/if}}
@@ -86,19 +86,19 @@
     <div class="pfx-row">
       <label class="pfx-field pfx-field-narrow">Type
         <select name="mediaType">
-          <option value="none" {{#if (eq row.mediaType "none")}}selected{{/if}}>none</option>
-          <option value="video" {{#if (eq row.mediaType "video")}}selected{{/if}}>video</option>
-          <option value="image" {{#if (eq row.mediaType "image")}}selected{{/if}}>image</option>
+          <option value="none" {{#if (eq row.mediaType "none")}}selected{{/if}}>None</option>
+          <option value="video" {{#if (eq row.mediaType "video")}}selected{{/if}}>Video</option>
+          <option value="image" {{#if (eq row.mediaType "image")}}selected{{/if}}>Image</option>
         </select>
       </label>
       <label class="pfx-field pfx-field-narrow">Volume <input type="number" step="0.1" min="0" max="1" name="videoVolume" value="{{row.videoVolume}}"></label>
-      <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> close at this step</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Close at This Step</label>
     </div>
     <div class="pfx-row">
       <label class="pfx-field">Path <input type="text" name="mediaPath" value="{{row.mediaPath}}"></label>
     </div>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="waitForVideoEnd" {{checked row.waitForVideoEnd}}> don't start timer until video ends</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="waitForVideoEnd" {{checked row.waitForVideoEnd}}> Don't Start Timer Until Video Ends</label>
     </div>
   </fieldset>
   {{/if}}
@@ -109,9 +109,10 @@
     <div class="pfx-row">
       <label class="pfx-field">Path <input type="text" name="audio" value="{{row.audio}}"></label>
       <label class="pfx-field pfx-field-narrow">Volume <input type="number" step="0.1" min="0" max="1" name="audioVolume" value="{{row.audioVolume}}"></label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Stop at This Step</label>
     </div>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="waitForAudioEnd" {{checked row.waitForAudioEnd}}> don't start timer until audio ends</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="waitForAudioEnd" {{checked row.waitForAudioEnd}}> Don't Start Timer Until Audio Ends</label>
     </div>
   </fieldset>
   {{/if}}

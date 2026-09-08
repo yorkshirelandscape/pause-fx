@@ -229,10 +229,12 @@ export class PauseFX {
    * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
    *   have `wait: {units, clock: "border"|"text"}`, plus any of: `text`, `freeze`, `resume`,
    *   `iconVisible`, `video`, `image`, `audio` (+ optional `audioVolume`), `videoVolume`,
-   *   `closeVideo`, `icon`, `iconSpin`, `iconGlow`, `borderColor`, `borderWidth` (a percentage
-   *   of the glow's default size -- 100 or omitted is that default) -- the last five are the
-   *   same fields `config` itself takes, just applicable at any point in the sequence, not
-   *   only at the start (sparse: a step touches only the fields it sets). `waitForVideoEnd`/
+   *   `closeVideo`, `stopAudio`, `icon`, `iconSpin`, `iconGlow`, `borderColor`, `borderWidth`
+   *   (a percentage of the glow's default size -- 100 or omitted is that default) -- the last
+   *   five are the same fields `config` itself takes, just applicable at any point in the
+   *   sequence, not only at the start (sparse: a step touches only the fields it sets).
+   *   `closeVideo`/`stopAudio` tear down whatever `video`/`image`/`audio` an earlier step
+   *   started -- symmetric pair, same idea, different media. `waitForVideoEnd`/
    *   `waitForAudioEnd` gate the step's OWN `wait` from starting until the video/audio
    *   currently playing (started by an earlier step) fires its `ended`/`end` event -- they
    *   don't replace `wait`, they delay when it starts counting. `endCombat`/`closeAllWindows`
@@ -403,6 +405,10 @@ export class PauseFX {
       if (step.closeVideo) {
         overlay?.remove();
         overlay = null;
+      }
+      if (step.stopAudio) {
+        activeAudio?.stop();
+        activeAudio = null;
       }
     }
   }

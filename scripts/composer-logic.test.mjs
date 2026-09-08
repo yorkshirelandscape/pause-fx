@@ -10,9 +10,9 @@ import {
 
 const BLANK_ROW = {
   waitUnits: "", text: "", textNone: false, freeze: false, resume: false,
-  iconVisibility: "", closeVideo: false, waitForVideoEnd: false, waitForAudioEnd: false,
-  audio: "", audioVolume: "", mediaType: "none", mediaPath: "", videoVolume: "",
-  icon: "", iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
+  iconVisibility: "", closeVideo: false, stopAudio: false, waitForVideoEnd: false,
+  waitForAudioEnd: false, audio: "", audioVolume: "", mediaType: "none", mediaPath: "",
+  videoVolume: "", icon: "", iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
   borderColorEnabled: false, borderColor: "#ff0000", borderWidthPct: "",
 };
 
@@ -58,6 +58,10 @@ test("stepFromRow: audio carries its own volume, independent of media fields", (
   assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5 });
 });
 
+test("stepFromRow: stopAudio is the audio equivalent of closeVideo -- its own step, own field", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, stopAudio: true }), { stopAudio: true });
+});
+
 test("stepFromRow: icon/glow/border/spin/width -- same rules as the old startup fields, now per-step", () => {
   const row = {
     ...BLANK_ROW, icon: "eye.gif", iconSpin: true, iconGlowEnabled: true, iconGlow: "#00ff00",
@@ -90,7 +94,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     { video: "father-skinsaw.webm", videoVolume: 0.5, iconVisible: false },
     { image: "spooky.webp" },
     { audio: "sting.ogg", audioVolume: 0.8, waitForAudioEnd: true },
-    { closeVideo: true, iconVisible: true, resume: true },
+    { closeVideo: true, stopAudio: true, iconVisible: true, resume: true },
     { waitForVideoEnd: true },
     { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150 },
     { text: "" }, // explicit blank
@@ -135,7 +139,7 @@ test("stepBadges: wait renders in real seconds when pulseLengthS is given, else 
 test("stepBadges: one badge per active field, in a stable order", () => {
   const step = {
     waitForVideoEnd: true, waitForAudioEnd: true, borderColor: "#FF0000", icon: "eye.gif",
-    video: "a.webm", audio: "sting.ogg", freeze: true,
+    video: "a.webm", audio: "sting.ogg", freeze: true, closeVideo: true, stopAudio: true,
   };
   assert.deepEqual(stepBadges(step), [
     { type: "waitForVideoEnd" },
@@ -145,6 +149,8 @@ test("stepBadges: one badge per active field, in a stable order", () => {
     { type: "video" },
     { type: "audio" },
     { type: "freeze" },
+    { type: "closeVideo" },
+    { type: "stopAudio" },
   ]);
 });
 
