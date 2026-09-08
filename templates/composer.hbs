@@ -1,12 +1,12 @@
 <div class="pfx-composer">
   <fieldset class="pfx-startup">
     <legend>Startup</legend>
-    <label>Pulse Length (s)
-      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="3.64" value="{{globals.pulseLengthS}}">
+    <label>Pulse Time
+      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="3.64 sec" value="{{globals.pulseLengthS}}">
     </label>
-    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active combat</label>
+    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active encounter</label>
     <div class="pfx-close-windows">
-      <span>Close all windows for:</span>
+      <span>Close windows for:</span>
       <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}> Players</label>
       <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}> GM</label>
     </div>

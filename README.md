@@ -20,6 +20,10 @@ length, close-windows targeting, end combat), a pinned look/feel entry, named pr
 per world, and an add/reorder/remove step list. `game.modules.get("pause-fx").api.openComposer()`
 opens it too, if you'd rather bind that to a macro/hotkey.
 
+`icon`/`iconGlow`/`borderColor` are all opt-in -- omit them entirely and a run looks like
+Foundry's own native pause screen (its own default icon, no glow, no border overlay, no
+pulsing text), rather than pause-fx's own themed look bleeding in unasked for.
+
 ## Usage
 
 ```js

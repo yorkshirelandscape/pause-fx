@@ -172,10 +172,16 @@ function clearBorderColour() {
 export class PauseFX {
   /**
    * @param {object} config
-   * @param {string} [config.icon] - image/GIF path for the pause icon.
-   * @param {string} [config.iconGlow="red"] - CSS colour for the icon's drop-shadow.
-   * @param {string} [config.borderColor="red"] - any real CSS colour for pause-fx's own
-   *   border-glow overlay (hex, a named colour, rgb()/hsl(), ...).
+   * @param {string} [config.icon] - image/GIF path for the pause icon. Omitted entirely,
+   *   Foundry's own default pause icon stays untouched.
+   * @param {string} [config.iconGlow] - CSS colour for the icon's drop-shadow. Omitted, the
+   *   icon gets no glow at all -- there's no "default" colour to fall back to, since this is
+   *   pause-fx's own opinionated effect, not something Foundry's native pause screen has.
+   * @param {string} [config.borderColor] - any real CSS colour for pause-fx's own border-glow
+   *   overlay (hex, a named colour, rgb()/hsl(), ...). Omitted, no border overlay renders at
+   *   all -- same reasoning as iconGlow, plus the label's pulsing text-colour effect is tied
+   *   to this too (they were always meant to read as one themed effect, not two independent
+   *   ones), so omitting it also leaves the label's own text alone.
    * @param {string} [config.text=""] - initial label text.
    * @param {number} [config.borderCycleMs] - border/eye pulse period, in ms. Defaults to
    *   3640ms if not given -- pass this explicitly to sync against a specific icon's own
@@ -205,8 +211,8 @@ export class PauseFX {
 
     const {
       icon,
-      iconGlow = "red",
-      borderColor = "red",
+      iconGlow,
+      borderColor,
       text: initialText = "",
       borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
       textCycleMs,
@@ -223,8 +229,14 @@ export class PauseFX {
       else await socket.executeForEveryone("closeAllWindows", closeAllWindows);
     }
 
-    setBorderColour(borderColor);
-    injectStyles({ borderCycleMs, textCycleMs: resolvedTextCycle });
+    // Opt-in, not a default -- an un-customized run should look like Foundry's own native
+    // pause screen, not pause-fx's themed one. The label's pulsing text-colour effect rides
+    // along with this rather than getting its own separate on/off switch: it was always meant
+    // to read as half of one themed effect together with the border, not an independent knob.
+    if (borderColor) {
+      setBorderColour(borderColor);
+      injectStyles({ borderCycleMs, textCycleMs: resolvedTextCycle });
+    }
 
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
@@ -250,7 +262,7 @@ export class PauseFX {
       if (iconEl && icon) {
         iconEl.src = icon;
         iconEl.style.animation = "none"; // inline style beats whatever core's spin class does
-        iconEl.style.filter = `drop-shadow(0 0 12px ${iconGlow})`;
+        if (iconGlow) iconEl.style.filter = `drop-shadow(0 0 12px ${iconGlow})`;
       }
 
       label = [...root.children].find((el) => el !== iconEl);
@@ -264,7 +276,7 @@ export class PauseFX {
         });
         root.appendChild(label);
       }
-      label.classList.add("pause-fx-label");
+      if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
       label.textContent = initialText;
     };
     const skin = (app, html) => {

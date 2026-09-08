@@ -26,11 +26,12 @@
 #pause-fx-composer .pfx-startup {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  gap: 0.5rem; /* tight enough to keep all three items on one line at the composer's own width */
   flex-wrap: wrap;
+  padding: 0.4rem 0.5rem 0.5rem; /* tighter than the shared fieldset padding -- same reasoning */
 }
 #pause-fx-composer .pfx-startup label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
-#pause-fx-composer .pfx-startup input[name="pulseLengthS"] { width: 4.5rem; }
+#pause-fx-composer .pfx-startup input[name="pulseLengthS"] { width: 4rem; }
 #pause-fx-composer .pfx-close-windows { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
 #pause-fx-composer .pfx-with-picker { display: flex; gap: 0.25rem; }
 #pause-fx-composer .pfx-with-picker input { flex: 1; }
