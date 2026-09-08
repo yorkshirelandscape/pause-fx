@@ -11,9 +11,9 @@ import {
 const BLANK_ROW = {
   waitUnits: "", text: "", textNone: false, textPulse: false,
   closeVideo: false, stopAudio: false, hideIcon: false, stopTextPulse: false,
-  stopIconSpin: false, unpause: false, waitForVideoEnd: false, waitForAudioEnd: false,
-  audio: "", audioVolume: "", audioLoop: false, mediaType: "none", mediaPath: "",
-  videoVolume: "", imagePulses: "", loop: false, icon: "", iconSpin: false,
+  stopIconSpin: false, stopBorderPulse: false, unpause: false, waitForVideoEnd: false,
+  waitForAudioEnd: false, audio: "", audioVolume: "", audioLoop: false, mediaType: "none",
+  mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "", iconSpin: false,
   iconGlowEnabled: false, iconGlow: "#ff0000", borderColorEnabled: false,
   borderColor: "#ff0000", borderWidthPct: "",
 };
@@ -45,10 +45,10 @@ test("stepFromRow: hideIcon (Stop block) maps to iconVisible: false -- there's n
   assert.deepEqual(stepFromRow({ ...BLANK_ROW, hideIcon: false }), {});
 });
 
-test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIconSpin, not a shared freeze", () => {
+test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIconSpin/stopBorderPulse, not a shared freeze", () => {
   assert.deepEqual(
-    stepFromRow({ ...BLANK_ROW, stopTextPulse: true, stopIconSpin: true }),
-    { stopTextPulse: true, stopIconSpin: true },
+    stepFromRow({ ...BLANK_ROW, stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true }),
+    { stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true },
   );
 });
 
@@ -115,7 +115,10 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     { image: "spooky/", imagePulses: 0, loop: true },
     { image: "spooky.webp" },
     { audio: "sting.ogg", audioVolume: 0.8, audioLoop: true, waitForAudioEnd: true },
-    { closeVideo: true, stopAudio: true, unpause: true, stopTextPulse: true, stopIconSpin: true },
+    {
+      closeVideo: true, stopAudio: true, unpause: true, stopTextPulse: true,
+      stopIconSpin: true, stopBorderPulse: true,
+    },
     { waitForVideoEnd: true },
     { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150 },
     { text: "" }, // explicit blank
@@ -164,7 +167,7 @@ test("stepBadges: one badge per active field, in a stable order", () => {
   const step = {
     waitForVideoEnd: true, waitForAudioEnd: true, borderColor: "#FF0000", icon: "eye.gif",
     video: "a.webm", audio: "sting.ogg", loop: true, textPulse: true, stopTextPulse: true,
-    stopIconSpin: true, closeVideo: true, stopAudio: true, unpause: true,
+    stopIconSpin: true, stopBorderPulse: true, closeVideo: true, stopAudio: true, unpause: true,
   };
   assert.deepEqual(stepBadges(step), [
     { type: "waitForVideoEnd" },
@@ -177,6 +180,7 @@ test("stepBadges: one badge per active field, in a stable order", () => {
     { type: "textPulse" },
     { type: "stopTextPulse" },
     { type: "stopIconSpin" },
+    { type: "stopBorderPulse" },
     { type: "closeVideo" },
     { type: "stopAudio" },
     { type: "unpause" },

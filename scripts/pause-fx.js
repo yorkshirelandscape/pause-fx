@@ -6,6 +6,7 @@
 
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered";
+const BORDER_FROZEN_CLASS = "pause-fx-border-frozen";
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const BORDER_SCALE_VAR = "--pause-fx-border-scale";
 // No icon-GIF-timing auto-detection yet -- pass borderCycleMs explicitly to sync against a
@@ -139,6 +140,16 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       body.${BORDER_CLASS}:before {
         animation: pause-fx-border-pulse ${borderCycleMs / 1000}s ease-in-out infinite;
       }
+      /* Higher specificity (extra class) wins without !important -- and needs to: an
+         always-on !important box-shadow would silently cancel the animation above, since
+         !important declarations beat active CSS animations on the same property even from
+         a totally unrelated rule. animation-play-state just freezes it in place, doesn't
+         reset it -- a pseudo-element has no real DOM node to set inline style on directly,
+         which is why this is a class (toggled by step.stopBorderPulse) rather than the
+         direct element.style.animationPlayState used for the icon/label. */
+      body.${BORDER_FROZEN_CLASS}.${BORDER_CLASS}:before {
+        animation-play-state: paused;
+      }
     }
 
     @keyframes pause-fx-text-pulse {
@@ -252,6 +263,7 @@ function activateBorder(colour, { borderCycleMs, textCycleMs, label }) {
   setBorderColour(colour);
   if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
   label?.classList.add("pause-fx-label");
+  document.body.classList.remove(BORDER_FROZEN_CLASS); // clears any earlier stopBorderPulse freeze
 }
 
 /** Starts the label's own pulse independently of border activation (activateBorder does this
@@ -301,7 +313,8 @@ export class PauseFX {
    *     of borderColor activating it)
    *   - `icon`, `iconSpin`, `stopIconSpin`, `iconGlow`, `iconVisible`
    *   - `borderColor`, `borderWidth` (a percentage difference from the glow's default size --
-   *     0 or omitted is that default)
+   *     0 or omitted is that default), `stopBorderPulse` (freezes it in place; a later step
+   *     setting borderColor again clears this automatically)
    *   - `video`, `loop` (video or image slideshow), `videoVolume`, `closeVideo`,
    *     `waitForVideoEnd`
    *   - `image` (a file, or a folder browsed as a slideshow), `imagePulses` (pulses to show
@@ -360,6 +373,7 @@ export class PauseFX {
       if (paused) return; // ignore the pause-on event this run itself triggers below
       clearBorderColour();
       clearBorderWidth();
+      document.body.classList.remove(BORDER_FROZEN_CLASS);
       removeStyles();
       Hooks.off("pauseGame", resetOnUnpause);
     };
@@ -455,6 +469,7 @@ export class PauseFX {
         activateBorder(step.borderColor, { borderCycleMs, textCycleMs: resolvedTextCycle, label });
       }
       if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
+      if (step.stopBorderPulse) document.body.classList.add(BORDER_FROZEN_CLASS);
 
       if (step.audio) {
         activeAudio = await foundry.audio.AudioHelper.play(

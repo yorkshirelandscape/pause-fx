@@ -14,7 +14,10 @@ const BLOCK_FIELDS = {
   border: ["borderColorEnabled", "borderColor", "borderWidthPct"],
   media: ["mediaType", "mediaPath", "videoVolume", "imagePulses", "loop", "waitForVideoEnd"],
   audio: ["audio", "audioVolume", "audioLoop", "waitForAudioEnd"],
-  stop: ["closeVideo", "stopAudio", "hideIcon", "stopTextPulse", "stopIconSpin", "unpause"],
+  stop: [
+    "closeVideo", "stopAudio", "hideIcon", "stopTextPulse", "stopIconSpin", "stopBorderPulse",
+    "unpause",
+  ],
 };
 
 // Style defaults to solid; only entries that need the outline/regular variant override it
@@ -40,7 +43,7 @@ function isBlockActive(row, block) {
     case "audio": return !!row.audio || row.audioLoop || row.waitForAudioEnd;
     case "stop":
       return row.closeVideo || row.stopAudio || row.hideIcon || row.stopTextPulse
-        || row.stopIconSpin || row.unpause;
+        || row.stopIconSpin || row.stopBorderPulse || row.unpause;
     default: return false;
   }
 }

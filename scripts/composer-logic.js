@@ -36,6 +36,7 @@ export function stepFromRow(row) {
   if (row.hideIcon) step.iconVisible = false;
   if (row.stopTextPulse) step.stopTextPulse = true;
   if (row.stopIconSpin) step.stopIconSpin = true;
+  if (row.stopBorderPulse) step.stopBorderPulse = true;
   if (row.unpause) step.unpause = true;
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
@@ -89,6 +90,7 @@ export function rowFromStep(step) {
     hideIcon: step.iconVisible === false,
     stopTextPulse: !!step.stopTextPulse,
     stopIconSpin: !!step.stopIconSpin,
+    stopBorderPulse: !!step.stopBorderPulse,
     unpause: !!step.unpause,
     waitForVideoEnd: !!step.waitForVideoEnd,
     waitForAudioEnd: !!step.waitForAudioEnd,
@@ -113,8 +115,8 @@ export function rowFromStep(step) {
 const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses"]);
 const BOOL_FIELDS = new Set([
   "textNone", "textPulse", "closeVideo", "stopAudio", "hideIcon", "stopTextPulse",
-  "stopIconSpin", "unpause", "waitForVideoEnd", "waitForAudioEnd", "iconSpin",
-  "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
+  "stopIconSpin", "stopBorderPulse", "unpause", "waitForVideoEnd", "waitForAudioEnd",
+  "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -157,6 +159,7 @@ export function stepBadges(step, pulseLengthS) {
   if (step.textPulse) badges.push({ type: "textPulse" });
   if (step.stopTextPulse) badges.push({ type: "stopTextPulse" });
   if (step.stopIconSpin) badges.push({ type: "stopIconSpin" });
+  if (step.stopBorderPulse) badges.push({ type: "stopBorderPulse" });
   if (step.closeVideo) badges.push({ type: "closeVideo" });
   if (step.stopAudio) badges.push({ type: "stopAudio" });
   if (step.unpause) badges.push({ type: "unpause" });
