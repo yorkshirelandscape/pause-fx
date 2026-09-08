@@ -109,9 +109,22 @@ test("startupSummary: nothing set", () => {
   assert.equal(startupSummary({}), "(nothing set)");
 });
 
-test("startupSummary: basenames the icon path, includes glow/border/text verbatim", () => {
-  const startup = { icon: "curtain-call/art/eye.gif", iconGlow: "red", borderColor: "#FF0000", text: "SOMETHING STIRS" };
-  assert.equal(startupSummary(startup), 'icon: eye.gif · glow: red · border: #FF0000 · text: "SOMETHING STIRS"');
+test("startupSummary: basenames the icon path, includes spin/glow/border/text", () => {
+  const startup = {
+    icon: "curtain-call/art/eye.gif", iconSpin: true,
+    iconGlowEnabled: true, iconGlow: "#FF0000", borderColorEnabled: true, borderColor: "#960018",
+    text: "SOMETHING STIRS",
+  };
+  assert.equal(startupSummary(startup), 'icon: eye.gif · spin · glow: #FF0000 · border: #960018 · text: "SOMETHING STIRS"');
+});
+
+test("startupSummary: glow/border colours set but not enabled are left out", () => {
+  const startup = { iconGlowEnabled: false, iconGlow: "#FF0000", borderColorEnabled: false, borderColor: "#960018" };
+  assert.equal(startupSummary(startup), "(nothing set)");
+});
+
+test("startupSummary: textNone wins over whatever's typed in text", () => {
+  assert.equal(startupSummary({ textNone: true, text: "ignored" }), "text: (none)");
 });
 
 test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", () => {
@@ -120,43 +133,54 @@ test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", 
   assert.equal(msToSeconds(3640), 3.64);
 });
 
+const BLANK_GLOBALS = {
+  icon: "", iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
+  borderColorEnabled: false, borderColor: "#ff0000", text: "", textNone: false, pulseLengthS: "",
+  closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false,
+};
+
 test("configFromGlobals: blank optional globals are omitted", () => {
-  const globals = {
-    icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "",
-    closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false,
-  };
+  assert.deepEqual(configFromGlobals(BLANK_GLOBALS, []), { steps: [] });
+});
+
+test("configFromGlobals: a colour set but not enabled is left out, same as blank", () => {
+  const globals = { ...BLANK_GLOBALS, iconGlow: "#123456", borderColor: "#654321" };
   assert.deepEqual(configFromGlobals(globals, []), { steps: [] });
 });
 
 test("configFromGlobals: pulseLengthS converts to borderCycleMs in whole ms", () => {
-  const globals = {
-    icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "3.64",
-    closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false,
-  };
-  assert.deepEqual(configFromGlobals(globals, []), { steps: [], borderCycleMs: 3640 });
+  assert.deepEqual(
+    configFromGlobals({ ...BLANK_GLOBALS, pulseLengthS: "3.64" }, []),
+    { steps: [], borderCycleMs: 3640 },
+  );
+});
+
+test("configFromGlobals: textNone forces an explicit blank, even if text also has a value", () => {
+  assert.deepEqual(
+    configFromGlobals({ ...BLANK_GLOBALS, textNone: true, text: "ignored" }, []),
+    { steps: [], text: "" },
+  );
 });
 
 test("configFromGlobals: closeAllWindows only appears if at least one target is checked", () => {
-  const base = { icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "", endCombat: false };
+  assert.deepEqual(configFromGlobals(BLANK_GLOBALS, []), { steps: [] });
   assert.deepEqual(
-    configFromGlobals({ ...base, closeWindowsPlayers: false, closeWindowsGM: false }, []),
-    { steps: [] },
-  );
-  assert.deepEqual(
-    configFromGlobals({ ...base, closeWindowsPlayers: true, closeWindowsGM: false }, []),
+    configFromGlobals({ ...BLANK_GLOBALS, closeWindowsPlayers: true }, []),
     { steps: [], closeAllWindows: { players: true, gm: false } },
   );
 });
 
 test("configFromGlobals: the rest of the fields, all set", () => {
   const globals = {
-    icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018", text: "SOMETHING STIRS",
+    icon: "art/eye.gif", iconSpin: true, iconGlowEnabled: true, iconGlow: "#ff0000",
+    borderColorEnabled: true, borderColor: "#960018", text: "SOMETHING STIRS",
     pulseLengthS: "3.64", closeWindowsPlayers: true, closeWindowsGM: true, endCombat: true,
   };
   const steps = [{ text: "hi" }];
   assert.deepEqual(configFromGlobals(globals, steps), {
-    steps, icon: "art/eye.gif", iconGlow: "red", borderColor: "#960018", text: "SOMETHING STIRS",
-    borderCycleMs: 3640, closeAllWindows: { players: true, gm: true }, endCombat: true,
+    steps, icon: "art/eye.gif", iconSpin: true, iconGlow: "#ff0000", borderColor: "#960018",
+    text: "SOMETHING STIRS", borderCycleMs: 3640,
+    closeAllWindows: { players: true, gm: true }, endCombat: true,
   });
 });
 

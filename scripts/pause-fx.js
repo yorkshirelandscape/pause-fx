@@ -165,6 +165,23 @@ function clearBorderColour() {
   document.body.style.removeProperty(BORDER_COLOUR_VAR);
 }
 
+// ---- shared by initial setup AND any step that touches icon/border, not just the first ----
+
+/** Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps. */
+function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }) {
+  if (!iconEl) return;
+  if (icon !== undefined) iconEl.src = icon;
+  if (iconSpin !== undefined) iconEl.style.animation = iconSpin ? "" : "none";
+  if (iconGlow !== undefined) iconEl.style.filter = iconGlow ? `drop-shadow(0 0 12px ${iconGlow})` : "";
+}
+
+/** Idempotent -- injects the keyframes once, but setBorderColour always runs (may be a new colour). */
+function activateBorder(colour, { borderCycleMs, textCycleMs, label }) {
+  setBorderColour(colour);
+  if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
+  label?.classList.add("pause-fx-label");
+}
+
 // ---- the sequencer itself ----
 
 export class PauseFX {
@@ -176,7 +193,10 @@ export class PauseFX {
    * @param {string} [config.borderColor] - any real CSS colour for pause-fx's own border-glow
    *   overlay. Omitted, no border overlay (and the label's pulsing text-colour rides on this
    *   too -- one themed effect, not two independent knobs).
-   * @param {string} [config.text=""] - initial label text.
+   * @param {boolean} [config.iconSpin=false] - keep Foundry's native spin animation on a
+   *   custom icon. Omitted icon entirely, native always spins regardless of this.
+   * @param {string} [config.text] - initial label text. Omitted, Foundry's own "Game Paused"
+   *   stays untouched.
    * @param {number} [config.borderCycleMs] - border/eye pulse period, in ms. Defaults to
    *   3640ms if not given -- pass this explicitly to sync against a specific icon's own
    *   real loop length instead (e.g. a GIF's actual per-frame timing).
@@ -193,7 +213,10 @@ export class PauseFX {
    * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
    *   have `wait: {units, clock: "border"|"text"}` or `waitForVideoEnd: true`, plus any of:
    *   `text`, `freeze`, `resume`, `hideIcon`, `showIcon`, `blankText`, `video`, `image`,
-   *   `audio` (+ optional `audioVolume`), `videoVolume`, `closeVideo`, `macro`.
+   *   `audio` (+ optional `audioVolume`), `videoVolume`, `closeVideo`, `macro`, `icon`,
+   *   `iconSpin`, `iconGlow`, `borderColor`, `endCombat`, `closeAllWindows` -- the last six
+   *   are the same fields `config` itself takes, just applicable at any point in the
+   *   sequence, not only at the start (sparse: a step touches only the fields it sets).
    */
   static async run(config) {
     if (!game.user.isGM) {
@@ -205,7 +228,8 @@ export class PauseFX {
       icon,
       iconGlow,
       borderColor,
-      text: initialText = "",
+      iconSpin = false,
+      text: initialText,
       borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
       textCycleMs,
       textCycleMultiplier = 2,
@@ -248,11 +272,7 @@ export class PauseFX {
         iconEl.replaceWith(img);
         iconEl = img;
       }
-      if (iconEl && icon) {
-        iconEl.src = icon;
-        iconEl.style.animation = "none"; // inline style beats whatever core's spin class does
-        if (iconGlow) iconEl.style.filter = `drop-shadow(0 0 12px ${iconGlow})`;
-      }
+      if (icon !== undefined) applyIconChanges(iconEl, { icon, iconSpin, iconGlow });
 
       label = [...root.children].find((el) => el !== iconEl);
       if (!label) {
@@ -266,22 +286,30 @@ export class PauseFX {
         root.appendChild(label);
       }
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
-      label.textContent = initialText;
+      if (initialText !== undefined) label.textContent = initialText; // else leave "Game Paused"
     };
     const skin = (app, html) => {
       applySkin(app, html);
       Hooks.off("renderPause", skin);
       Hooks.off("renderGamePause", skin);
     };
-    if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element); // already paused? skin it now
+    // Always register the hooks AND try a synchronous capture -- confirmed live that
+    // togglePause(true) can replace the pause screen's content even when the game was
+    // ALREADY paused (not just on a session's very first pause), so a synchronous capture
+    // alone can never be trusted as final: whichever applySkin call actually lands last
+    // (sync, or hook-driven) wins, since iconEl/label are shared closure variables.
     Hooks.once("renderPause", skin); // pre-V13 class name
     Hooks.once("renderGamePause", skin); // V13+ (GamePause)
+    if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element);
 
     await game.togglePause(true, { broadcast: true });
 
-    // Render is async on some clients -- give it a beat before running the sequence off
-    // elements that might not exist yet.
-    if (!iconEl || !label) await wait(200);
+    // Give a real render (and the hooks above) a moment to land before trusting anything --
+    // then stop listening, so a stray LATER pause elsewhere doesn't re-skin mid-sequence.
+    await wait(150);
+    Hooks.off("renderPause", skin);
+    Hooks.off("renderGamePause", skin);
+    if (!iconEl || !label) await wait(200); // still not ready? slower client -- give it longer.
     if (!document.getElementById("pause") || !label) {
       ui.notifications.error("pause-fx: pause screen never rendered, aborting the sequence.");
       return;
@@ -312,6 +340,18 @@ export class PauseFX {
       if (step.hideIcon && iconEl) iconEl.style.visibility = "hidden";
       if (step.showIcon && iconEl) iconEl.style.visibility = "visible";
       if (step.blankText) label.textContent = "";
+
+      if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
+        applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow });
+      }
+      if (step.borderColor) {
+        activateBorder(step.borderColor, { borderCycleMs, textCycleMs: resolvedTextCycle, label });
+      }
+      if (step.endCombat) await game.combat?.endCombat();
+      if (step.closeAllWindows) {
+        if (!socket) ui.notifications.warn("pause-fx: socketlib isn't ready yet, skipping closeAllWindows.");
+        else await socket.executeForEveryone("closeAllWindows", step.closeAllWindows);
+      }
 
       if (step.audio) {
         foundry.audio.AudioHelper.play(

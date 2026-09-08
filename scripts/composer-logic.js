@@ -116,15 +116,17 @@ export function stepSummary(step) {
  * Same idea as stepSummary, for the pinned "Startup" row (icon/glow/border/text -- the
  * top-level look-and-feel fields, not a real step). Kept separate from stepSummary rather
  * than shoehorned into it since these fields aren't part of the real `steps[]` schema at all.
- * @param {object} startup - a subset of `globals`: icon, iconGlow, borderColor, text.
+ * @param {object} startup - a subset of `globals`.
  */
 export function startupSummary(startup) {
   const basename = (p) => p.split("/").pop();
   const parts = [];
   if (startup.icon) parts.push(`icon: ${basename(startup.icon)}`);
-  if (startup.iconGlow) parts.push(`glow: ${startup.iconGlow}`);
-  if (startup.borderColor) parts.push(`border: ${startup.borderColor}`);
-  if (startup.text) parts.push(`text: "${startup.text}"`);
+  if (startup.iconSpin) parts.push("spin");
+  if (startup.iconGlowEnabled && startup.iconGlow) parts.push(`glow: ${startup.iconGlow}`);
+  if (startup.borderColorEnabled && startup.borderColor) parts.push(`border: ${startup.borderColor}`);
+  if (startup.textNone) parts.push("text: (none)");
+  else if (startup.text) parts.push(`text: "${startup.text}"`);
   return parts.join(" · ") || "(nothing set)";
 }
 
@@ -149,9 +151,11 @@ export function msToSeconds(ms) {
 export function configFromGlobals(globals, steps) {
   const config = { steps };
   if (globals.icon) config.icon = globals.icon;
-  if (globals.iconGlow) config.iconGlow = globals.iconGlow;
-  if (globals.borderColor) config.borderColor = globals.borderColor;
-  if (globals.text) config.text = globals.text;
+  if (globals.iconSpin) config.iconSpin = true;
+  if (globals.iconGlowEnabled && globals.iconGlow) config.iconGlow = globals.iconGlow;
+  if (globals.borderColorEnabled && globals.borderColor) config.borderColor = globals.borderColor;
+  if (globals.textNone) config.text = ""; // explicitly blank, not "untouched" (native default)
+  else if (globals.text) config.text = globals.text;
   if (globals.pulseLengthS !== "" && globals.pulseLengthS !== null && globals.pulseLengthS !== undefined) {
     config.borderCycleMs = secondsToMs(globals.pulseLengthS);
   }

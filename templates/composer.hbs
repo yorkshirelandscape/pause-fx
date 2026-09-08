@@ -2,14 +2,14 @@
   <fieldset class="pfx-startup">
     <legend>Startup</legend>
     <label>Pulse Time
-      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="3.64 sec" value="{{globals.pulseLengthS}}">
+      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="5 sec" value="{{globals.pulseLengthS}}">
     </label>
-    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active encounter</label>
     <div class="pfx-close-windows">
       <span>Close windows for:</span>
       <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}> Players</label>
       <label class="pfx-checkbox"><input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}> GM</label>
     </div>
+    <label class="pfx-checkbox"><input type="checkbox" name="endCombat" {{checked globals.endCombat}}> End active encounter</label>
   </fieldset>
 
   <fieldset class="pfx-steps-fieldset">
@@ -25,15 +25,35 @@
         <div class="pfx-step-fields">
           <label>Icon
             <span class="pfx-with-picker">
-              <input type="text" name="icon" placeholder="curtain-call/art/eye.gif" value="{{globals.icon}}">
+              <input type="text" name="icon" placeholder="ui/pause.svg" value="{{globals.icon}}">
               <button type="button" data-action="browseFile" data-for="icon" data-picker-type="imagevideo">
                 <i class="fa-solid fa-folder-open"></i>
               </button>
             </span>
           </label>
-          <label>Icon glow <input type="text" name="iconGlow" placeholder="red" value="{{globals.iconGlow}}"></label>
-          <label>Border color <input type="text" name="borderColor" placeholder="red" value="{{globals.borderColor}}"></label>
-          <label>Initial text <input type="text" name="text" value="{{globals.text}}"></label>
+          <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked globals.iconSpin}}> spin</label>
+
+          <label>Icon glow
+            <span class="pfx-with-toggle">
+              <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked globals.iconGlowEnabled}}>
+              <input type="color" name="iconGlow" value="{{globals.iconGlow}}" {{#unless globals.iconGlowEnabled}}disabled{{/unless}}>
+            </span>
+          </label>
+          <label>Border color
+            <span class="pfx-with-toggle">
+              <input type="checkbox" name="borderColorEnabled" data-enables="borderColor" {{checked globals.borderColorEnabled}}>
+              <input type="color" name="borderColor" value="{{globals.borderColor}}" {{#unless globals.borderColorEnabled}}disabled{{/unless}}>
+            </span>
+          </label>
+
+          <label>Text
+            <span class="pfx-with-toggle">
+              <input type="search" name="text" placeholder="Game Paused" value="{{globals.text}}" {{#if globals.textNone}}disabled{{/if}}>
+              <label class="pfx-checkbox pfx-none-toggle">
+                <input type="checkbox" name="textNone" data-disables="text" {{checked globals.textNone}}> none
+              </label>
+            </span>
+          </label>
         </div>
       </details>
     </div>

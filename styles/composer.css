@@ -127,3 +127,8 @@
 }
 #pause-fx-composer .pfx-step-fields label { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; }
 #pause-fx-composer .pfx-step-fields label.pfx-checkbox { flex-direction: row; align-items: center; gap: 0.4rem; }
+/* A checkbox paired with the field it enables/disables (a colour picker, or "none" for text). */
+#pause-fx-composer .pfx-with-toggle { display: flex; align-items: center; gap: 0.4rem; }
+#pause-fx-composer .pfx-with-toggle input[type="color"] { flex: 1; height: 1.7rem; padding: 0; }
+#pause-fx-composer .pfx-with-toggle input[type="search"] { flex: 1; }
+#pause-fx-composer .pfx-none-toggle { flex-direction: row; }

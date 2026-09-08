@@ -39,7 +39,9 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   // Global (non-step) fields, tracked as instance state like `rows` -- a render() reads only
   // from here, so an untracked field would get wiped on the next one.
   globals = {
-    icon: "", iconGlow: "", borderColor: "", text: "", pulseLengthS: "",
+    icon: "", iconSpin: false,
+    iconGlowEnabled: false, iconGlow: "#ff0000", borderColorEnabled: false, borderColor: "#ff0000",
+    text: "", textNone: false, pulseLengthS: "",
     closeWindowsPlayers: false, closeWindowsGM: false, endCombat: false, macroName: "",
   };
 
@@ -81,7 +83,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       }
       if (event.target.name && event.target.name in this.globals) {
         this.globals[event.target.name] = raw;
-        // No re-render needed -- nothing else on the page derives from a global field's value.
+        this.#syncPairedField(event.target); // e.g. the "enable" checkbox next to a colour picker
+        // No further re-render needed -- nothing else on the page derives from this value.
       }
     });
   }
@@ -104,6 +107,15 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     };
     header.insertBefore(makeButton("run", "fa-solid fa-play", "Run"), ellipsis);
     header.insertBefore(makeButton("saveMacro", "fa-solid fa-floppy-disk", "Save as Macro"), ellipsis);
+  }
+
+  // A checkbox with data-enables="name"/data-disables="name" toggles that field's `disabled`
+  // live, without waiting on a re-render -- e.g. the colour picker next to "enable glow".
+  #syncPairedField(el) {
+    const enables = this.element.querySelector(`[name="${el.dataset.enables}"]`);
+    if (enables) enables.disabled = !el.checked;
+    const disables = this.element.querySelector(`[name="${el.dataset.disables}"]`);
+    if (disables) disables.disabled = el.checked;
   }
 
   #onDragStart(event) {
@@ -190,10 +202,16 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     const config = macro && isPauseFxMacro(macro) ? macro.getFlag(MODULE_ID, "config") : null;
     if (!config) return;
     this.rows = (config.steps ?? []).map(rowFromStep);
-    // pulseLengthS/closeWindows* don't map 1:1 to config keys -- see configFromGlobals.
-    for (const field of ["icon", "iconGlow", "borderColor", "text", "endCombat"]) {
-      this.globals[field] = config[field] ?? (typeof this.globals[field] === "boolean" ? false : "");
-    }
+    // Most of these don't map 1:1 to config keys -- see configFromGlobals for the reverse.
+    this.globals.icon = config.icon ?? "";
+    this.globals.iconSpin = !!config.iconSpin;
+    this.globals.iconGlowEnabled = config.iconGlow !== undefined;
+    if (config.iconGlow !== undefined) this.globals.iconGlow = config.iconGlow;
+    this.globals.borderColorEnabled = config.borderColor !== undefined;
+    if (config.borderColor !== undefined) this.globals.borderColor = config.borderColor;
+    this.globals.textNone = config.text === "";
+    this.globals.text = config.text || "";
+    this.globals.endCombat = !!config.endCombat;
     this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
     this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
     this.globals.closeWindowsGM = !!config.closeAllWindows?.gm;
