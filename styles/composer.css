@@ -293,13 +293,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1px;
-  width: fit-content;
   background: var(--pfx-surface-border);
   border: 1px solid var(--pfx-surface-border);
   border-radius: 6px;
   overflow: hidden;
 }
 #pause-fx-step-editor .pfx-block-toggle {
+  flex: 1 0 auto; /* stretch evenly to fill the strip instead of sitting fit-content/left-aligned */
   border: none;
   border-radius: 0;
   background: var(--pfx-surface);

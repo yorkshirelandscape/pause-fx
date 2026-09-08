@@ -229,12 +229,14 @@ export class PauseFX {
    * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
    *   have `wait: {units, clock: "border"|"text"}`, plus any of: `text`, `freeze`, `resume`,
    *   `iconVisible`, `video`, `image`, `audio` (+ optional `audioVolume`), `videoVolume`,
-   *   `closeVideo`, `stopAudio`, `icon`, `iconSpin`, `iconGlow`, `borderColor`, `borderWidth`
-   *   (a percentage of the glow's default size -- 100 or omitted is that default) -- the last
-   *   five are the same fields `config` itself takes, just applicable at any point in the
-   *   sequence, not only at the start (sparse: a step touches only the fields it sets).
-   *   `closeVideo`/`stopAudio` tear down whatever `video`/`image`/`audio` an earlier step
-   *   started -- symmetric pair, same idea, different media. `waitForVideoEnd`/
+   *   `closeVideo`, `stopAudio`, `unpause`, `icon`, `iconSpin`, `iconGlow`, `borderColor`,
+   *   `borderWidth` (a percentage of the glow's default size -- 100 or omitted is that
+   *   default) -- the last five are the same fields `config` itself takes, just applicable at
+   *   any point in the sequence, not only at the start (sparse: a step touches only the
+   *   fields it sets). `closeVideo`/`stopAudio` tear down whatever `video`/`image`/`audio` an
+   *   earlier step started -- symmetric pair, same idea, different media. `unpause` ends the
+   *   sequence early (`game.togglePause(false)`) -- steps after it still run, but there's no
+   *   pause screen left for most of them to usefully affect. `waitForVideoEnd`/
    *   `waitForAudioEnd` gate the step's OWN `wait` from starting until the video/audio
    *   currently playing (started by an earlier step) fires its `ended`/`end` event -- they
    *   don't replace `wait`, they delay when it starts counting. `endCombat`/`closeAllWindows`
@@ -409,6 +411,11 @@ export class PauseFX {
       if (step.stopAudio) {
         activeAudio?.stop();
         activeAudio = null;
+      }
+      if (step.unpause) {
+        // The pauseGame hook registered above (resetOnUnpause) does the border/style/frozen-
+        // class cleanup -- it fires for ANY unpause, not just one this run triggers itself.
+        await game.togglePause(false, { broadcast: true });
       }
     }
   }

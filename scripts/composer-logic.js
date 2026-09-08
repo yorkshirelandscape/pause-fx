@@ -36,6 +36,7 @@ export function stepFromRow(row) {
   else if (row.iconVisibility === "visible") step.iconVisible = true;
   if (row.closeVideo) step.closeVideo = true;
   if (row.stopAudio) step.stopAudio = true;
+  if (row.unpause) step.unpause = true;
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
   if (row.audio) {
@@ -79,6 +80,7 @@ export function rowFromStep(step) {
     iconVisibility: step.iconVisible === undefined ? "" : step.iconVisible ? "visible" : "hidden",
     closeVideo: !!step.closeVideo,
     stopAudio: !!step.stopAudio,
+    unpause: !!step.unpause,
     waitForVideoEnd: !!step.waitForVideoEnd,
     waitForAudioEnd: !!step.waitForAudioEnd,
     audio: step.audio ?? "",
@@ -98,7 +100,7 @@ export function rowFromStep(step) {
 
 const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct"]);
 const BOOL_FIELDS = new Set([
-  "textNone", "freeze", "resume", "closeVideo", "stopAudio", "waitForVideoEnd",
+  "textNone", "freeze", "resume", "closeVideo", "stopAudio", "unpause", "waitForVideoEnd",
   "waitForAudioEnd", "iconSpin", "iconGlowEnabled", "borderColorEnabled",
 ]);
 
@@ -142,6 +144,7 @@ export function stepBadges(step, pulseLengthS) {
   if (step.resume) badges.push({ type: "resume" });
   if (step.closeVideo) badges.push({ type: "closeVideo" });
   if (step.stopAudio) badges.push({ type: "stopAudio" });
+  if (step.unpause) badges.push({ type: "unpause" });
   return badges;
 }
 

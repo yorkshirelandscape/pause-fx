@@ -13,8 +13,9 @@ const BLOCK_FIELDS = {
   icon: ["icon", "iconSpin", "iconGlowEnabled", "iconGlow", "iconVisibility"],
   border: ["borderColorEnabled", "borderColor", "borderWidthPct"],
   pulse: ["freeze", "resume"],
-  media: ["mediaType", "mediaPath", "videoVolume", "closeVideo", "waitForVideoEnd"],
-  audio: ["audio", "audioVolume", "stopAudio", "waitForAudioEnd"],
+  media: ["mediaType", "mediaPath", "videoVolume", "waitForVideoEnd"],
+  audio: ["audio", "audioVolume", "waitForAudioEnd"],
+  stop: ["closeVideo", "stopAudio", "unpause"],
 };
 
 // Style defaults to solid; only entries that need the outline/regular variant override it
@@ -27,6 +28,7 @@ const BLOCK_META = {
   pulse: { icon: "fa-snowflake", label: "Pulse" },
   media: { icon: "fa-video", label: "Media" },
   audio: { icon: "fa-volume-high", label: "Audio" },
+  stop: { icon: "fa-circle-stop", label: "Stop" },
 };
 
 /** Whether a block should start expanded -- true if the row already has content for it. */
@@ -38,7 +40,8 @@ function isBlockActive(row, block) {
     case "border": return row.borderColorEnabled || row.borderWidthPct !== "";
     case "pulse": return row.freeze || row.resume;
     case "media": return row.mediaType !== "none" || row.waitForVideoEnd;
-    case "audio": return !!row.audio || row.stopAudio || row.waitForAudioEnd;
+    case "audio": return !!row.audio || row.waitForAudioEnd;
+    case "stop": return row.closeVideo || row.stopAudio || row.unpause;
     default: return false;
   }
 }

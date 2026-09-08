@@ -92,7 +92,6 @@
         </select>
       </label>
       <label class="pfx-field">Volume <range-picker name="videoVolume" min="0" max="1" step="0.1" value="{{row.videoVolume}}"></range-picker></label>
-      <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Close at This Step</label>
     </div>
     <div class="pfx-row">
       <label class="pfx-field">Path <input type="text" name="mediaPath" value="{{row.mediaPath}}"></label>
@@ -109,10 +108,20 @@
     <div class="pfx-row">
       <label class="pfx-field">Path <input type="text" name="audio" value="{{row.audio}}"></label>
       <label class="pfx-field">Volume <range-picker name="audioVolume" min="0" max="1" step="0.1" value="{{row.audioVolume}}"></range-picker></label>
-      <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Stop at This Step</label>
     </div>
     <div class="pfx-row">
       <label class="pfx-checkbox"><input type="checkbox" name="waitForAudioEnd" {{checked row.waitForAudioEnd}}> Don't Start Timer Until Audio Ends</label>
+    </div>
+  </fieldset>
+  {{/if}}
+
+  {{#if visible.stop}}
+  <fieldset class="pfx-block">
+    <legend><i class="fa-solid fa-circle-stop"></i> Stop</legend>
+    <div class="pfx-row">
+      <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Video/Image</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Audio</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="unpause" {{checked row.unpause}}> Unpause</label>
     </div>
   </fieldset>
   {{/if}}
