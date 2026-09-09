@@ -38,23 +38,27 @@
   gap: 0.75rem;
   padding: 0.5rem;
 }
-/* The step editor's blocks sit in a deliberate irregular layout (mocked up directly, second
-   pass) -- five equal tracks underneath so each row can split its two blocks at a different
-   ratio: Wait/Text goes narrow-then-wide (the wait block is just a pulse count -- it doesn't
-   need the room), Icon/Border and Media/Audio both go wide-then-narrow (Icon and Media carry
-   a file path, Border and Audio don't need as much). Stop spans the full width at the bottom.
-   A shorter block never stretches to match a taller row-mate (align-items: start) -- see the
-   per-block grid-area rules in the "Step editor dialog" section below. Composer's own two
-   fieldsets (Startup, Steps) keep the plain column layout above -- there's no grouping to
-   make there. */
+/* The step editor's blocks sit in a deliberate irregular layout, hand-tuned directly against
+   a mockup -- four unequal columns (2fr/1fr/1fr/2fr) and seven explicit rows so each block gets
+   exactly the footprint its own content needs: Duration is a bare pulse count (narrow, short),
+   Icon is a full field (wide, two rows), Text is one field across three columns, Border is one
+   narrow column, Media/Audio each get their own irregular split, Stop spans the full width, and
+   the final row is empty headroom. A shorter block never stretches to match a taller row-mate
+   (align-items: start) -- see the per-block grid-area rules in the "Step editor dialog" section
+   below. Composer's own two fieldsets (Startup, Steps) keep the plain column layout above --
+   there's no grouping to make there. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: 2fr 1fr 1fr 2fr;
+  grid-template-rows: 4rem 0.5rem 5.5rem 1rem 9.5rem 5rem auto;
   grid-template-areas:
-    "wait  wait  text  text  text"
-    "icon  icon  icon  border border"
-    "media media media audio audio"
-    "stop  stop  stop  stop  stop";
+    "wait   icon   icon   icon  "
+    "wait   icon   icon   icon  "
+    "text   text   text   border"
+    "media  media  .      border"
+    "media  media  audio  audio "
+    "stop   stop   stop   stop  "
+    ". . . .";
   align-items: start;
 }
 
@@ -63,7 +67,7 @@
   background: color-mix(in srgb, var(--pfx-surface) 45%, transparent);
   border: 1px solid var(--pfx-surface-border);
   border-radius: 8px;
-  padding: 0.6rem 0.85rem 0.85rem;
+  padding: 0.6rem 0.85rem 0.85rem 0.6rem;
 }
 #pause-fx-composer legend,
 #pause-fx-step-editor legend {
@@ -77,6 +81,7 @@
 }
 #pause-fx-composer legend i,
 #pause-fx-step-editor legend i { color: var(--pfx-text-body); font-size: 0.85em; }
+#pause-fx-step-editor .pfx-block-stop legend i { font-size: 1.1em; } /* the outline circle-stop glyph reads small at the shared size */
 
 /* A visible focus ring on everything interactive that doesn't already have one -- Foundry's
    own checkboxes get their own glow natively, so this is buttons/selects/text inputs. */
@@ -113,13 +118,24 @@
   color: var(--pfx-text-body);
   white-space: nowrap;
 }
+/* A checkbox in a tight column (media-io's checkbox column, once its label text wraps to
+   two lines -- "Timer"/"Waits") has no flex-shrink:0 by default, so once the label has
+   already wrapped as far as it can, the checkbox itself is the only thing left to shrink,
+   and it takes the whole deficit -- rendered visibly smaller than a real 16px checkbox.
+   Checkboxes shouldn't distort; pin it to its real size and let the row wrap/grow instead. */
+#pause-fx-composer .pfx-checkbox input[type="checkbox"],
+#pause-fx-step-editor .pfx-checkbox input[type="checkbox"] { flex-shrink: 0; }
 
 /* A row packs several fields side by side instead of one-per-line; wraps if the dialog is
    narrow. Each field keeps its own natural width (see .pfx-field below) rather than
    stretching to fill the row -- that's what made every text box "almost universally too
-   big" before this. */
+   big" before this. align-self:stretch is explicit, not left to the parent fieldset's own
+   default align-items -- fieldsets have real, documented cross-browser quirks around
+   applying stretch to their flex children, and without this a row silently shrink-wraps to
+   its own content width instead of the fieldset's, which then caps any flex:1 field inside
+   it at whatever that content happened to need. */
 #pause-fx-composer .pfx-row,
-#pause-fx-step-editor .pfx-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.4rem 0.75rem; }
+#pause-fx-step-editor .pfx-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.4rem 0.75rem; align-self: stretch; }
 #pause-fx-composer .pfx-field,
 #pause-fx-step-editor .pfx-field {
   display: flex;
@@ -146,6 +162,7 @@
   appearance: auto;
 }
 #pause-fx-step-editor input[name="borderWidthPct"] { -moz-appearance: auto; }
+#pause-fx-step-editor input[name="borderWidthPct"] { text-align: center; }
 /* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
@@ -157,42 +174,66 @@
 #pause-fx-step-editor .pfx-field input[type="text"],
 #pause-fx-step-editor .pfx-field input[type="search"] { width: 12rem; }
 #pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
-#pause-fx-step-editor .pfx-with-picker input[type="text"] { width: 10rem; } /* leaves room for the browse button */
-/* Audio's own column is the grid's narrow side (2 of 5 tracks) -- the 10rem default above
-   overflows it once a browse button sits next to the path field too. */
-#pause-fx-step-editor .pfx-block-audio .pfx-with-picker input[type="text"] { width: 6.5rem; }
+#pause-fx-step-editor .pfx-with-picker input[type="text"] { width: auto; }
 
-/* Media/Audio's Loop + Volume + Timer Waits cluster: a small 3-column grid rather than
-   two of .pfx-row's rows, so the volume slider can stand on its own as a full-height
-   column instead of fighting a checkbox for room on one text line -- the mockup's own
-   layout, and the reason Loop/Volume kept wrapping onto separate lines before this.
-   `display: contents` on the <range-picker> dissolves its own box (a plain flex row
-   internally) without touching its value-sync/change-event behaviour, which lives on the
-   element itself, not its layout -- so its two real children (the slider, the number
-   readout) become direct grid items here and can be placed independently. */
+/* Media/Audio's Loop + Timer Waits + Path cluster stays left-anchored; the volume slider
+   and its label+number sit right-anchored -- so the spacer column (2nd) is the one that
+   absorbs whatever width the fieldset has left over (1fr), not any of the real content.
+   The track is pinned to its own real width (0.9rem), not auto -- an auto track grows to
+   absorb leftover space too, which is the actual bug this whole column arrangement exists
+   to dodge (confirmed live, twice: once for the track itself, once for the label+number
+   column). `display: contents` on the <range-picker> dissolves its own box (a plain flex
+   row internally) without touching its value-sync/change-event behaviour, which lives on
+   the element itself, not its layout -- so its two real children (the slider, the number
+   readout) become independent grid items and can be placed in different areas -- here,
+   the number sits directly under the "Volume" label (io-vlabel/io-vnum, stacked in the
+   4th column) while the slider spans all three rows in the 3rd. */
 #pause-fx-step-editor .pfx-media-io {
   display: grid;
-  grid-template-columns: 3.4rem auto auto;
-  grid-template-rows: 1.6rem 1.6rem; /* fixed, not auto -- a vertical range input's UA default
-    length (~130px) would otherwise set the auto-row size itself, since height:100% can't
-    resolve against an auto-sized track (see io-track below) */
+  grid-template-columns: 3.4rem 1fr 0.9rem max-content;
+  /* All three rows fixed, not auto -- io-track's height:100% needs every row it spans to
+     have a definite size to resolve against (an auto row falls back to the vertical range
+     input's own UA-default length, ~130px). Row 3 only holds the bare "Path" text, so a
+     short fixed height is the right size for it too, not just a workaround. */
+  grid-template-rows: 1.6rem 1.6rem 1.3rem;
   grid-template-areas:
-    "io-loop io-vlabel io-track"
-    "io-wait io-vnum   io-track";
-  column-gap: 0.3rem; /* the base gap -- Volume/its number sit close against the track on this;
-    the checkbox column gets its own, larger gap via margin-right below instead of a bigger
-    column-gap here, which would've widened both gaps equally */
+    "io-loop . io-track io-vlabel"
+    "io-wait . io-track io-vnum"
+    "io-path . io-track .";
+  column-gap: 0.15rem;
   row-gap: 0.15rem;
   align-items: center;
-  margin-bottom: 0.4rem;
 }
-#pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Timer Waits" wraps in this narrow a column, same as the mockup */
-#pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; margin-right: 0.35rem; }
-#pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; margin-right: 0.35rem; }
+#pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Timer Waits" wraps in this narrow a column */
+/* Left as default stretch (fills the full 3.4rem column, same box width whether a row's
+   own text is "Loop" or the wider wrapped "Timer"/"Waits") -- the gap to the track comes
+   entirely from the spacer column, not a margin here, so it's the same regardless. */
+#pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; }
+#pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; }
+/* Just the "Path" text joins the grid -- the actual input+button stay in their own .pfx-row
+   below. Only pulling the label up (not the whole field) is what frees the vertical room
+   the taller track wants without duplicating the path input's own width tuning up here. */
+#pause-fx-step-editor .pfx-io-path-label {
+  grid-area: io-path;
+  font-size: var(--font-size-12, 0.75rem);
+  color: var(--pfx-text-body);
+  align-self: end;
+}
 #pause-fx-step-editor .pfx-io-vlabel {
   grid-area: io-vlabel;
   font-size: var(--font-size-12, 0.75rem);
   color: var(--pfx-text-body);
+  justify-self: end;
+  text-align: right;
+}
+/* Image mode's Pulses field replaces Volume+its readout entirely (mutually exclusive via
+   data-media-show) -- one field spanning both their rows, since it's a single label+input
+   element rather than two independently-placed ones. */
+#pause-fx-step-editor .pfx-io-pulses {
+  grid-column: 4;
+  grid-row: 1 / 3;
+  justify-self: end;
+  align-self: center;
 }
 #pause-fx-step-editor .pfx-io-range { display: contents; }
 #pause-fx-step-editor .pfx-io-range > input[type="number"] {
@@ -201,15 +242,38 @@
   height: 1.6rem;
   min-height: 0; /* the native height (~32px) would otherwise inflate its own row */
   padding: 0 0.2rem;
+  justify-self: end;
+  text-align: center;
 }
 #pause-fx-step-editor .pfx-io-range > input[type="range"] {
   grid-area: io-track;
   writing-mode: vertical-lr;
   direction: rtl; /* min at the bottom, max at the top -- the usual vertical-slider convention */
   width: 0.9rem;
-  height: 100%; /* now resolvable -- the two rows above it are a fixed, not auto, size */
+  height: 100%; /* now resolvable -- every row it spans is a fixed, not auto, size */
   min-height: 0;
   align-self: stretch;
+  justify-self: center;
+}
+/* Path row: the browse button right-aligned, the text input filling whatever's left.
+   flex:1 alone reopened a column-distortion bug (a bare flex-basis:auto still falls back
+   to the input's own ~162px UA-default intrinsic width as its minimum, pulling that into
+   the outer 2fr/1fr/1fr/2fr grid's own track-sizing pass), and min-width:0 -- the usual fix
+   for that -- turned out NOT to be enough on its own either: confirmed live that hiding the
+   input still measurably shrank the outer grid's columns even with min-width:0 in place.
+   width:0 (an explicit, definite size, not `auto`) is what actually starves that
+   contribution -- confirmed live it drops the outer columns back to their clean ratio,
+   with flex-grow:1 still doing the real work of filling whatever space is available. */
+#pause-fx-step-editor .pfx-block-media .pfx-with-picker,
+#pause-fx-step-editor .pfx-block-audio .pfx-with-picker {
+  flex: 1;
+  min-width: 0;
+}
+#pause-fx-step-editor .pfx-block-media .pfx-with-picker input[type="text"],
+#pause-fx-step-editor .pfx-block-audio .pfx-with-picker input[type="text"] {
+  flex: 1;
+  width: 0;
+  min-width: 0;
 }
 
 /* ---- Startup ---- */
@@ -402,6 +466,59 @@
   transition: border-color 120ms ease, color 120ms ease;
 }
 #pause-fx-step-editor [data-action="browseFile"]:hover { border-color: var(--pfx-accent); color: var(--pfx-text-bright); }
+
+/* Icon and Text are each the sole occupant of their .pfx-row, in a block wider than the
+   old 2-column layout gave them -- but .pfx-field has no flex-grow by default, and the
+   input itself still carries the shared 12rem width (right for Duration/Border's
+   genuinely-narrow fields, wrong here), so both were sizing to their own content and
+   stranding the rest of the fieldset empty. Let this one field fill the row instead. */
+#pause-fx-step-editor .pfx-block-icon .pfx-field,
+#pause-fx-step-editor .pfx-block-text .pfx-field {
+  flex: 1;
+}
+#pause-fx-step-editor .pfx-block-text input[type="search"] { width: 100%; }
+#pause-fx-step-editor .pfx-block-icon .pfx-with-picker { flex: 1; }
+#pause-fx-step-editor .pfx-block-icon .pfx-with-picker input[type="text"] { flex: 1; width: auto; }
+
+/* Duration and Border are both a single narrow field/toggle with no reason to hug the
+   fieldset's left edge -- center each row's own content instead. */
+#pause-fx-step-editor .pfx-block-wait .pfx-row,
+#pause-fx-step-editor .pfx-block-border .pfx-row {
+  justify-content: center;
+}
+/* Duration: center "Pulses" and its value too, not just the field's position in the row --
+   align-items for the label/input as boxes, text-align for the text/digit inside them (the
+   label is a bare text node in a flex column, not its own element, so it takes text-align
+   from .pfx-field directly). */
+#pause-fx-step-editor .pfx-block-wait .pfx-field {
+  align-items: center;
+  text-align: center;
+}
+/* Fills out the rest of the fieldset's own available width without growing the fieldset
+   itself -- a bigger digit earns its keep here since Duration's whole job is showing this
+   one number. 5.25rem is the empirical ceiling: 5.3rem is where the fieldset itself starts
+   growing to accommodate it. */
+#pause-fx-step-editor .pfx-block-wait input[name="waitUnits"] {
+  text-align: center;
+  width: 5.25rem;
+  font-size: 1.1rem;
+}
+
+/* Stop's 7 checkboxes as a real 2x4 grid instead of two flex rows -- (2,3) stays empty
+   (nothing to put there) rather than the row just running short. Grid auto-placement fills
+   row-major (1,1)..(1,4),(2,1)..(2,4); explicitly placing Unpause at column 4 skips (2,3)
+   instead of letting it backfill there. */
+#pause-fx-step-editor .pfx-stop-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem 0.75rem;
+}
+#pause-fx-step-editor .pfx-stop-unpause { grid-column: 4; }
+
+/* The Icon field's own label ("Icon") sat vertically centered against Spin/Glow's taller
+   row (the colour swatch is 1.7rem, well over the plain text's own line height) --
+   bottom-align it against their shared baseline instead. */
+#pause-fx-step-editor .pfx-block-icon .pfx-field-label-row { align-items: flex-end; }
 
 /* A real checkbox underneath (visually hidden, not display:none -- it stays focusable and
    keyboard/screen-reader operable), restyled as a two-position switch via its own sibling
