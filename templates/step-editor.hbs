@@ -30,6 +30,7 @@
           <span>Icon</span>
           <span class="pfx-checkbox-group">
             <label class="pfx-checkbox"><input type="checkbox" name="iconNone" data-disables="icon" {{checked row.iconNone}}> None</label>
+            <label class="pfx-checkbox" title="Re-show the icon, e.g. after an earlier step hid it"><input type="checkbox" name="iconShow" {{checked row.iconShow}}> Show</label>
             <span class="pfx-with-toggle" title="Icon Glow">
               <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked row.iconGlowEnabled}}>
               <input type="color" name="iconGlow" value="{{row.iconGlow}}" {{#unless row.iconGlowEnabled}}disabled{{/unless}}>

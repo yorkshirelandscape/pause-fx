@@ -439,7 +439,10 @@ export class PauseFX {
 
       // Gates, not replacements -- a step's own `wait` still runs after, just doesn't start
       // counting until the gated event fires. Races the abort signal too, so an unpause that
-      // stops the thing being waited on doesn't hang on an event that'll now never fire.
+      // stops the thing being waited on doesn't hang on an event that'll now never fire. This
+      // is the cross-step case, gating on media an EARLIER step started; a step that starts
+      // its own media and also sets the matching waitForXEnd waits for that instead, right
+      // after creating it further down.
       if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
         await new Promise((resolve) => {
           overlay.addEventListener("ended", resolve, { once: true });
@@ -484,6 +487,14 @@ export class PauseFX {
           { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: !!step.audioLoop },
           false,
         );
+        // The early gate above only catches waitForAudioEnd on a LATER step, for audio an
+        // earlier one started -- this is the same-step case, waiting for what was just set.
+        if (step.waitForAudioEnd) {
+          await new Promise((resolve) => {
+            activeAudio.addEventListener("end", resolve, { once: true });
+            signal.addEventListener("abort", resolve, { once: true });
+          });
+        }
       }
 
       if (step.video || step.image) {
@@ -507,10 +518,19 @@ export class PauseFX {
         document.body.appendChild(el);
         overlay = el;
 
+        // Same-step case (see the audio one above) -- waitForVideoEnd on the step that
+        // itself started this video, not just a later step gating on an earlier one's.
+        if (isVideo && step.waitForVideoEnd) {
+          await new Promise((resolve) => {
+            el.addEventListener("ended", resolve, { once: true });
+            signal.addEventListener("abort", resolve, { once: true });
+          });
+        }
+
         // A slideshow (imagePulses set): advances through imageFiles on the pulse clock, 0
         // units meaning wait for a manual advance. Closes over `el` directly, not `overlay`
         // -- a later closeVideo swapping overlay mustn't redirect this write. Fire-and-forget
-        // like video/audio; a later step opts in via waitForImageEnd.
+        // by default; this step or a later one opts in via waitForImageEnd.
         if (!isVideo && step.imagePulses !== undefined) {
           let resolveSlideshowDone;
           activeImageSlideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
@@ -534,6 +554,7 @@ export class PauseFX {
             }
           };
           void showSlideshow();
+          if (step.waitForImageEnd) await activeImageSlideshowDone; // same-step case, as above
         }
       }
       if (step.closeVideo) {

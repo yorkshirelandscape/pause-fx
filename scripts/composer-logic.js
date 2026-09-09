@@ -37,9 +37,9 @@ export function stepsFromConfig(config) {
 /**
  * One editable step-row's fields -> a clean PauseFX step object. Optional fields are OMITTED
  * (not set to "" / false) when left blank, matching PauseFX.run's own `step.text !== undefined`
- * style checks -- an omitted field means "don't touch," not "clear." No `clock` on the wait --
- * the Composer only ever exposes one clock ("Pulse Cycles"); pause-fx.js's own default (an
- * omitted clock means "border") already does the right thing without the Composer saying so.
+ * style checks -- an omitted field means "don't touch," not "clear." `clock` only ever comes
+ * from an imported step (the Composer's own UI has no selector for it, still just the one
+ * "Pulse Cycles" clock) -- omitted unless it's "text", matching pause-fx.js's own default.
  * @param {object} row - see rowFromStep for the field shape.
  * @returns {object} a step object per pause-fx.js's `steps` schema.
  */
@@ -47,6 +47,7 @@ export function stepFromRow(row) {
   const step = {};
   if (row.waitUnits !== "" && row.waitUnits !== null && row.waitUnits !== undefined) {
     step.wait = { units: Number(row.waitUnits) };
+    if (row.waitClock === "text") step.wait.clock = "text";
   }
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
@@ -81,8 +82,12 @@ export function stepFromRow(row) {
     }
     if (row.loop) step.loop = true;
   }
-  if (row.iconNone) step.iconVisible = false; // explicitly hidden, not "untouched" -- same pattern as textNone
-  else if (row.icon) step.icon = row.icon;
+  if (row.iconNone) {
+    step.iconVisible = false; // explicitly hidden, not "untouched" -- same pattern as textNone
+  } else {
+    if (row.iconShow) step.iconVisible = true; // explicitly re-shown -- e.g. after an earlier step hid it
+    if (row.icon) step.icon = row.icon;
+  }
   if (row.iconSpin) step.iconSpin = true;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
@@ -95,14 +100,14 @@ export function stepFromRow(row) {
 /**
  * The inverse of stepFromRow -- a step object -> editable row fields, for populating the
  * dialog when a step (or a loaded macro's saved step) is opened for editing.
- * `stepFromRow(rowFromStep(step))` round-trips `step` (a `clock` on the original step is
- * intentionally NOT preserved -- the Composer has nowhere left to show or re-set it).
+ * `stepFromRow(rowFromStep(step))` round-trips `step`.
  * @param {object} step
  * @returns {object} row fields, all defined (never undefined) so they bind cleanly to inputs.
  */
 export function rowFromStep(step) {
   return {
     waitUnits: step.wait?.units ?? "",
+    waitClock: step.wait?.clock ?? "border",
     text: step.text ?? "",
     textNone: step.text === "",
     textPulse: !!step.textPulse,
@@ -125,6 +130,7 @@ export function rowFromStep(step) {
     loop: !!step.loop,
     icon: step.icon ?? "",
     iconNone: step.iconVisible === false,
+    iconShow: step.iconVisible === true,
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
     iconGlow: step.iconGlow ?? "#4DD0E1", // a deliberate teal default, not an arbitrary placeholder
@@ -138,7 +144,7 @@ const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borde
 const BOOL_FIELDS = new Set([
   "textNone", "textPulse", "closeVideo", "stopAudio", "stopTextPulse",
   "stopIconSpin", "stopBorderPulse", "unpause", "waitForVideoEnd", "waitForAudioEnd",
-  "waitForImageEnd", "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
+  "waitForImageEnd", "iconNone", "iconShow", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -160,12 +166,16 @@ export function coerceStepField(field, rawValue) {
  * takes up the remaining width rather than sitting in the badge row.
  * @param {object} step
  * @param {number} [pulseLengthS] - to render the wait as real seconds, not just pulse units.
+ *   The Composer's own UI only ever exposes the border clock, so this is that clock's length;
+ *   a clock:"text" step (only reachable via a hand-written macro) uses double it, matching
+ *   resolveTextCycleMs's own default multiplier -- see pause-fx.js.
  * @returns {Array<object>} badge descriptors, e.g. {type: "wait", label: "2.0s"}.
  */
 export function stepBadges(step, pulseLengthS) {
   const badges = [];
   if (step.wait) {
-    const seconds = pulseLengthS ? (step.wait.units * Number(pulseLengthS)).toFixed(1) + "s" : `${step.wait.units}x`;
+    const cycleS = pulseLengthS ? Number(pulseLengthS) * (step.wait.clock === "text" ? 2 : 1) : null;
+    const seconds = cycleS ? (step.wait.units * cycleS).toFixed(1) + "s" : `${step.wait.units}x`;
     badges.push({ type: "wait", label: seconds });
   }
   if (step.waitForVideoEnd) badges.push({ type: "waitForVideoEnd" });

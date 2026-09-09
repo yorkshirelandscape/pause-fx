@@ -10,12 +10,12 @@ import {
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
-  waitUnits: "", text: "", textNone: false, textPulse: false,
+  waitUnits: "", waitClock: "border", text: "", textNone: false, textPulse: false,
   closeVideo: false, stopAudio: false, stopTextPulse: false,
   stopIconSpin: false, stopBorderPulse: false, unpause: false, waitForVideoEnd: false,
   waitForAudioEnd: false, waitForImageEnd: false, audio: "", audioVolume: "", audioLoop: false,
   mediaType: "none", mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "",
-  iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#4DD0E1",
+  iconNone: false, iconShow: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#4DD0E1",
   borderColorEnabled: false, borderColor: "#4DD0E1", borderWidthPct: "",
 };
 
@@ -73,6 +73,20 @@ test("stepFromRow: iconNone (Icon field's own None, not Stop -- hiding isn't tim
 test("stepFromRow: iconNone forces an explicit hide even if icon also has a value", () => {
   const row = { ...BLANK_ROW, iconNone: true, icon: "ignored.gif" };
   assert.deepEqual(stepFromRow(row), { iconVisible: false });
+});
+
+test("stepFromRow: iconShow maps to an explicit iconVisible: true -- e.g. re-showing after an earlier hide", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconShow: true }), { iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconShow: true, icon: "eye.gif" }), { iconVisible: true, icon: "eye.gif" });
+});
+
+test("stepFromRow: iconNone wins over iconShow if somehow both are set", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: true, iconShow: true }), { iconVisible: false });
+});
+
+test("stepFromRow: waitClock only emits a step-level clock when it's \"text\" (border is the default)", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, waitUnits: "2", waitClock: "text" }), { wait: { units: 2, clock: "text" } });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, waitUnits: "2", waitClock: "border" }), { wait: { units: 2 } });
 });
 
 test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIconSpin/stopBorderPulse, not a shared freeze", () => {
@@ -145,7 +159,9 @@ test("rowFromStep: fills every field with a defined default, never undefined", (
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
   const steps = [
     { wait: { units: 1.45 }, text: "...AND SUDDENLY...", textPulse: true },
+    { wait: { units: 2, clock: "text" }, text: "A MANNEQUIN BEGINS TO TWITCH" },
     { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false },
+    { closeVideo: true, iconVisible: true, borderColor: "#FF0000" },
     { image: "spooky/", imagePulses: 0, loop: true },
     { image: "spooky.webp" },
     { waitForImageEnd: true },
@@ -197,6 +213,11 @@ test("stepBadges: empty step has no badges", () => {
 test("stepBadges: wait renders in real seconds when pulseLengthS is given, else raw pulse units", () => {
   assert.deepEqual(stepBadges({ wait: { units: 2 } }, "3.64"), [{ type: "wait", label: "7.3s" }]);
   assert.deepEqual(stepBadges({ wait: { units: 2 } }), [{ type: "wait", label: "2x" }]);
+});
+
+test("stepBadges: a clock:\"text\" wait uses double pulseLengthS, matching resolveTextCycleMs's own default", () => {
+  assert.deepEqual(stepBadges({ wait: { units: 2, clock: "text" } }, "3.64"), [{ type: "wait", label: "14.6s" }]);
+  assert.deepEqual(stepBadges({ wait: { units: 2, clock: "border" } }, "3.64"), [{ type: "wait", label: "7.3s" }]);
 });
 
 test("stepBadges: one badge per active field, in a stable order", () => {
