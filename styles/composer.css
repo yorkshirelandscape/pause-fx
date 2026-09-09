@@ -38,20 +38,23 @@
   gap: 0.75rem;
   padding: 0.5rem;
 }
-/* The step editor's blocks sit in a deliberate 2-column layout (mocked up directly) --
-   Wait/Text share a row, Icon/Border share the next, Media/Audio the one after, Stop spans
-   both columns at the bottom. A shorter block never stretches to match a taller row-mate
-   (align-items: start) -- see the per-block grid-area rules in the "Step editor dialog"
-   section below. Composer's own two fieldsets (Startup, Steps) keep the plain column layout
-   above -- there's no 2-column grouping to make there. */
+/* The step editor's blocks sit in a deliberate irregular layout (mocked up directly, second
+   pass) -- five equal tracks underneath so each row can split its two blocks at a different
+   ratio: Wait/Text goes narrow-then-wide (the wait block is just a pulse count -- it doesn't
+   need the room), Icon/Border and Media/Audio both go wide-then-narrow (Icon and Media carry
+   a file path, Border and Audio don't need as much). Stop spans the full width at the bottom.
+   A shorter block never stretches to match a taller row-mate (align-items: start) -- see the
+   per-block grid-area rules in the "Step editor dialog" section below. Composer's own two
+   fieldsets (Startup, Steps) keep the plain column layout above -- there's no grouping to
+   make there. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(5, 1fr);
   grid-template-areas:
-    "wait  text"
-    "icon  border"
-    "media audio"
-    "stop  stop";
+    "wait  wait  text  text  text"
+    "icon  icon  icon  border border"
+    "media media media audio audio"
+    "stop  stop  stop  stop  stop";
   align-items: start;
 }
 
