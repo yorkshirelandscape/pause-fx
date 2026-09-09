@@ -504,16 +504,14 @@
   font-size: 1.1rem;
 }
 
-/* Stop's 7 checkboxes as a real 2x4 grid instead of two flex rows -- (2,3) stays empty
-   (nothing to put there) rather than the row just running short. Grid auto-placement fills
-   row-major (1,1)..(1,4),(2,1)..(2,4); explicitly placing Unpause at column 4 skips (2,3)
-   instead of letting it backfill there. */
+/* Stop's 6 checkboxes as a real 2x3 grid instead of two flex rows -- a clean fill, no empty
+   cell to route around now that Icon (hideIcon) moved out to the Icon field's own None
+   checkbox (its job wasn't time-sensitive -- see that field's own comment). */
 #pause-fx-step-editor .pfx-stop-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.4rem 0.75rem;
 }
-#pause-fx-step-editor .pfx-stop-unpause { grid-column: 4; }
 
 /* The Icon field's own label ("Icon") sat vertically centered against Spin/Glow's taller
    row (the colour swatch is 1.7rem, well over the plain text's own line height) --

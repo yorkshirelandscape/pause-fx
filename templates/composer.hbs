@@ -24,6 +24,7 @@
               {{#if (eq b.type "wait")}}<span class="pfx-badge pfx-badge-wait" title="Wait">{{b.label}}</span>{{/if}}
               {{#if (eq b.type "waitForVideoEnd")}}<i class="fa-solid fa-hourglass-half pfx-badge" title="Wait for Video End"></i>{{/if}}
               {{#if (eq b.type "waitForAudioEnd")}}<i class="fa-solid fa-hourglass-end pfx-badge" title="Wait for Audio End"></i>{{/if}}
+              {{#if (eq b.type "waitForImageEnd")}}<i class="fa-solid fa-hourglass pfx-badge" title="Wait for Slideshow End"></i>{{/if}}
               {{#if (eq b.type "border")}}<span class="pfx-badge pfx-badge-swatch" style="border-color:{{b.colour}}" title="Border: {{b.colour}}"></span>{{/if}}
               {{#if (eq b.type "icon")}}
                 <span class="pfx-badge pfx-badge-icon" style="border-color:{{b.glow}}" title="Icon">

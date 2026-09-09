@@ -33,13 +33,13 @@ export function stepFromRow(row) {
   if (row.textPulse) step.textPulse = true;
   if (row.closeVideo) step.closeVideo = true;
   if (row.stopAudio) step.stopAudio = true;
-  if (row.hideIcon) step.iconVisible = false;
   if (row.stopTextPulse) step.stopTextPulse = true;
   if (row.stopIconSpin) step.stopIconSpin = true;
   if (row.stopBorderPulse) step.stopBorderPulse = true;
   if (row.unpause) step.unpause = true;
   if (row.waitForVideoEnd) step.waitForVideoEnd = true;
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
+  if (row.waitForImageEnd) step.waitForImageEnd = true;
   if (row.audio) {
     step.audio = row.audio;
     if (row.audioVolume !== "" && row.audioVolume !== null && row.audioVolume !== undefined) {
@@ -61,7 +61,8 @@ export function stepFromRow(row) {
     }
     if (row.loop) step.loop = true;
   }
-  if (row.icon) step.icon = row.icon;
+  if (row.iconNone) step.iconVisible = false; // explicitly hidden, not "untouched" -- same pattern as textNone
+  else if (row.icon) step.icon = row.icon;
   if (row.iconSpin) step.iconSpin = true;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
@@ -87,13 +88,13 @@ export function rowFromStep(step) {
     textPulse: !!step.textPulse,
     closeVideo: !!step.closeVideo,
     stopAudio: !!step.stopAudio,
-    hideIcon: step.iconVisible === false,
     stopTextPulse: !!step.stopTextPulse,
     stopIconSpin: !!step.stopIconSpin,
     stopBorderPulse: !!step.stopBorderPulse,
     unpause: !!step.unpause,
     waitForVideoEnd: !!step.waitForVideoEnd,
     waitForAudioEnd: !!step.waitForAudioEnd,
+    waitForImageEnd: !!step.waitForImageEnd,
     audio: step.audio ?? "",
     audioVolume: step.audioVolume ?? "",
     audioLoop: !!step.audioLoop,
@@ -103,6 +104,7 @@ export function rowFromStep(step) {
     imagePulses: step.imagePulses ?? "",
     loop: !!step.loop,
     icon: step.icon ?? "",
+    iconNone: step.iconVisible === false,
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
     iconGlow: step.iconGlow ?? "#ff0000",
@@ -114,9 +116,9 @@ export function rowFromStep(step) {
 
 const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses"]);
 const BOOL_FIELDS = new Set([
-  "textNone", "textPulse", "closeVideo", "stopAudio", "hideIcon", "stopTextPulse",
+  "textNone", "textPulse", "closeVideo", "stopAudio", "stopTextPulse",
   "stopIconSpin", "stopBorderPulse", "unpause", "waitForVideoEnd", "waitForAudioEnd",
-  "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
+  "waitForImageEnd", "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -148,6 +150,7 @@ export function stepBadges(step, pulseLengthS) {
   }
   if (step.waitForVideoEnd) badges.push({ type: "waitForVideoEnd" });
   if (step.waitForAudioEnd) badges.push({ type: "waitForAudioEnd" });
+  if (step.waitForImageEnd) badges.push({ type: "waitForImageEnd" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
   if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible !== undefined) {
     badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });

@@ -319,7 +319,7 @@ export class PauseFX {
    *     `waitForVideoEnd`
    *   - `image` (a file, or a folder browsed as a slideshow), `imagePulses` (pulses to show
    *     each image before advancing -- 0 waits for the GM's manual-advance keybind instead;
-   *     omitted, the old single-image behaviour: shown, no wait of its own)
+   *     omitted, the old single-image behaviour: shown, no wait of its own), `waitForImageEnd`
    *   - `audio` (+ `audioVolume`, `audioLoop`), `stopAudio`, `waitForAudioEnd`
    *   - `unpause`
    *
@@ -329,9 +329,12 @@ export class PauseFX {
    *   down whatever `video`/`image`/`audio` an earlier step started -- symmetric pair, same
    *   idea, different media. `unpause` ends the sequence early (`game.togglePause(false)`) --
    *   steps after it still run, but there's no pause screen left for most of them to usefully
-   *   affect. `waitForVideoEnd`/`waitForAudioEnd` gate the step's OWN `wait` from starting
-   *   until the video/audio currently playing (started by an earlier step) fires its
-   *   `ended`/`end` event -- they don't replace `wait`, they delay when it starts counting.
+   *   affect. `waitForVideoEnd`/`waitForAudioEnd`/`waitForImageEnd` gate the step's OWN `wait`
+   *   from starting until the video/audio/slideshow currently playing (started by an earlier
+   *   step) finishes -- they don't replace `wait`, they delay when it starts counting. A
+   *   slideshow never blocks the step that starts it (same fire-and-forget shape as video/
+   *   audio); `waitForImageEnd` fires once its first full pass completes, whether or not
+   *   `loop` keeps it cycling in the background afterward.
    *   `endCombat`/`closeAllWindows` are `config`-level only -- there's no per-step equivalent.
    */
   static async run(config) {
@@ -436,6 +439,8 @@ export class PauseFX {
 
     let overlay = null; // the current video/image element, if any
     let activeAudio = null; // the current standalone Sound, if any (see step.audio)
+    let activeImageSlideshowDone = null; // resolves once the current slideshow completes one
+    // full pass (looping or not) -- see step.waitForImageEnd below
 
     for (const step of steps) {
       // Gates, not replacements -- a step's own `wait` still runs afterward, it just doesn't
@@ -446,6 +451,7 @@ export class PauseFX {
       if (step.waitForAudioEnd && activeAudio) {
         await new Promise((resolve) => activeAudio.addEventListener("end", resolve, { once: true }));
       }
+      if (step.waitForImageEnd && activeImageSlideshowDone) await activeImageSlideshowDone;
       if (step.wait) {
         await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }));
       }
@@ -502,8 +508,13 @@ export class PauseFX {
         // A slideshow (imagePulses set): advances through imageFiles on the pulse clock, 0
         // units meaning wait for a manual advance instead. Closes over `el` directly, not the
         // shared `overlay` var -- a later closeVideo removing/replacing overlay must not make
-        // this write into the wrong element (or crash writing into null).
+        // this write into the wrong element (or crash writing into null). Never blocks the step
+        // that starts it -- same fire-and-forget shape as video/audio; a later step opts in to
+        // actually waiting for it via `waitForImageEnd`, same two-step idiom as
+        // `waitForVideoEnd`/`waitForAudioEnd`.
         if (!isVideo && step.imagePulses !== undefined) {
+          let resolveSlideshowDone;
+          activeImageSlideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
           const showSlideshow = async () => {
             let i = 0;
             while (true) {
@@ -511,11 +522,13 @@ export class PauseFX {
               if (step.imagePulses === 0) await waitForManualAdvance();
               else await wait(clockMsFor({ units: step.imagePulses }, { borderCycleMs, textCycleMs: resolvedTextCycle }));
               i++;
-              if (!step.loop && i >= imageFiles.length) break;
+              if (i >= imageFiles.length) {
+                resolveSlideshowDone(); // one full pass done, looping or not -- fires exactly once
+                if (!step.loop) break;
+              }
             }
           };
-          if (step.loop) void showSlideshow(); // runs forever in the background, doesn't block the sequence
-          else await showSlideshow(); // finite -- blocks until every image's had its turn
+          void showSlideshow();
         }
       }
       if (step.closeVideo) {

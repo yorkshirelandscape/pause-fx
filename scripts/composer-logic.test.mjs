@@ -10,12 +10,12 @@ import {
 
 const BLANK_ROW = {
   waitUnits: "", text: "", textNone: false, textPulse: false,
-  closeVideo: false, stopAudio: false, hideIcon: false, stopTextPulse: false,
+  closeVideo: false, stopAudio: false, stopTextPulse: false,
   stopIconSpin: false, stopBorderPulse: false, unpause: false, waitForVideoEnd: false,
-  waitForAudioEnd: false, audio: "", audioVolume: "", audioLoop: false, mediaType: "none",
-  mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "", iconSpin: false,
-  iconGlowEnabled: false, iconGlow: "#ff0000", borderColorEnabled: false,
-  borderColor: "#ff0000", borderWidthPct: "",
+  waitForAudioEnd: false, waitForImageEnd: false, audio: "", audioVolume: "", audioLoop: false,
+  mediaType: "none", mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "",
+  iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
+  borderColorEnabled: false, borderColor: "#ff0000", borderWidthPct: "",
 };
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
@@ -40,9 +40,14 @@ test("stepFromRow: textPulse starts the label's pulse independently of border ac
   assert.deepEqual(stepFromRow({ ...BLANK_ROW, textPulse: true }), { textPulse: true });
 });
 
-test("stepFromRow: hideIcon (Stop block) maps to iconVisible: false -- there's no 'show' in the UI anymore", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, hideIcon: true }), { iconVisible: false });
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, hideIcon: false }), {});
+test("stepFromRow: iconNone (Icon field's own None, not Stop -- hiding isn't time-sensitive) maps to iconVisible: false, same pattern as textNone", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: true }), { iconVisible: false });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: false }), {});
+});
+
+test("stepFromRow: iconNone forces an explicit hide even if icon also has a value", () => {
+  const row = { ...BLANK_ROW, iconNone: true, icon: "ignored.gif" };
+  assert.deepEqual(stepFromRow(row), { iconVisible: false });
 });
 
 test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIconSpin/stopBorderPulse, not a shared freeze", () => {
@@ -52,9 +57,13 @@ test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIcon
   );
 });
 
-test("stepFromRow: waitForVideoEnd/waitForAudioEnd are gates, independent of wait itself", () => {
-  const row = { ...BLANK_ROW, waitUnits: "1", waitForVideoEnd: true, waitForAudioEnd: true };
-  assert.deepEqual(stepFromRow(row), { wait: { units: 1 }, waitForVideoEnd: true, waitForAudioEnd: true });
+test("stepFromRow: waitForVideoEnd/waitForAudioEnd/waitForImageEnd are gates, independent of wait itself", () => {
+  const row = {
+    ...BLANK_ROW, waitUnits: "1", waitForVideoEnd: true, waitForAudioEnd: true, waitForImageEnd: true,
+  };
+  assert.deepEqual(stepFromRow(row), {
+    wait: { units: 1 }, waitForVideoEnd: true, waitForAudioEnd: true, waitForImageEnd: true,
+  });
 });
 
 test("stepFromRow: mediaType picks video vs. image -- video carries volume/loop, image carries imagePulses/loop", () => {
@@ -105,7 +114,7 @@ test("rowFromStep: fills every field with a defined default, never undefined", (
   const row = rowFromStep({});
   for (const value of Object.values(row)) assert.notEqual(value, undefined);
   assert.equal(row.mediaType, "none");
-  assert.equal(row.hideIcon, false);
+  assert.equal(row.iconNone, false);
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
@@ -114,6 +123,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     { video: "father-skinsaw.webm", videoVolume: 0.5, loop: true, iconVisible: false },
     { image: "spooky/", imagePulses: 0, loop: true },
     { image: "spooky.webp" },
+    { waitForImageEnd: true },
     { audio: "sting.ogg", audioVolume: 0.8, audioLoop: true, waitForAudioEnd: true },
     {
       closeVideo: true, stopAudio: true, unpause: true, stopTextPulse: true,
@@ -130,7 +140,8 @@ test("coerceStepField: bool fields always become real booleans", () => {
   assert.equal(coerceStepField("textPulse", true), true);
   assert.equal(coerceStepField("textPulse", ""), false); // an unchecked box's raw value
   assert.equal(coerceStepField("iconGlowEnabled", true), true);
-  assert.equal(coerceStepField("hideIcon", true), true);
+  assert.equal(coerceStepField("iconNone", true), true);
+  assert.equal(coerceStepField("waitForImageEnd", true), true);
   assert.equal(coerceStepField("loop", true), true);
 });
 
@@ -165,13 +176,15 @@ test("stepBadges: wait renders in real seconds when pulseLengthS is given, else 
 
 test("stepBadges: one badge per active field, in a stable order", () => {
   const step = {
-    waitForVideoEnd: true, waitForAudioEnd: true, borderColor: "#FF0000", icon: "eye.gif",
-    video: "a.webm", audio: "sting.ogg", loop: true, textPulse: true, stopTextPulse: true,
-    stopIconSpin: true, stopBorderPulse: true, closeVideo: true, stopAudio: true, unpause: true,
+    waitForVideoEnd: true, waitForAudioEnd: true, waitForImageEnd: true, borderColor: "#FF0000",
+    icon: "eye.gif", video: "a.webm", audio: "sting.ogg", loop: true, textPulse: true,
+    stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true, closeVideo: true,
+    stopAudio: true, unpause: true,
   };
   assert.deepEqual(stepBadges(step), [
     { type: "waitForVideoEnd" },
     { type: "waitForAudioEnd" },
+    { type: "waitForImageEnd" },
     { type: "border", colour: "#FF0000" },
     { type: "icon", icon: "eye.gif", glow: undefined, spin: false, visible: undefined },
     { type: "video" },
