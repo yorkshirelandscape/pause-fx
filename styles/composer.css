@@ -491,6 +491,18 @@
   width: 5.25rem;
   font-size: 1.1rem;
 }
+/* Muted, not the accent-colored .pfx-badge-wait pill -- this is metadata about the field,
+   not a value in its own right. Only ever shown for a hand-written macro's clock:"text"
+   step; the Composer's own fields never produce one. */
+#pause-fx-step-editor .pfx-tag {
+  font-size: var(--font-size-11, 0.6875rem);
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--pfx-surface-border);
+  border-radius: 999px;
+  color: var(--pfx-text-body);
+  align-self: flex-end;
+  margin-bottom: 0.35rem;
+}
 
 /* Stop's 6 checkboxes as a real 2x3 grid instead of two flex rows -- a clean fill, no empty
    cell to route around now that Icon (hideIcon) moved out to the Icon field's own None
