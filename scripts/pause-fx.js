@@ -1,4 +1,4 @@
-// pause-fx -- declarative Foundry pause-screen effects engine.
+// pause-fx -- declarative Foundry pause-screen effects engine. [CC+: whole-file preamble]
 //
 // Two named clocks (`border`, `text`, independently timeable) drive a declarative `steps`
 // array instead of a hand-written imperative sequence. See PauseFX.run's own JSDoc below
@@ -163,10 +163,8 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       body.${BORDER_CLASS}:before {
         animation: pause-fx-border-pulse ${borderCycleMs / 1000}s ease-in-out infinite;
       }
-      /* animation-play-state freezes in place without resetting -- toggled via a class
-         (step.stopBorderPulse) since a pseudo-element has no DOM node for inline style,
-         unlike the icon/label below. Specificity alone beats the base rule; !important
-         here would cancel the animation outright instead of just pausing it. */
+      /* Toggled via a class, not inline style like the icon/label below -- a pseudo-element
+         has no DOM node for that. */
       body.${BORDER_FROZEN_CLASS}.${BORDER_CLASS}:before {
         animation-play-state: paused;
       }
@@ -264,10 +262,7 @@ async function resolveImageFiles(path) {
  */
 function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
   if (!iconEl) return;
-  // Foundry's own pause icon spins by default (GamePause's own `spin: true` option adds
-  // FontAwesome's fa-spin class directly to the <img>) -- once pause-fx starts managing this
-  // icon at all, that native spin needs to actually stop, not just get ignored by our own
-  // separate iconSpin toggle, which only ever touches pause-fx-icon-spin.
+  // Foundry's own icon spins by default -- stop once we're managing it at all.
   iconEl.classList.remove("fa-spin");
   if (icon !== undefined) iconEl.src = icon;
   if (iconSpin !== undefined) {
@@ -325,9 +320,7 @@ export class PauseFX {
       return;
     }
 
-    // This run's own cancellation token -- any unpause (the pause button, another run, this
-    // run's own step.unpause) fires it, and every wait/gate/loop below listens for it, so
-    // nothing keeps applying later steps' effects after the game is no longer paused.
+    // This run's own cancellation token -- any unpause fires it; every wait/gate below listens.
     const runController = new AbortController();
     const { signal } = runController;
 
@@ -401,13 +394,10 @@ export class PauseFX {
         });
         root.appendChild(label);
       }
-      // Foundry forces text-transform:uppercase on #pause's caption; a custom message should
-      // render as typed. An inline style beats that regardless of specificity, and stays put
-      // through every later label.textContent rewrite.
+      //+pause-text-transform-override Foundry forces text-transform:uppercase on #pause's
+      // caption; a custom message should render as typed.
       label.style.textTransform = "none";
-      // Fixed, not content-based -- a length change mid-pulse would otherwise move the
-      // box's own center, which scale() pulses around. Set unconditionally: `label` is
-      // usually Foundry's own reused figcaption, not the div created above.
+      // Fixed, not content-based -- avoids moving scale()'s own anchor point mid-pulse.
       label.style.width = "min(90vw, 32rem)";
       label.style.textAlign = "center";
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
@@ -418,9 +408,7 @@ export class PauseFX {
       Hooks.off("renderPause", skin);
       Hooks.off("renderGamePause", skin);
     };
-    // Both a hook listener and a synchronous capture are needed -- togglePause(true) can
-    // replace the pause screen's content even on an already-paused game. Whichever applySkin
-    // call lands last wins, since iconEl/label are shared closure variables.
+    // Both a hook listener and a synchronous capture are needed -- either can land last.
     Hooks.once("renderPause", skin); // pre-V13 class name
     Hooks.once("renderGamePause", skin); // V13+ (GamePause)
     if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element);
@@ -447,10 +435,7 @@ export class PauseFX {
       // An unpause (this run's own step.unpause included) cuts the sequence off here.
       if (signal.aborted) break;
 
-      // Apply this step's own effects first -- what changes right now, at the start of this
-      // beat -- then hold for this step's own duration (below) before the next one's effects
-      // apply in turn. A step's `wait` describes how long ITS OWN state persists, not a delay
-      // before it appears.
+      // Apply this step's own effects first, then hold for its own duration (below).
       if (step.text !== undefined) label.textContent = step.text;
       if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
       if (step.stopTextPulse) label.style.animationPlayState = "paused";
@@ -500,10 +485,7 @@ export class PauseFX {
         document.body.appendChild(el);
         overlay = el;
 
-        // A slideshow (imagePulses set): advances through imageFiles on the pulse clock, 0
-        // units meaning wait for a manual advance. Closes over `el` directly, not `overlay`
-        // -- a later closeVideo swapping overlay mustn't redirect this write. Fire-and-forget
-        // by default; this step or a later one opts in via waitForImageEnd, below.
+        // A slideshow (imagePulses set): 0 units means wait for a manual advance instead.
         if (!isVideo && step.imagePulses !== undefined) {
           let resolveSlideshowDone;
           activeImageSlideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
@@ -539,11 +521,7 @@ export class PauseFX {
       }
       if (signal.aborted) break;
 
-      // Hold this step's own state: gates first (whichever media is CURRENTLY playing --
-      // this step's own, or an earlier step's left running -- `overlay`/`activeAudio` don't
-      // distinguish), then this step's own explicit `wait` on top, same as before. Races the
-      // abort signal too, so an unpause that stops the thing being waited on doesn't hang on
-      // an event that'll now never fire.
+      // Hold this step's own state: media gates first, then its own explicit `wait`.
       if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
         await new Promise((resolve) => {
           overlay.addEventListener("ended", resolve, { once: true });
@@ -575,3 +553,10 @@ Hooks.once("ready", () => {
   const mod = game.modules.get(MODULE_ID);
   if (mod) mod.api = { run: PauseFX.run.bind(PauseFX) };
 });
+
+
+
+
+
+
+
