@@ -290,63 +290,22 @@ export class PauseFX {
    * @param {object} config
    * @param {string} [config.icon] - image/GIF path for the pause icon. Omitted, Foundry's own
    *   default icon stays untouched.
-   * @param {string} [config.iconGlow] - CSS colour for the icon's drop-shadow. Omitted, no glow.
-   * @param {string} [config.borderColor] - any real CSS colour for pause-fx's own border-glow
-   *   overlay. Omitted, no border overlay (and the label's pulsing text-colour rides on this
-   *   too -- one themed effect, not two independent knobs).
-   * @param {number} [config.borderWidth] - a percentage DIFFERENCE from the border glow's
-   *   default size: 0 or omitted is that default, -100 shrinks it to nothing, +100 doubles
-   *   it. Works independently of borderColor (a later step can resize a glow an earlier step
-   *   already activated).
-   * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock (not
-   *   whatever fixed duration Foundry's own native icon spin used). Freezable mid-rotation via
-   *   a step's `stopIconSpin`.
-   * @param {string} [config.text] - initial label text. Omitted, Foundry's own "Game Paused"
-   *   stays untouched.
-   * @param {number} [config.borderCycleMs] - border/eye pulse period, in ms. Defaults to
-   *   3640ms if not given -- pass this explicitly to sync against a specific icon's own
-   *   real loop length instead (e.g. a GIF's actual per-frame timing).
+   * @param {string} [config.iconGlow] - CSS colour for the icon's drop-shadow.
+   * @param {string} [config.borderColor] - CSS colour for pause-fx's border-glow overlay.
+   *   Omitted, no overlay (the label's pulsing text-colour rides on this too).
+   * @param {number} [config.borderWidth] - % difference from the border glow's default size.
+   * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
+   * @param {string} [config.text] - initial label text. Omitted, Foundry's "Game Paused" stays.
+   * @param {number} [config.borderCycleMs=3640] - border/eye pulse period, in ms.
    * @param {number} [config.textCycleMs] - text pulse period. Defaults to
    *   borderCycleMs * textCycleMultiplier.
    * @param {number} [config.textCycleMultiplier=2] - only used if textCycleMs is omitted.
-   * @param {object} [config.closeAllWindows] - broadcast closeAllWindows (via socketlib)
-   *   before the sequence starts. Omit entirely to skip it; otherwise each connected client
-   *   decides for itself whether to act, based on its own role.
-   * @param {boolean} [config.closeAllWindows.players=true] - act on non-GM clients.
-   * @param {boolean} [config.closeAllWindows.gm=true] - act on GM clients.
-   * @param {boolean} [config.endCombat=false] - end the active encounter, if any, before
-   *   the sequence starts.
-   * @param {Array<object>} config.steps - see README.md for the full shape. Each step may
-   *   have `wait: {units, clock: "border"|"text"}`, plus any of:
-   *   - `text`, `textPulse`/`stopTextPulse` (start/freeze the label's own pulse, independent
-   *     of borderColor activating it)
-   *   - `icon`, `iconSpin`, `stopIconSpin`, `iconGlow`, `iconVisible`
-   *   - `borderColor`, `borderWidth` (a percentage difference from the glow's default size --
-   *     0 or omitted is that default), `stopBorderPulse` (freezes it in place; a later step
-   *     setting borderColor again clears this automatically)
-   *   - `video`, `loop` (video or image slideshow), `videoVolume`, `closeVideo`,
-   *     `waitForVideoEnd`
-   *   - `image` (a file, or a folder browsed as a slideshow), `imagePulses` (pulses to show
-   *     each image before advancing -- 0 waits for the GM's manual-advance keybind instead;
-   *     omitted, the old single-image behaviour: shown, no wait of its own), `waitForImageEnd`
-   *   - `audio` (+ `audioVolume`, `audioLoop`), `stopAudio`, `waitForAudioEnd`
-   *   - `unpause`
-   *
-   *   The non-`wait`/`text` fields above (other than the per-media ones) are the same fields
-   *   `config` itself takes, just applicable at any point in the sequence, not only at the
-   *   start (sparse: a step touches only the fields it sets). `closeVideo`/`stopAudio` tear
-   *   down whatever `video`/`image`/`audio` an earlier step started -- symmetric pair, same
-   *   idea, different media. `unpause` ends the sequence: `game.togglePause(false)` cuts the
-   *   WHOLE run off right there (border/style state cleared, any overlay removed, any audio
-   *   stopped) -- steps after it never run, the same as if the GM had pressed the pause
-   *   button mid-sequence, which does the identical cleanup.
-   *   `waitForVideoEnd`/`waitForAudioEnd`/`waitForImageEnd` gate the step's OWN `wait`
-   *   from starting until the video/audio/slideshow currently playing (started by an earlier
-   *   step) finishes -- they don't replace `wait`, they delay when it starts counting. A
-   *   slideshow never blocks the step that starts it (same fire-and-forget shape as video/
-   *   audio); `waitForImageEnd` fires once its first full pass completes, whether or not
-   *   `loop` keeps it cycling in the background afterward.
-   *   `endCombat`/`closeAllWindows` are `config`-level only -- there's no per-step equivalent.
+   * @param {object} [config.closeAllWindows] - broadcast closeAllWindows before the sequence
+   *   starts. Omitted, skipped entirely.
+   * @param {boolean} [config.closeAllWindows.players=true]
+   * @param {boolean} [config.closeAllWindows.gm=true]
+   * @param {boolean} [config.endCombat=false] - end the active encounter before the sequence starts.
+   * @param {Array<object>} config.steps - see README.md's "Step vocabulary" for the full shape.
    */
   static async run(config) {
     if (!game.user.isGM) {

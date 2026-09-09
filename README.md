@@ -50,7 +50,34 @@ out of the box). A step's `wait` is always expressed as a number of units on one
 never a raw millisecond count -- keeps a sequence's timing readable against whatever
 rhythm the reveal is actually built on.
 
-See `scripts/pause-fx.js`'s own JSDoc on `PauseFX.run` for the full step vocabulary.
+### Step vocabulary
+
+Each step may have `wait: {units, clock: "border"|"text"}`, plus any of:
+
+- `text`, `textPulse`/`stopTextPulse` -- start/freeze the label's own pulse, independent of
+  `borderColor` activating it.
+- `icon`, `iconSpin`, `stopIconSpin`, `iconGlow`, `iconVisible`.
+- `borderColor`, `borderWidth`, `stopBorderPulse` -- freezes the glow in place; a later step
+  setting `borderColor` again clears this automatically.
+- `video`, `loop`, `videoVolume`, `closeVideo`, `waitForVideoEnd`.
+- `image` (a file, or a folder browsed as a slideshow), `imagePulses` (pulses to show each
+  image before advancing -- 0 waits for the GM's manual-advance keybind instead; omitted, a
+  single image with no wait of its own), `waitForImageEnd`.
+- `audio` (+ `audioVolume`, `audioLoop`), `stopAudio`, `waitForAudioEnd`.
+- `unpause` -- ends the sequence: `game.togglePause(false)` cuts the whole run off right
+  there (border/style state cleared, any overlay removed, any audio stopped), the same as if
+  the GM had pressed the pause button mid-sequence.
+
+The non-`wait`/`text` fields above (other than the per-media ones) are the same fields
+`run()`'s own `config` takes, just applicable at any point in the sequence rather than only
+at the start -- a step touches only the fields it sets. `closeVideo`/`stopAudio` tear down
+whatever `video`/`image`/`audio` an earlier step started. `waitForVideoEnd`/
+`waitForAudioEnd`/`waitForImageEnd` gate the step's own `wait` from starting until the
+media currently playing finishes -- they delay when `wait` starts counting, not replace it.
+A slideshow never blocks the step that starts it (same fire-and-forget shape as video/
+audio); `waitForImageEnd` fires once its first full pass completes, whether or not `loop`
+keeps it cycling afterward. `endCombat`/`closeAllWindows` are config-level only -- there's
+no per-step equivalent.
 
 ## Testing
 
