@@ -6,6 +6,7 @@ import { PauseFX } from "./pause-fx.js";
 import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
+  stepsFromConfig,
 } from "./composer-logic.js";
 import { PauseFXStepEditor } from "./step-editor.js";
 
@@ -193,7 +194,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       ui.notifications.warn(`pause-fx: recognized "${macro.name}" as a sequence but couldn't read its config back out -- open it in a text editor instead.`);
       return;
     }
-    this.rows = (config.steps?.length ? config.steps : [defaultStep()]).map(rowFromStep);
+    this.rows = stepsFromConfig(config).map(rowFromStep);
     this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
     this.globals.endCombat = !!config.endCombat;
     this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;

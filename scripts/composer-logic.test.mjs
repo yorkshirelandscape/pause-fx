@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig,
-  hasMacroMarker, configFromCommand,
+  hasMacroMarker, configFromCommand, stepsFromConfig,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
@@ -21,6 +21,30 @@ const BLANK_ROW = {
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
   assert.deepEqual(defaultStep(), { wait: { units: 1 } });
+});
+
+test("stepsFromConfig: a Composer-native config (no top-level startup fields) passes steps through", () => {
+  const steps = [{ text: "hi" }, { unpause: true }];
+  assert.deepEqual(stepsFromConfig({ steps }), steps);
+});
+
+test("stepsFromConfig: an empty Composer-native config seeds a single default step", () => {
+  assert.deepEqual(stepsFromConfig({}), [defaultStep()]);
+});
+
+test("stepsFromConfig: top-level icon/border/text get synthesized into a prepended row 0", () => {
+  const config = {
+    icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", text: "EVERYTHING PAUSES",
+    steps: [{ wait: { units: 2 }, text: "...AND SUDDENLY..." }],
+  };
+  assert.deepEqual(stepsFromConfig(config), [
+    { icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", text: "EVERYTHING PAUSES" },
+    { wait: { units: 2 }, text: "...AND SUDDENLY..." },
+  ]);
+});
+
+test("stepsFromConfig: only the startup fields actually set are pulled into row 0", () => {
+  assert.deepEqual(stepsFromConfig({ borderColor: "#FF0000", steps: [] }), [{ borderColor: "#FF0000" }]);
 });
 
 test("stepFromRow: blank optional fields are omitted, not set to '' / false", () => {

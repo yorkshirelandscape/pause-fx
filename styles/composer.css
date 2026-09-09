@@ -268,6 +268,14 @@
 
 /* ---- Startup ---- */
 #pause-fx-composer .pfx-startup { padding: 0.5rem 0.7rem 0.65rem; }
+/* Close Windows' label + two checkboxes wrap as one flex item (.pfx-close-windows), so
+   space-between treats them as a unit instead of spacing each individually. */
+#pause-fx-composer .pfx-startup .pfx-row { justify-content: space-between; }
+#pause-fx-composer .pfx-close-windows {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem 0.75rem;
+}
 #pause-fx-composer .pfx-inline-label {
   font-size: var(--font-size-12, 0.75rem);
   color: var(--pfx-text-body);
