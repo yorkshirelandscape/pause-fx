@@ -205,15 +205,47 @@ export function configFromGlobals(globals, steps) {
   return config;
 }
 
+/** Marks a macro's `command` as a pause-fx sequence, so a hand-written macro (not built via
+ * the Composer, and so missing the pause-fx flag) is still recognized by isPauseFxMacro --
+ * see composer.js. Composer-saved macros carry it too, for the same uniform recognition. */
+export const MACRO_MARKER = "/** @pause-fx-sequence */";
+
+/** Whether `command` opens with MACRO_MARKER -- the cheap check used to list a macro in the
+ * Load/Run pickers, independent of whether its config can actually be parsed back out. */
+export function hasMacroMarker(command) {
+  return typeof command === "string" && command.trimStart().startsWith(MACRO_MARKER);
+}
+
+/**
+ * The inverse of commandForConfig -- pulls the config back out of a marked macro's own
+ * command text, for a hand-written macro that has the marker but no pause-fx flag (one built
+ * via the Composer has both; its flag is read directly instead, this is the fallback).
+ * @param {string} command
+ * @returns {object|null} the parsed config, or null if unmarked or unparseable (e.g. the
+ *   author added their own code after the run() call, breaking the boundary this looks for).
+ */
+export function configFromCommand(command) {
+  if (!hasMacroMarker(command)) return null;
+  const match = command.match(/api\.run\((\{[\s\S]*\})\);/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * A saved sequence is a real Foundry macro. `command` is independently readable/runnable JS;
- * the Composer reads the config back from a flag instead, not by re-parsing this text.
+ * the Composer reads the config back from a flag instead, not by re-parsing this text (see
+ * configFromCommand for the fallback used when there's no flag to read).
  * @param {object} config - see configFromGlobals.
  * @returns {string} the macro's `command` body.
  */
 export function commandForConfig(config) {
   const json = JSON.stringify(config, null, 2);
   return [
+    MACRO_MARKER,
     'if (!game.modules.get("pause-fx")?.active) {',
     '  ui.notifications.error("This macro needs the Pause FX module active.");',
     "  return;",

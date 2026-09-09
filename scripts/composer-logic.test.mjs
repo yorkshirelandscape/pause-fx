@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig,
+  hasMacroMarker, configFromCommand,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
@@ -261,4 +262,27 @@ test("commandForConfig: guards on the module being active, then calls the real A
   // string-matched fragments, in case key order or formatting ever drifts.
   const jsonMatch = command.match(/api\.run\((\{[\s\S]*\})\);$/);
   assert.deepEqual(JSON.parse(jsonMatch[1]), config);
+});
+
+test("hasMacroMarker: true only for a command that opens with the marker", () => {
+  const config = { steps: [{ text: "hi" }] };
+  assert.equal(hasMacroMarker(commandForConfig(config)), true);
+  assert.equal(hasMacroMarker("await game.modules.get(\"pause-fx\").api.run({});"), false);
+  assert.equal(hasMacroMarker(undefined), false);
+});
+
+test("configFromCommand: round-trips commandForConfig's own output", () => {
+  const config = { borderCycleMs: 3640, endCombat: true, steps: [{ text: "hi", wait: { units: 2 } }] };
+  assert.deepEqual(configFromCommand(commandForConfig(config)), config);
+});
+
+test("configFromCommand: null for a command with no marker, even if it calls run() the same way", () => {
+  const config = { steps: [] };
+  const unmarked = commandForConfig(config).replace(/^.*\n/, ""); // drop just the marker line
+  assert.equal(configFromCommand(unmarked), null);
+});
+
+test("configFromCommand: null (not a throw) for a marked command whose JSON is broken", () => {
+  const broken = ['/** @pause-fx-sequence */', "await game.modules.get(\"pause-fx\").api.run({not: valid json});"].join("\n");
+  assert.equal(configFromCommand(broken), null);
 });

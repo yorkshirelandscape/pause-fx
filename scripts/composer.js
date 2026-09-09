@@ -5,16 +5,18 @@
 import { PauseFX } from "./pause-fx.js";
 import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
-  msToSeconds, configFromGlobals, commandForConfig,
+  msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
 } from "./composer-logic.js";
 import { PauseFXStepEditor } from "./step-editor.js";
 
 const MODULE_ID = "pause-fx";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/** A macro this class saved -- one it can load/overwrite -- vs. any other macro in the world. */
+/** A macro this class recognizes -- one it can load/overwrite -- vs. any other macro in the
+ * world: either saved via this Composer (carries the flag) or a hand-written macro that
+ * opens with the @pause-fx-sequence marker (see composer-logic.js's hasMacroMarker). */
 function isPauseFxMacro(macro) {
-  return !!macro.getFlag(MODULE_ID, "config");
+  return !!macro.getFlag(MODULE_ID, "config") || hasMacroMarker(macro.command);
 }
 
 export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -183,8 +185,14 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   loadMacro(macroId) {
     if (!macroId) return;
     const macro = game.macros.get(macroId);
-    const config = macro && isPauseFxMacro(macro) ? macro.getFlag(MODULE_ID, "config") : null;
-    if (!config) return;
+    if (!macro || !isPauseFxMacro(macro)) return;
+    // The flag is authoritative when present (a Composer-saved macro always has one); a
+    // hand-written macro recognized only via the marker falls back to parsing its own command.
+    const config = macro.getFlag(MODULE_ID, "config") ?? configFromCommand(macro.command);
+    if (!config) {
+      ui.notifications.warn(`pause-fx: recognized "${macro.name}" as a sequence but couldn't read its config back out -- open it in a text editor instead.`);
+      return;
+    }
     this.rows = (config.steps?.length ? config.steps : [defaultStep()]).map(rowFromStep);
     this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
     this.globals.endCombat = !!config.endCombat;
