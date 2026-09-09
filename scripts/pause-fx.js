@@ -134,11 +134,8 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
   styleEl = document.createElement("style");
   styleEl.id = "pause-fx-styles";
   styleEl.textContent = `
-    /* Foundry's own #pause.paused carries an independent scale pulse (3s, unrelated to any
-       of ours) -- once pause-fx starts managing the pause screen's animations at all, that
-       just compounds against pause-fx's own pulses (they're never in phase) instead of
-       complementing them. Neutralized unconditionally: injectStyles only ever runs once
-       pause-fx is actually theming something. */
+    /* Foundry's own 3s scale pulse on #pause.paused compounds against ours instead of
+       complementing it, since the two are never in phase. */
     #pause.paused {
       animation: none !important;
     }
@@ -408,11 +405,9 @@ export class PauseFX {
       // render as typed. An inline style beats that regardless of specificity, and stays put
       // through every later label.textContent rewrite.
       label.style.textTransform = "none";
-      // A fixed width, not one that shrinks/grows to fit whatever text is currently set --
-      // otherwise a mid-pulse text change (different length) resizes the box, which shifts
-      // the pulse's own scale() transform-origin (the box's own center) out from under it,
-      // showing as a brief wobble riding on top of the pulse. Applied unconditionally since
-      // `label` may be Foundry's own reused caption element, not the freshly-created one above.
+      // Fixed, not content-based -- a length change mid-pulse would otherwise move the
+      // box's own center, which scale() pulses around. Set unconditionally: `label` is
+      // usually Foundry's own reused figcaption, not the div created above.
       label.style.width = "min(90vw, 32rem)";
       label.style.textAlign = "center";
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
