@@ -1,16 +1,16 @@
 // pause-fx -- declarative Foundry pause-screen effects engine.
 //
 // Two named clocks (`border`, `text`, independently timeable) drive a declarative `steps`
-// array instead of a hand-written imperative sequence. See README.md for the config shape
-// and a worked example.
+// array instead of a hand-written imperative sequence. See PauseFX.run's own JSDoc below
+// for the config shape.
 
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered";
 const BORDER_FROZEN_CLASS = "pause-fx-border-frozen";
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const BORDER_SCALE_VAR = "--pause-fx-border-scale";
-// No icon-GIF-timing auto-detection yet -- pass borderCycleMs explicitly to sync against a
-// specific asset's real loop length (see README "Known limitations").
+// No icon-GIF-timing auto-detection -- pass borderCycleMs explicitly to sync against a
+// specific asset's real loop length.
 const DEFAULT_BORDER_CYCLE_MS = 3640;
 
 let socket;
@@ -305,7 +305,8 @@ export class PauseFX {
    * @param {boolean} [config.closeAllWindows.players=true]
    * @param {boolean} [config.closeAllWindows.gm=true]
    * @param {boolean} [config.endCombat=false] - end the active encounter before the sequence starts.
-   * @param {Array<object>} config.steps - see README.md's "Step vocabulary" for the full shape.
+   * @param {Array<object>} config.steps - each step may set `wait` plus any of the fields
+   *   handled in the loop below, applicable at any point in the sequence, not just the start.
    */
   static async run(config) {
     if (!game.user.isGM) {

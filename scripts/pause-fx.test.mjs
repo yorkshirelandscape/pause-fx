@@ -1,6 +1,6 @@
 // Unit tests for pause-fx's pure/isolable logic (node's built-in test runner, no
-// dependencies) -- not the full PauseFX.run() sequence itself; see README.md's Testing
-// section for why.
+// dependencies) -- not the full PauseFX.run() sequence, which needs a real Foundry
+// runtime and is covered by live testing instead.
 //
 // Minimal Foundry globals (`ui`, `foundry`, `Hooks`) are stubbed just enough for
 // closeAllWindowsHandler to run and for the module to import cleanly without socketlib
@@ -91,7 +91,7 @@ test("resolveTextCycleMs: a custom multiplier is honored when textCycleMs is omi
 });
 
 // Table-driven -- one test() per row, not a loop of asserts inside one, so each row still
-// reports individually and `--test-name-pattern` can target just one (see README.md).
+// reports individually and `--test-name-pattern` can target just one.
 const CLOCK_MS_CASES = [
   ["border clock", { units: 1.5, clock: "border" }, 5460],
   ["text clock, not border", { units: 2, clock: "text" }, 14560],
