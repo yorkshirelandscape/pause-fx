@@ -437,30 +437,10 @@ export class PauseFX {
       // An unpause (this run's own step.unpause included) cuts the sequence off here.
       if (signal.aborted) break;
 
-      // Gates, not replacements -- a step's own `wait` still runs after, just doesn't start
-      // counting until the gated event fires. Races the abort signal too, so an unpause that
-      // stops the thing being waited on doesn't hang on an event that'll now never fire. This
-      // is the cross-step case, gating on media an EARLIER step started; a step that starts
-      // its own media and also sets the matching waitForXEnd waits for that instead, right
-      // after creating it further down.
-      if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
-        await new Promise((resolve) => {
-          overlay.addEventListener("ended", resolve, { once: true });
-          signal.addEventListener("abort", resolve, { once: true });
-        });
-      }
-      if (step.waitForAudioEnd && activeAudio) {
-        await new Promise((resolve) => {
-          activeAudio.addEventListener("end", resolve, { once: true });
-          signal.addEventListener("abort", resolve, { once: true });
-        });
-      }
-      if (step.waitForImageEnd && activeImageSlideshowDone) await activeImageSlideshowDone;
-      if (step.wait) {
-        await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }), signal);
-      }
-      if (signal.aborted) break; // the wait/gate above may be what the unpause interrupted
-
+      // Apply this step's own effects first -- what changes right now, at the start of this
+      // beat -- then hold for this step's own duration (below) before the next one's effects
+      // apply in turn. A step's `wait` describes how long ITS OWN state persists, not a delay
+      // before it appears.
       if (step.text !== undefined) label.textContent = step.text;
       if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
       if (step.stopTextPulse) label.style.animationPlayState = "paused";
@@ -487,14 +467,6 @@ export class PauseFX {
           { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: !!step.audioLoop },
           false,
         );
-        // The early gate above only catches waitForAudioEnd on a LATER step, for audio an
-        // earlier one started -- this is the same-step case, waiting for what was just set.
-        if (step.waitForAudioEnd) {
-          await new Promise((resolve) => {
-            activeAudio.addEventListener("end", resolve, { once: true });
-            signal.addEventListener("abort", resolve, { once: true });
-          });
-        }
       }
 
       if (step.video || step.image) {
@@ -518,19 +490,10 @@ export class PauseFX {
         document.body.appendChild(el);
         overlay = el;
 
-        // Same-step case (see the audio one above) -- waitForVideoEnd on the step that
-        // itself started this video, not just a later step gating on an earlier one's.
-        if (isVideo && step.waitForVideoEnd) {
-          await new Promise((resolve) => {
-            el.addEventListener("ended", resolve, { once: true });
-            signal.addEventListener("abort", resolve, { once: true });
-          });
-        }
-
         // A slideshow (imagePulses set): advances through imageFiles on the pulse clock, 0
         // units meaning wait for a manual advance. Closes over `el` directly, not `overlay`
         // -- a later closeVideo swapping overlay mustn't redirect this write. Fire-and-forget
-        // by default; this step or a later one opts in via waitForImageEnd.
+        // by default; this step or a later one opts in via waitForImageEnd, below.
         if (!isVideo && step.imagePulses !== undefined) {
           let resolveSlideshowDone;
           activeImageSlideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
@@ -554,7 +517,6 @@ export class PauseFX {
             }
           };
           void showSlideshow();
-          if (step.waitForImageEnd) await activeImageSlideshowDone; // same-step case, as above
         }
       }
       if (step.closeVideo) {
@@ -565,6 +527,31 @@ export class PauseFX {
         activeAudio?.stop();
         activeAudio = null;
       }
+      if (signal.aborted) break;
+
+      // Hold this step's own state: gates first (whichever media is CURRENTLY playing --
+      // this step's own, or an earlier step's left running -- `overlay`/`activeAudio` don't
+      // distinguish), then this step's own explicit `wait` on top, same as before. Races the
+      // abort signal too, so an unpause that stops the thing being waited on doesn't hang on
+      // an event that'll now never fire.
+      if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
+        await new Promise((resolve) => {
+          overlay.addEventListener("ended", resolve, { once: true });
+          signal.addEventListener("abort", resolve, { once: true });
+        });
+      }
+      if (step.waitForAudioEnd && activeAudio) {
+        await new Promise((resolve) => {
+          activeAudio.addEventListener("end", resolve, { once: true });
+          signal.addEventListener("abort", resolve, { once: true });
+        });
+      }
+      if (step.waitForImageEnd && activeImageSlideshowDone) await activeImageSlideshowDone;
+      if (step.wait) {
+        await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }), signal);
+      }
+      if (signal.aborted) break; // the wait/gate above may be what the unpause interrupted
+
       if (step.unpause) {
         // resetOnUnpause (the pauseGame hook above) does the actual cleanup and aborts this
         // run; the loop's own abort check catches it on the next iteration.
