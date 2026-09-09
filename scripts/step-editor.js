@@ -10,13 +10,8 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "pause-fx-step-editor",
-    // A real <dialog> (not <form>) so showModal() -- a plain browser API, not a Foundry one --
-    // is actually available (see _onFirstRender below); the CONTENT area stays tagged "form"
-    // (Foundry supports that split explicitly, see ApplicationV2's own `form` getter) so
-    // nothing about the change-listener/auto-save logic below has to change at all.
-    tag: "dialog",
-    modal: true, // base ApplicationV2 doesn't read this itself -- _onFirstRender below does, same
-    // convention Foundry's own DialogV2 uses, so this stays self-documenting either way.
+    tag: "dialog", // for real showModal() blocking -- see _onFirstRender. Content area stays "form".
+    modal: true, // read by _onFirstRender below, not the base class itself
     window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: false, contentTag: "form" },
     position: { width: 480, height: "auto" },
     form: { handler: PauseFXStepEditor.#onSubmit, submitOnChange: false, closeOnSubmit: false },
@@ -43,10 +38,8 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     return { row: this.row };
   }
 
-  // The trigger DialogV2 has (this.options.modal ? showModal() : show()) but the base
-  // ApplicationV2 class we actually extend doesn't -- calling super first preserves whatever
-  // normal first-render setup (positioning, etc.) the base class does; showModal() itself is
-  // what actually blocks interaction with the Composer behind this and adds the ::backdrop.
+  // showModal() is what actually blocks interaction with the Composer behind this and adds
+  // the ::backdrop -- the base class doesn't call it itself, so this does, after super().
   async _onFirstRender(context, options) {
     await super._onFirstRender(context, options);
     if (this.options.modal) this.element.showModal();

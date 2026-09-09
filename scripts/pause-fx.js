@@ -94,9 +94,7 @@ export function closeAllWindowsHandler({ players = true, gm = true } = {}) {
   }
 }
 
-// `signal` (a run's own AbortController, see PauseFX.run) resolves this early -- so an
-// unpause mid-sequence stops every pending timer immediately instead of them quietly firing
-// in the background and applying a later step's effects to a game that's no longer paused.
+// `signal` is a run's own AbortController (see PauseFX.run) -- resolves this early on unpause.
 const wait = (ms, signal) => new Promise((resolve) => {
   if (signal?.aborted) return resolve();
   const id = setTimeout(resolve, ms);
@@ -159,13 +157,10 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       body.${BORDER_CLASS}:before {
         animation: pause-fx-border-pulse ${borderCycleMs / 1000}s ease-in-out infinite;
       }
-      /* Higher specificity (extra class) wins without !important -- and needs to: an
-         always-on !important box-shadow would silently cancel the animation above, since
-         !important declarations beat active CSS animations on the same property even from
-         a totally unrelated rule. animation-play-state just freezes it in place, doesn't
-         reset it -- a pseudo-element has no real DOM node to set inline style on directly,
-         which is why this is a class (toggled by step.stopBorderPulse) rather than the
-         direct element.style.animationPlayState used for the icon/label. */
+      /* animation-play-state freezes in place without resetting -- toggled via a class
+         (step.stopBorderPulse) since a pseudo-element has no DOM node for inline style,
+         unlike the icon/label below. Specificity alone beats the base rule; !important
+         here would cancel the animation outright instead of just pausing it. */
       body.${BORDER_FROZEN_CLASS}.${BORDER_CLASS}:before {
         animation-play-state: paused;
       }
@@ -182,10 +177,7 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       .pause-fx-label { animation: pause-fx-text-pulse ${textCycleMs / 1000}s ease-in-out infinite; }
     }
 
-    /* The icon's own spin -- on the border's pulse clock, not whatever fixed duration
-       Foundry's native icon spin used. Only this class ever drives the icon's animation
-       property, so there's no risk of a second animation (e.g. a hypothetical icon-pulse)
-       fighting it for the same property -- spin is the only thing that ever animates the icon. */
+    /* The icon's own spin, on the border's pulse clock rather than Foundry's fixed duration. */
     @keyframes pause-fx-icon-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: no-preference) {
       .pause-fx-icon-spin { animation: pause-fx-icon-spin ${borderCycleMs / 1000}s linear infinite; }
@@ -224,10 +216,8 @@ function clearBorderColour() {
   document.body.style.removeProperty(BORDER_COLOUR_VAR);
 }
 
-// A percentage DIFFERENCE from the border glow's default size -- 0 (or unset) is the size
-// baked into the keyframes below, -100 shrinks it to nothing, +100 doubles it. setBorderWidth
-// just scales that default via a CSS var, no re-injection needed. Clamped to >= 0: a macro
-// hand-authoring JSON directly could pass something below the UI's own -100 floor.
+// deltaPct: 0/unset is the keyframes' baked-in size, -100 shrinks to nothing, +100 doubles it.
+// Clamped to >= 0 -- a hand-authored macro could pass below the UI's own -100 floor.
 function setBorderWidth(deltaPct) {
   const scale = Math.max(0, 1 + deltaPct / 100);
   document.body.style.setProperty(BORDER_SCALE_VAR, String(scale));
@@ -364,12 +354,9 @@ export class PauseFX {
       return;
     }
 
-    // This run's own cancellation token -- any unpause (the pause button, another run,
-    // this run's own `step.unpause`) fires it, and every wait/gate below listens for it.
-    // Without this, unpausing only ever cleared border state; a still-running sequence's
-    // timers, gates, and background slideshow loop kept ticking and applying later steps'
-    // effects (including a lingering video/image overlay) to a game that was no longer
-    // paused -- see resetOnUnpause below for the actual cleanup this triggers.
+    // This run's own cancellation token -- any unpause (the pause button, another run, this
+    // run's own step.unpause) fires it, and every wait/gate/loop below listens for it, so
+    // nothing keeps applying later steps' effects after the game is no longer paused.
     const runController = new AbortController();
     const { signal } = runController;
 
@@ -402,10 +389,8 @@ export class PauseFX {
     }
     if (borderWidth !== undefined) setBorderWidth(borderWidth);
 
-    // `overlay`/`activeAudio` are declared with `let` further down (closer to where they're
-    // actually set) -- referencing them here via closure is safe even though this function is
-    // defined first, because it's never CALLED until the pauseGame hook actually fires, always
-    // well after those declarations have run.
+    // overlay/activeAudio are declared further down -- safe to close over here since this
+    // function isn't called until the pauseGame hook fires, well after those declarations run.
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
       runController.abort(); // stop every pending wait/gate/background loop this run owns
@@ -488,15 +473,12 @@ export class PauseFX {
     // full pass (looping or not) -- see step.waitForImageEnd below
 
     for (const step of steps) {
-      // An unpause (this run's own step.unpause included -- same hook, same cleanup) cuts
-      // the whole sequence off right here; steps after it never run, not even the ones
-      // whose effects wouldn't touch the pause screen at all.
+      // An unpause (this run's own step.unpause included) cuts the sequence off here.
       if (signal.aborted) break;
 
-      // Gates, not replacements -- a step's own `wait` still runs afterward, it just doesn't
-      // START counting until whichever event this step is gated on fires. Each races the
-      // abort signal too -- an unpause that removes/stops the very thing being waited on
-      // must not leave this hanging on an "ended"/"end" event that'll now never fire.
+      // Gates, not replacements -- a step's own `wait` still runs after, just doesn't start
+      // counting until the gated event fires. Races the abort signal too, so an unpause that
+      // stops the thing being waited on doesn't hang on an event that'll now never fire.
       if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
         await new Promise((resolve) => {
           overlay.addEventListener("ended", resolve, { once: true });
@@ -565,22 +547,17 @@ export class PauseFX {
         overlay = el;
 
         // A slideshow (imagePulses set): advances through imageFiles on the pulse clock, 0
-        // units meaning wait for a manual advance instead. Closes over `el` directly, not the
-        // shared `overlay` var -- a later closeVideo removing/replacing overlay must not make
-        // this write into the wrong element (or crash writing into null). Never blocks the step
-        // that starts it -- same fire-and-forget shape as video/audio; a later step opts in to
-        // actually waiting for it via `waitForImageEnd`, same two-step idiom as
-        // `waitForVideoEnd`/`waitForAudioEnd`.
+        // units meaning wait for a manual advance. Closes over `el` directly, not `overlay`
+        // -- a later closeVideo swapping overlay mustn't redirect this write. Fire-and-forget
+        // like video/audio; a later step opts in via waitForImageEnd.
         if (!isVideo && step.imagePulses !== undefined) {
           let resolveSlideshowDone;
           activeImageSlideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
           const showSlideshow = async () => {
             let i = 0;
             while (true) {
-              // Checked BEFORE waiting again, not just relied on to fall out of an
-              // already-resolved wait() -- otherwise an aborted signal (every future wait/
-              // advance resolves instantly) would spin the loop through every remaining
-              // image in one tick instead of actually stopping.
+              // Checked before waiting again -- an aborted signal resolves every future wait
+              // instantly, so this stops the loop instead of spinning through every image.
               if (signal.aborted) {
                 resolveSlideshowDone(); // unblock anything gated on waitForImageEnd, not left hanging
                 return;
@@ -607,10 +584,8 @@ export class PauseFX {
         activeAudio = null;
       }
       if (step.unpause) {
-        // The pauseGame hook registered above (resetOnUnpause) does the actual cleanup
-        // (border/style state, overlay, audio) and aborts this run -- it fires for ANY
-        // unpause, not just one this run triggers itself. Steps after this one -- if any --
-        // never run: the loop's own abort check at the top catches it on the next iteration.
+        // resetOnUnpause (the pauseGame hook above) does the actual cleanup and aborts this
+        // run; the loop's own abort check catches it on the next iteration.
         await game.togglePause(false, { broadcast: true });
       }
     }
