@@ -158,10 +158,57 @@
 #pause-fx-step-editor .pfx-field input[type="search"] { width: 12rem; }
 #pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
 #pause-fx-step-editor .pfx-with-picker input[type="text"] { width: 10rem; } /* leaves room for the browse button */
-/* Foundry's own <range-picker> (slider + linked number readout, the same element its
-   Playlist volume sliders use) needs real width for the slider to be usable -- narrower
-   than a free-text field, but not the 4.5rem a bare number box got away with. */
-#pause-fx-step-editor .pfx-field range-picker { width: 9rem; }
+/* Audio's own column is the grid's narrow side (2 of 5 tracks) -- the 10rem default above
+   overflows it once a browse button sits next to the path field too. */
+#pause-fx-step-editor .pfx-block-audio .pfx-with-picker input[type="text"] { width: 6.5rem; }
+
+/* Media/Audio's Loop + Volume + Timer Waits cluster: a small 3-column grid rather than
+   two of .pfx-row's rows, so the volume slider can stand on its own as a full-height
+   column instead of fighting a checkbox for room on one text line -- the mockup's own
+   layout, and the reason Loop/Volume kept wrapping onto separate lines before this.
+   `display: contents` on the <range-picker> dissolves its own box (a plain flex row
+   internally) without touching its value-sync/change-event behaviour, which lives on the
+   element itself, not its layout -- so its two real children (the slider, the number
+   readout) become direct grid items here and can be placed independently. */
+#pause-fx-step-editor .pfx-media-io {
+  display: grid;
+  grid-template-columns: 3.4rem auto auto;
+  grid-template-rows: 1.6rem 1.6rem; /* fixed, not auto -- a vertical range input's UA default
+    length (~130px) would otherwise set the auto-row size itself, since height:100% can't
+    resolve against an auto-sized track (see io-track below) */
+  grid-template-areas:
+    "io-loop io-vlabel io-track"
+    "io-wait io-vnum   io-track";
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+#pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Timer Waits" wraps in this narrow a column, same as the mockup */
+#pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; }
+#pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; }
+#pause-fx-step-editor .pfx-io-vlabel {
+  grid-area: io-vlabel;
+  font-size: var(--font-size-12, 0.75rem);
+  color: var(--pfx-text-body);
+}
+#pause-fx-step-editor .pfx-io-range { display: contents; }
+#pause-fx-step-editor .pfx-io-range > input[type="number"] {
+  grid-area: io-vnum;
+  width: 2.5rem;
+  height: 1.6rem;
+  min-height: 0; /* the native height (~32px) would otherwise inflate its own row */
+  padding: 0 0.2rem;
+}
+#pause-fx-step-editor .pfx-io-range > input[type="range"] {
+  grid-area: io-track;
+  writing-mode: vertical-lr;
+  direction: rtl; /* min at the bottom, max at the top -- the usual vertical-slider convention */
+  width: 0.9rem;
+  height: 100%; /* now resolvable -- the two rows above it are a fixed, not auto, size */
+  min-height: 0;
+  align-self: stretch;
+}
 
 /* ---- Startup ---- */
 #pause-fx-composer .pfx-startup { padding: 0.5rem 0.7rem 0.65rem; }
