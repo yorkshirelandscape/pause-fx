@@ -11,8 +11,8 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
   static DEFAULT_OPTIONS = {
     id: "pause-fx-step-editor",
     tag: "form",
-    window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: true },
-    position: { width: 480, height: 760 },
+    window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: false },
+    position: { width: 480, height: "auto" },
     form: { handler: PauseFXStepEditor.#onSubmit, submitOnChange: false, closeOnSubmit: false },
     actions: {
       browseFile: PauseFXStepEditor.#onBrowseFile,
