@@ -1,6 +1,6 @@
-// Pure form<->config translation for the Composer UI (scripts/composer.js). Split out from
-// the ApplicationV2 classes themselves so this logic is unit-testable without a DOM/Foundry
-// runtime -- see composer-logic.test.mjs.
+// Pure form<->config translation for the Composer UI (scripts/composer.js). [CC+: whole-file
+// design note, not tied to one line] Split out from the ApplicationV2 classes themselves so
+// this logic is unit-testable without a DOM/Foundry runtime -- see composer-logic.test.mjs.
 //
 // Every row shares ONE schema, whether it's the first (undeletable) row or any other --
 // icon/iconGlow/borderColor/borderWidth are just step fields, usable anywhere in the
@@ -283,3 +283,5 @@ export function commandForConfig(config) {
     `await game.modules.get("pause-fx").api.run(${json});`,
   ].join("\n");
 }
+
+

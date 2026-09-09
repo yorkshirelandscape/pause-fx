@@ -1,17 +1,10 @@
-/* Composer + step-editor UI. Both windows load this one stylesheet (Foundry serves module
-   CSS page-wide, not scoped to one app), so shared rules use a combined selector rather than
-   duplicating them per window. See scripts/composer.js, scripts/step-editor.js, templates/.
+/* [CC+: whole-file design note, not tied to one line] Composer + step-editor UI. Both windows
+   load this one stylesheet (Foundry serves module CSS page-wide, not scoped to one app), so
+   shared rules use a combined selector. See scripts/composer.js, scripts/step-editor.js.
 
-   Design intent: this should read as though it always shipped with Foundry's own dark theme,
-   not as an imported web widget -- so the palette below is Foundry's own tokens (the same
-   --color-data-*, --color-warm-*, --color-cool-* triad its sheet-config dialogs already use),
-   not invented hex values, and native form controls (checkboxes especially -- Foundry themes
-   those itself, ember checkmark included) are left alone rather than re-skinned. What we do
-   own -- fieldsets, the step editor's 2-column grid, the step list, badges -- gets an actual design
-   pass: real elevation instead of a flat outline, one accent spent deliberately (state, not
-   decoration), and structure that means something (the wait badge is a pill because it's a
-   value, not a toggle; every other badge is a square because it represents a fixed region of
-   the pause screen). */
+   Design intent: reads as though it shipped with Foundry's own dark theme -- Foundry's own
+   tokens, not invented hex values; native form controls left alone. Structure means something
+   (the wait badge is a pill because it's a value; every other badge is a square). */
 
 /* ApplicationV2's .window-content is plain overflow:hidden by default -- a resizable dialog
    with variable content silently clips instead of scrolling unless a module opts in itself. */
@@ -20,10 +13,7 @@
   overflow-y: auto;
   overflow-x: hidden;
 }
-/* The step editor's root is a real <dialog> now (see step-editor.js, for showModal()) --
-   the browser's UA stylesheet gives <dialog> a default padding no other Foundry window tag
-   carries. Zero only that; Foundry's own CSS still supplies the real padding/margin
-   everywhere it actually belongs (.window-header, .window-content, etc.). */
+/* <dialog>'s UA stylesheet gives it a default padding no other Foundry window tag carries. */
 #pause-fx-step-editor.application { margin: 0; padding: 0; }
 
 #pause-fx-composer .pfx-composer,
@@ -41,10 +31,8 @@
   gap: 0.75rem;
   padding: 0.5rem;
 }
-/* Deliberate irregular layout -- four unequal columns (2fr/1fr/1fr/2fr), each block sized to
-   its own content's footprint (see the per-block grid-area rules further down). Rows
-   auto-size to content now, not the fixed list still commented out below. align-items:start
-   keeps a shorter block from stretching to match a taller row-mate. */
+/* Deliberate irregular layout, hand-tuned against a mockup -- see the per-block grid-area
+   rules further down. Rows auto-size now, not the fixed list still commented out below. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 2fr;
@@ -115,20 +103,12 @@
   color: var(--pfx-text-body);
   white-space: nowrap;
 }
-/* A checkbox in a tight column (media-io's checkbox column, once its label text wraps to
-   two lines -- "Timer"/"Waits") has no flex-shrink:0 by default, so once the label has
-   already wrapped as far as it can, the checkbox itself is the only thing left to shrink,
-   and it takes the whole deficit -- rendered visibly smaller than a real 16px checkbox.
-   Checkboxes shouldn't distort; pin it to its real size and let the row wrap/grow instead. */
+/* Without this, a tight column's checkbox takes the whole shrink deficit once its label
+   has already wrapped as far as it can -- renders visibly smaller than a real checkbox. */
 #pause-fx-composer .pfx-checkbox input[type="checkbox"],
 #pause-fx-step-editor .pfx-checkbox input[type="checkbox"] { flex-shrink: 0; }
 
-/* A row packs several fields side by side instead of one-per-line; wraps if the dialog is
-   narrow. Each field keeps its own natural width (see .pfx-field below) rather than
-   stretching to fill the row. align-self:stretch is explicit, not left to the parent
-   fieldset's own default align-items -- fieldsets don't reliably stretch their flex
-   children cross-browser, and without this a row shrink-wraps to its own content width
-   instead of the fieldset's. */
+/* align-self:stretch is explicit -- fieldsets don't reliably stretch flex children on their own. */
 #pause-fx-composer .pfx-row,
 #pause-fx-step-editor .pfx-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.4rem 0.75rem; align-self: stretch; }
 #pause-fx-composer .pfx-field,
@@ -140,17 +120,11 @@
   color: var(--pfx-text-body);
   align-self: flex-start; /* don't stretch to the column's full width when standing alone */
 }
-/* A field whose label carries extra controls (Text's "None"/"Pulse" checkboxes) alongside
-   the label text itself, instead of those controls sitting off to the side of the whole
-   field. The checkboxes group together as one unit at the row's far end (space-between
-   between just the two: the label text, and that group) rather than getting spread out
-   individually across the row's own width. */
+/* Text's "None"/"Pulse" checkboxes group as one unit at the row's far end, not spread out. */
 #pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
-/* Foundry suppresses every number input's native up/down spinner globally -- border width is
-   a +/- delta around a default, where the spinner actually earns its keep (nudging up/down
-   matters more than for a plain pulse count), so it gets its own override back. Scoped to
-   this one field, not number inputs generally. */
+/*+unlayered-css-always-wins Border width earns back the native spinner Foundry suppresses
+   globally -- a +/- delta is exactly where nudging up/down matters. Scoped to this field only. */
 #pause-fx-step-editor input[name="borderWidthPct"]::-webkit-inner-spin-button,
 #pause-fx-step-editor input[name="borderWidthPct"]::-webkit-outer-spin-button {
   -webkit-appearance: auto;
@@ -158,10 +132,8 @@
 }
 #pause-fx-step-editor input[name="borderWidthPct"] { -moz-appearance: auto; }
 #pause-fx-step-editor input[name="borderWidthPct"] { text-align: center; }
-/* Foundry's own :disabled treatment gives a field a real, visible border -- reads as MORE
-   defined than an enabled field here, since our enabled inputs have no border at all. Both
-   properties need !important: Foundry's core CSS is unlayered, and beats any layered module
-   rule (which is where Foundry serves ours) regardless of specificity. */
+/*+disabled-input-border-paradox Foundry's :disabled border reads as MORE defined than an
+   enabled field here, since ours have no border at all. */
 #pause-fx-step-editor input:disabled {
   opacity: 0.45 !important;
   border-color: transparent !important;
@@ -179,18 +151,13 @@
 #pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
 #pause-fx-step-editor .pfx-with-picker input[type="text"] { width: auto; }
 
-/* Loop/Timer-Waits/Path stay left-anchored; the volume slider + its label/number sit
-   right-anchored -- the spacer column (2nd, 1fr) absorbs the fieldset's leftover width, not
-   the track or label/number columns (both fixed sizes). `display: contents` on
-   <range-picker> dissolves its own box without touching its value-sync, so the slider and
-   number readout become independent grid items, placed in separate areas. */
+/*+media-io-spacer-column-layout Loop/Timer-Waits/Path stay left-anchored; volume slider +
+   label/number sit right-anchored via the spacer column absorbing the leftover width. */
 #pause-fx-step-editor .pfx-media-io {
   display: grid;
   grid-template-columns: 3.4rem 1fr 0.9rem max-content;
-  /* All three rows fixed, not auto -- io-track's height:100% needs every row it spans to
-     have a definite size to resolve against (an auto row falls back to the vertical range
-     input's own UA-default length, ~130px). Row 3 only holds the bare "Path" text, so a
-     short fixed height is the right size for it too, not just a workaround. */
+  /*+media-io-spacer-column-layout Rows fixed, not auto -- io-track's height:100% needs a
+     definite size to resolve against. */
   grid-template-rows: 1.6rem 1.6rem 1.3rem;
   grid-template-areas:
     "io-loop . io-track io-vlabel"
@@ -201,14 +168,10 @@
   align-items: center;
 }
 #pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Timer Waits" wraps in this narrow a column */
-/* Left as default stretch (fills the full 3.4rem column, same box width whether a row's
-   own text is "Loop" or the wider wrapped "Timer"/"Waits") -- the gap to the track comes
-   entirely from the spacer column, not a margin here, so it's the same regardless. */
+/* Left at default stretch -- same box width regardless of "Loop" vs. the wrapped "Timer"/"Waits". */
 #pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; }
 #pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; }
-/* Just the "Path" text joins the grid -- the actual input+button stay in their own .pfx-row
-   below. Only pulling the label up (not the whole field) is what frees the vertical room
-   the taller track wants without duplicating the path input's own width tuning up here. */
+/* Just the "Path" text joins the grid -- the input+button stay in their own .pfx-row below. */
 #pause-fx-step-editor .pfx-io-path-label {
   grid-area: io-path;
   font-size: var(--font-size-12, 0.75rem);
@@ -222,9 +185,7 @@
   justify-self: end;
   text-align: right;
 }
-/* Image mode's Pulses field replaces Volume+its readout entirely (mutually exclusive via
-   data-media-show) -- one field spanning both their rows, since it's a single label+input
-   element rather than two independently-placed ones. */
+/* Image mode's Pulses field replaces Volume+its readout entirely -- one field, both rows. */
 #pause-fx-step-editor .pfx-io-pulses {
   grid-column: 4;
   grid-row: 1 / 3;
@@ -251,9 +212,8 @@
   align-self: stretch;
   justify-self: center;
 }
-/* Path row: browse button right-aligned, text input filling the rest. width:0 (not the
-   input's flex-basis:auto default) keeps its intrinsic width from leaking into the outer
-   grid's own track-sizing; flex-grow:1 still fills whatever space is actually available. */
+/*+path-input-width-zero-fix width:0 keeps the input's own intrinsic width from leaking
+   into the outer grid's track-sizing; flex-grow:1 still fills available space. */
 #pause-fx-step-editor .pfx-block-media .pfx-with-picker,
 #pause-fx-step-editor .pfx-block-audio .pfx-with-picker {
   flex: 1;
@@ -416,9 +376,7 @@
 }
 #pause-fx-composer .pfx-step-remove:hover { background: color-mix(in srgb, var(--pfx-danger) 18%, transparent); color: var(--pfx-text-bright); }
 #pause-fx-composer .pfx-step-remove i { position: relative; } /* paints above the wedge, which is a sibling ::before */
-/* Click-and-hold (see composer.js) skips the confirmation dialog; this wedge is the only
-   indication that's possible before the hold completes. Angle is driven by JS setting
-   --pfx-hold-progress (0-1) every frame; a bare number times an angle is valid in calc(). */
+/* Click-and-hold (see composer.js) skips the confirmation dialog; this wedge shows progress. */
 #pause-fx-composer .pfx-step-remove::before {
   content: "";
   position: absolute;
@@ -442,10 +400,7 @@
 #pause-fx-step-editor .pfx-block { display: flex; flex-direction: column; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-block-wait { grid-area: wait; }
 #pause-fx-step-editor .pfx-block-text { grid-area: text; }
-/* Icon is now one field, same shape as Text: Spin/Glow live in the field's own label row
-   (see the template) instead of a separate row above it, so there's no second flex child
-   left to gap against -- just a bit less top padding than the shared fieldset default,
-   since a single short field doesn't need as much air under the legend. */
+/* One field, same shape as Text -- a bit less top padding since there's no second row. */
 #pause-fx-step-editor .pfx-block-icon {
   grid-area: icon;
   padding-top: 0.35rem;
@@ -460,9 +415,7 @@
 }
 #pause-fx-step-editor [data-action="browseFile"]:hover { border-color: var(--pfx-accent); color: var(--pfx-text-bright); }
 
-/* Icon and Text are each the sole occupant of a wide block, but .pfx-field has no
-   flex-grow by default and the input still carries the shared 12rem width -- right for
-   Duration/Border's narrow fields, wrong here. Let this one field fill the row instead. */
+/* Sole occupant of a wide block -- let this one field fill the row, not the shared 12rem. */
 #pause-fx-step-editor .pfx-block-icon .pfx-field,
 #pause-fx-step-editor .pfx-block-text .pfx-field {
   flex: 1;
@@ -477,10 +430,7 @@
 #pause-fx-step-editor .pfx-block-border .pfx-row {
   justify-content: center;
 }
-/* Duration: center "Pulses" and its value too, not just the field's position in the row --
-   align-items for the label/input as boxes, text-align for the text/digit inside them (the
-   label is a bare text node in a flex column, not its own element, so it takes text-align
-   from .pfx-field directly). */
+/* Center "Pulses" and its value too, not just the field's position in the row. */
 #pause-fx-step-editor .pfx-block-wait .pfx-field {
   align-items: center;
   text-align: center;
@@ -491,9 +441,8 @@
   width: 5.25rem;
   font-size: 1.1rem;
 }
-/* Muted, not the accent-colored .pfx-badge-wait pill -- this is metadata about the field,
-   not a value in its own right. Only ever shown for a hand-written macro's clock:"text"
-   step; the Composer's own fields never produce one. */
+/* Muted, not accent-colored like .pfx-badge-wait -- this is metadata about the field, not a
+   value in its own right (only appears for a hand-written macro's clock:"text" step). */
 #pause-fx-step-editor .pfx-tag {
   font-size: var(--font-size-11, 0.6875rem);
   padding: 0.1rem 0.5rem;
@@ -504,24 +453,20 @@
   margin-bottom: 0.35rem;
 }
 
-/* Stop's 6 checkboxes as a real 2x3 grid instead of two flex rows -- a clean fill, no empty
-   cell to route around now that Icon (hideIcon) moved out to the Icon field's own None
-   checkbox (its job wasn't time-sensitive -- see that field's own comment). */
+/* Stop's 6 checkboxes as a real 2x3 grid instead of two flex rows, now that Icon's own
+   checkbox moved out to the Icon field (see that field's own comment). */
 #pause-fx-step-editor .pfx-stop-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.4rem 0.75rem;
 }
 
-/* The Icon field's own label ("Icon") sat vertically centered against Spin/Glow's taller
-   row (the colour swatch is 1.7rem, well over the plain text's own line height) --
-   bottom-align it against their shared baseline instead. */
+/* Bottom-align the Icon label against Spin/Glow's taller row (the swatch is 1.7rem,
+   taller than the label's own line height). */
 #pause-fx-step-editor .pfx-block-icon .pfx-field-label-row { align-items: flex-end; }
 
-/* A real checkbox underneath (visually hidden, not display:none -- it stays focusable and
-   keyboard/screen-reader operable), restyled as a two-position switch via its own sibling
-   markup rather than pseudo-elements, so the thumb can transition independently of the
-   track. Unchecked = video (left/off), checked = image (right/on, accent-filled). */
+/*+media-toggle-accessible-switch A real checkbox underneath, restyled as a two-position
+   switch. Unchecked = video (left/off), checked = image (right/on, accent-filled). */
 #pause-fx-step-editor .pfx-media-toggle { display: flex; align-items: center; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-media-toggle-label {
   font-size: var(--font-size-12, 0.75rem);
@@ -563,3 +508,8 @@
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track { background: var(--pfx-accent); }
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track .pfx-switch-thumb { transform: translateX(1rem); }
 #pause-fx-step-editor .pfx-switch input:focus-visible + .pfx-switch-track { outline: 2px solid var(--pfx-accent); outline-offset: 2px; }
+
+
+
+
+
