@@ -134,6 +134,15 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
   styleEl = document.createElement("style");
   styleEl.id = "pause-fx-styles";
   styleEl.textContent = `
+    /* Foundry's own #pause.paused carries an independent scale pulse (3s, unrelated to any
+       of ours) -- once pause-fx starts managing the pause screen's animations at all, that
+       just compounds against pause-fx's own pulses (they're never in phase) instead of
+       complementing them. Neutralized unconditionally: injectStyles only ever runs once
+       pause-fx is actually theming something. */
+    #pause.paused {
+      animation: none !important;
+    }
+
     body.${BORDER_CLASS}:before {
       content: "";
       position: fixed;
