@@ -170,6 +170,17 @@
 }
 #pause-fx-step-editor input[name="borderWidthPct"] { -moz-appearance: auto; }
 #pause-fx-step-editor input[name="borderWidthPct"] { text-align: center; }
+/* Foundry's own :disabled treatment (confirmed live: input:disabled sets --input-background-
+   color to a darker tone but ALSO --input-border-color to a real, visible one) reads as MORE
+   defined than an enabled field in our theme, since our enabled inputs have no visible border
+   at all here -- a crisp edge next to a borderless field draws the eye more, regardless of
+   which one's fill is technically darker. !important is required -- Foundry's own core CSS is
+   unlayered, and unlayered rules beat ANY layered module rule (which is where Foundry serves
+   ours) regardless of specificity, confirmed elsewhere in this file already. */
+#pause-fx-step-editor input:disabled {
+  opacity: 0.45 !important;
+  border-color: transparent !important;
+}
 /* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
