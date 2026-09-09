@@ -258,6 +258,11 @@ async function resolveImageFiles(path) {
  */
 function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
   if (!iconEl) return;
+  // Foundry's own pause icon spins by default (GamePause's own `spin: true` option adds
+  // FontAwesome's fa-spin class directly to the <img>) -- once pause-fx starts managing this
+  // icon at all, that native spin needs to actually stop, not just get ignored by our own
+  // separate iconSpin toggle, which only ever touches pause-fx-icon-spin.
+  iconEl.classList.remove("fa-spin");
   if (icon !== undefined) iconEl.src = icon;
   if (iconSpin !== undefined) {
     if (iconSpin && !styleEl) injectStyles(cycles);
