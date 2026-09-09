@@ -9,8 +9,6 @@ reveal.
 ## Requires
 
 [socketlib](https://github.com/manuelVo/foundryvtt-socketlib) (for `closeAllWindows`).
-Nothing else -- the border-glow overlay is entirely `pause-fx`'s own, so it looks the same
-whether or not another pause-screen module (e.g. Monk's Little Details) is also installed.
 
 ## Composer UI
 
