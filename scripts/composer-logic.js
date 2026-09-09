@@ -17,12 +17,10 @@ export function defaultStep() {
 const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text"];
 
 /**
- * Composer rows always keep icon/iconGlow/borderColor/text on row 0 itself (see this file's
- * top comment) -- but PauseFX.run() also accepts those same fields at config's own top
- * level, as "initial state" before any step runs. A hand-written macro using that shape has
- * nowhere for loadMacro to put them if it only ever reads config.steps: the true opening
- * beat goes missing on import, and every real step silently shifts up to look like it's the
- * first one.
+ * PauseFX.run() also accepts icon/iconGlow/borderColor/text at config's own top level (as
+ * initial state), not just folded into steps[0] the way Composer rows always save them --
+ * loadMacro needs both shapes recognized, or a hand-written macro's opening beat has nowhere
+ * to go.
  * @param {object} config
  * @returns {Array<object>} step objects ready for rowFromStep -- config.steps as-is, or with
  *   a synthesized row 0 prepended for whichever config-level fields were actually set.
