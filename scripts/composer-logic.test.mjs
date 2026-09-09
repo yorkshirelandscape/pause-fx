@@ -14,8 +14,8 @@ const BLANK_ROW = {
   stopIconSpin: false, stopBorderPulse: false, unpause: false, waitForVideoEnd: false,
   waitForAudioEnd: false, waitForImageEnd: false, audio: "", audioVolume: "", audioLoop: false,
   mediaType: "none", mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "",
-  iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#ff0000",
-  borderColorEnabled: false, borderColor: "#ff0000", borderWidthPct: "",
+  iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#4DD0E1",
+  borderColorEnabled: false, borderColor: "#4DD0E1", borderWidthPct: "",
 };
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {

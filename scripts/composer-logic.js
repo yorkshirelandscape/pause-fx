@@ -107,9 +107,9 @@ export function rowFromStep(step) {
     iconNone: step.iconVisible === false,
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
-    iconGlow: step.iconGlow ?? "#ff0000",
+    iconGlow: step.iconGlow ?? "#4DD0E1", // Andrew's usual teal, not a generic placeholder red
     borderColorEnabled: step.borderColor !== undefined,
-    borderColor: step.borderColor ?? "#ff0000",
+    borderColor: step.borderColor ?? "#4DD0E1",
     borderWidthPct: step.borderWidth ?? "",
   };
 }
