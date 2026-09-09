@@ -7,7 +7,7 @@
    --color-data-*, --color-warm-*, --color-cool-* triad its sheet-config dialogs already use),
    not invented hex values, and native form controls (checkboxes especially -- Foundry themes
    those itself, ember checkmark included) are left alone rather than re-skinned. What we do
-   own -- fieldsets, the block-toggle row, the step list, badges -- gets an actual design
+   own -- fieldsets, the step editor's 2-column grid, the step list, badges -- gets an actual design
    pass: real elevation instead of a flat outline, one accent spent deliberately (state, not
    decoration), and structure that means something (the wait badge is a pill because it's a
    value, not a toggle; every other badge is a square because it represents a fixed region of
@@ -38,14 +38,21 @@
   gap: 0.75rem;
   padding: 0.5rem;
 }
-/* The step editor's own blocks wrap into a row instead of stacking one-per-line -- see the
-   "Step editor dialog" section below for how each block sizes itself within that row.
-   Composer's own two fieldsets (Startup, Steps) keep the plain column layout above -- there's
-   no many-small-blocks problem there to solve. */
+/* The step editor's blocks sit in a deliberate 2-column layout (mocked up directly) --
+   Wait/Text share a row, Icon/Border share the next, Media/Audio the one after, Stop spans
+   both columns at the bottom. A shorter block never stretches to match a taller row-mate
+   (align-items: start) -- see the per-block grid-area rules in the "Step editor dialog"
+   section below. Composer's own two fieldsets (Startup, Steps) keep the plain column layout
+   above -- there's no 2-column grouping to make there. */
 #pause-fx-step-editor .pfx-step-editor {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "wait  text"
+    "icon  border"
+    "media audio"
+    "stop  stop";
+  align-items: start;
 }
 
 #pause-fx-composer fieldset,
@@ -323,42 +330,55 @@
 #pause-fx-composer [data-action="addStep"]:hover { border-color: var(--pfx-accent); color: var(--pfx-text-bright); }
 
 /* ---- Step editor dialog ---- */
-/* A segmented control, not a row of loose buttons -- shared hairlines (the 1px gap showing
-   the border colour through) instead of each button owning its own border. flex-basis: 100%
-   pins it to its own full-width line, above the wrapping blocks below (same trick as a
-   manual line break in a flex-wrap row). */
-#pause-fx-step-editor .pfx-block-toggles {
-  display: flex;
-  flex: 1 0 100%;
-  flex-wrap: wrap;
-  gap: 1px;
-  background: var(--pfx-surface-border);
-  border: 1px solid var(--pfx-surface-border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-#pause-fx-step-editor .pfx-block-toggle {
-  flex: 1 0 auto; /* stretch evenly to fill the strip instead of sitting fit-content/left-aligned */
-  border: none;
-  border-radius: 0;
-  background: var(--pfx-surface);
-  padding: 0.4rem 0.6rem;
-  color: var(--pfx-text-body);
-  opacity: 1;
-  transition: background 120ms ease, color 120ms ease;
-}
-#pause-fx-step-editor .pfx-block-toggle:hover { background: color-mix(in srgb, var(--pfx-surface) 70%, var(--pfx-accent) 12%); color: var(--pfx-text-bright); }
-#pause-fx-step-editor .pfx-block-toggle-active {
-  background: color-mix(in srgb, var(--pfx-surface) 55%, var(--pfx-accent) 30%);
-  color: var(--pfx-text-bright);
-  box-shadow: inset 0 -2px 0 var(--pfx-accent);
-}
-/* flex: 0 1 auto -- sized to its own content, not stretched full-width, so a couple of
-   small blocks (Pulse, Stop) can sit side by side instead of each claiming a full row for
-   two or three checkboxes. Wraps to a new line once a row genuinely runs out of space. */
-#pause-fx-step-editor .pfx-block { display: flex; flex: 0 1 auto; flex-direction: column; gap: 0.5rem; }
+#pause-fx-step-editor .pfx-block { display: flex; flex-direction: column; gap: 0.5rem; }
+#pause-fx-step-editor .pfx-block-wait { grid-area: wait; }
+#pause-fx-step-editor .pfx-block-text { grid-area: text; }
+#pause-fx-step-editor .pfx-block-icon { grid-area: icon; }
+#pause-fx-step-editor .pfx-block-border { grid-area: border; }
+#pause-fx-step-editor .pfx-block-media { grid-area: media; }
+#pause-fx-step-editor .pfx-block-audio { grid-area: audio; }
+#pause-fx-step-editor .pfx-block-stop { grid-area: stop; }
 #pause-fx-step-editor [data-action="browseFile"] {
   border-radius: 4px;
   transition: border-color 120ms ease, color 120ms ease;
 }
 #pause-fx-step-editor [data-action="browseFile"]:hover { border-color: var(--pfx-accent); color: var(--pfx-text-bright); }
+
+/* A real checkbox underneath (visually hidden, not display:none -- it stays focusable and
+   keyboard/screen-reader operable), restyled as a two-position switch via its own sibling
+   markup rather than pseudo-elements, so the thumb can transition independently of the
+   track. Unchecked = video (left/off), checked = image (right/on, accent-filled). */
+#pause-fx-step-editor .pfx-media-toggle { display: flex; align-items: center; gap: 0.5rem; }
+#pause-fx-step-editor .pfx-media-toggle-label {
+  font-size: var(--font-size-12, 0.75rem);
+  color: var(--pfx-text-body);
+}
+#pause-fx-step-editor .pfx-switch { position: relative; display: inline-block; width: 2.2rem; height: 1.2rem; flex: 0 0 auto; }
+#pause-fx-step-editor .pfx-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+#pause-fx-step-editor .pfx-switch-track {
+  position: absolute;
+  inset: 0;
+  background: var(--pfx-surface-border);
+  border-radius: 999px;
+  transition: background 150ms ease;
+  pointer-events: none;
+}
+#pause-fx-step-editor .pfx-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.2rem - 4px);
+  height: calc(1.2rem - 4px);
+  background: var(--pfx-text-bright);
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+#pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track { background: var(--pfx-accent); }
+#pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track .pfx-switch-thumb { transform: translateX(1rem); }
+#pause-fx-step-editor .pfx-switch input:focus-visible + .pfx-switch-track { outline: 2px solid var(--pfx-accent); outline-offset: 2px; }
