@@ -179,14 +179,16 @@
   grid-template-areas:
     "io-loop io-vlabel io-track"
     "io-wait io-vnum   io-track";
-  column-gap: 0.5rem;
+  column-gap: 0.3rem; /* the base gap -- Volume/its number sit close against the track on this;
+    the checkbox column gets its own, larger gap via margin-right below instead of a bigger
+    column-gap here, which would've widened both gaps equally */
   row-gap: 0.15rem;
   align-items: center;
   margin-bottom: 0.4rem;
 }
 #pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Timer Waits" wraps in this narrow a column, same as the mockup */
-#pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; }
-#pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; }
+#pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; margin-right: 0.35rem; }
+#pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; margin-right: 0.35rem; }
 #pause-fx-step-editor .pfx-io-vlabel {
   grid-area: io-vlabel;
   font-size: var(--font-size-12, 0.75rem);
@@ -383,13 +385,13 @@
 #pause-fx-step-editor .pfx-block { display: flex; flex-direction: column; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-block-wait { grid-area: wait; }
 #pause-fx-step-editor .pfx-block-text { grid-area: text; }
-/* The Spin/Glow row reads as a caption for the path field below it, not a separate group
-   under the legend -- pull it up near the legend (tighter top padding) and snug it against
-   the "Icon" label beneath it (tighter internal gap) rather than spacing both gaps evenly. */
+/* Icon is now one field, same shape as Text: Spin/Glow live in the field's own label row
+   (see the template) instead of a separate row above it, so there's no second flex child
+   left to gap against -- just a bit less top padding than the shared fieldset default,
+   since a single short field doesn't need as much air under the legend. */
 #pause-fx-step-editor .pfx-block-icon {
   grid-area: icon;
-  padding-top: 0.25rem;
-  gap: 0.2rem;
+  padding-top: 0.35rem;
 }
 #pause-fx-step-editor .pfx-block-border { grid-area: border; }
 #pause-fx-step-editor .pfx-block-media { grid-area: media; }

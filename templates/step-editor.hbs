@@ -25,21 +25,24 @@
   <fieldset class="pfx-block pfx-block-icon">
     <legend><i class="fa-solid fa-star"></i> Icon</legend>
     <div class="pfx-row">
-      <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked row.iconSpin}}> Spin</label>
-      <span class="pfx-with-toggle" title="Icon Glow">
-        <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked row.iconGlowEnabled}}>
-        <input type="color" name="iconGlow" value="{{row.iconGlow}}" {{#unless row.iconGlowEnabled}}disabled{{/unless}}>
-      </span>
-    </div>
-    <div class="pfx-row">
-      <label class="pfx-field">Icon
+      <div class="pfx-field">
+        <span class="pfx-field-label-row">
+          <span>Icon</span>
+          <span class="pfx-checkbox-group">
+            <label class="pfx-checkbox"><input type="checkbox" name="iconSpin" {{checked row.iconSpin}}> Spin</label>
+            <span class="pfx-with-toggle" title="Icon Glow">
+              <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked row.iconGlowEnabled}}>
+              <input type="color" name="iconGlow" value="{{row.iconGlow}}" {{#unless row.iconGlowEnabled}}disabled{{/unless}}>
+            </span>
+          </span>
+        </span>
         <span class="pfx-with-picker">
           <input type="text" name="icon" placeholder="ui/pause.svg" value="{{row.icon}}">
           <button type="button" data-action="browseFile" data-for="icon" data-picker-type="imagevideo">
             <i class="fa-solid fa-folder-open"></i>
           </button>
         </span>
-      </label>
+      </div>
     </div>
   </fieldset>
 
