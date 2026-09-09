@@ -34,9 +34,21 @@ if (globalThis.socketlib) {
 
 let advanceResolvers = [];
 
-/** @returns {Promise<void>} resolves the next time the GM presses the advance keybind. */
-function waitForManualAdvance() {
-  return new Promise((resolve) => advanceResolvers.push(resolve));
+/**
+ * @param {AbortSignal} [signal] - resolves early (without actually being "advanced") if this
+ *   fires first -- an unpause mid-sequence shouldn't leave a manual-advance step hung forever.
+ * @returns {Promise<void>} resolves the next time the GM presses the advance keybind.
+ */
+function waitForManualAdvance(signal) {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    advanceResolvers.push(resolve);
+    signal?.addEventListener("abort", () => {
+      const i = advanceResolvers.indexOf(resolve);
+      if (i !== -1) advanceResolvers.splice(i, 1);
+      resolve();
+    }, { once: true });
+  });
 }
 
 Hooks.once("init", () => {
@@ -82,7 +94,14 @@ export function closeAllWindowsHandler({ players = true, gm = true } = {}) {
   }
 }
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// `signal` (a run's own AbortController, see PauseFX.run) resolves this early -- so an
+// unpause mid-sequence stops every pending timer immediately instead of them quietly firing
+// in the background and applying a later step's effects to a game that's no longer paused.
+const wait = (ms, signal) => new Promise((resolve) => {
+  if (signal?.aborted) return resolve();
+  const id = setTimeout(resolve, ms);
+  signal?.addEventListener("abort", () => { clearTimeout(id); resolve(); }, { once: true });
+});
 
 /**
  * @param {object} opts
@@ -327,9 +346,11 @@ export class PauseFX {
    *   `config` itself takes, just applicable at any point in the sequence, not only at the
    *   start (sparse: a step touches only the fields it sets). `closeVideo`/`stopAudio` tear
    *   down whatever `video`/`image`/`audio` an earlier step started -- symmetric pair, same
-   *   idea, different media. `unpause` ends the sequence early (`game.togglePause(false)`) --
-   *   steps after it still run, but there's no pause screen left for most of them to usefully
-   *   affect. `waitForVideoEnd`/`waitForAudioEnd`/`waitForImageEnd` gate the step's OWN `wait`
+   *   idea, different media. `unpause` ends the sequence: `game.togglePause(false)` cuts the
+   *   WHOLE run off right there (border/style state cleared, any overlay removed, any audio
+   *   stopped) -- steps after it never run, the same as if the GM had pressed the pause
+   *   button mid-sequence, which does the identical cleanup.
+   *   `waitForVideoEnd`/`waitForAudioEnd`/`waitForImageEnd` gate the step's OWN `wait`
    *   from starting until the video/audio/slideshow currently playing (started by an earlier
    *   step) finishes -- they don't replace `wait`, they delay when it starts counting. A
    *   slideshow never blocks the step that starts it (same fire-and-forget shape as video/
@@ -342,6 +363,15 @@ export class PauseFX {
       ui.notifications.warn("Only the GM can trigger this.");
       return;
     }
+
+    // This run's own cancellation token -- any unpause (the pause button, another run,
+    // this run's own `step.unpause`) fires it, and every wait/gate below listens for it.
+    // Without this, unpausing only ever cleared border state; a still-running sequence's
+    // timers, gates, and background slideshow loop kept ticking and applying later steps'
+    // effects (including a lingering video/image overlay) to a game that was no longer
+    // paused -- see resetOnUnpause below for the actual cleanup this triggers.
+    const runController = new AbortController();
+    const { signal } = runController;
 
     const {
       icon,
@@ -372,8 +402,17 @@ export class PauseFX {
     }
     if (borderWidth !== undefined) setBorderWidth(borderWidth);
 
+    // `overlay`/`activeAudio` are declared with `let` further down (closer to where they're
+    // actually set) -- referencing them here via closure is safe even though this function is
+    // defined first, because it's never CALLED until the pauseGame hook actually fires, always
+    // well after those declarations have run.
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
+      runController.abort(); // stop every pending wait/gate/background loop this run owns
+      overlay?.remove();
+      overlay = null;
+      activeAudio?.stop();
+      activeAudio = null;
       clearBorderColour();
       clearBorderWidth();
       document.body.classList.remove(BORDER_FROZEN_CLASS);
@@ -428,10 +467,10 @@ export class PauseFX {
 
     // Give a real render (and the hooks above) a moment to land before trusting anything --
     // then stop listening, so a stray LATER pause elsewhere doesn't re-skin mid-sequence.
-    await wait(150);
+    await wait(150, signal);
     Hooks.off("renderPause", skin);
     Hooks.off("renderGamePause", skin);
-    if (!iconEl || !label) await wait(200); // still not ready? slower client -- give it longer.
+    if (!iconEl || !label) await wait(200, signal); // still not ready? slower client -- give it longer.
     if (!document.getElementById("pause") || !label) {
       ui.notifications.error("pause-fx: pause screen never rendered, aborting the sequence.");
       return;
@@ -443,18 +482,32 @@ export class PauseFX {
     // full pass (looping or not) -- see step.waitForImageEnd below
 
     for (const step of steps) {
+      // An unpause (this run's own step.unpause included -- same hook, same cleanup) cuts
+      // the whole sequence off right here; steps after it never run, not even the ones
+      // whose effects wouldn't touch the pause screen at all.
+      if (signal.aborted) break;
+
       // Gates, not replacements -- a step's own `wait` still runs afterward, it just doesn't
-      // START counting until whichever event this step is gated on fires.
+      // START counting until whichever event this step is gated on fires. Each races the
+      // abort signal too -- an unpause that removes/stops the very thing being waited on
+      // must not leave this hanging on an "ended"/"end" event that'll now never fire.
       if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
-        await new Promise((resolve) => overlay.addEventListener("ended", resolve, { once: true }));
+        await new Promise((resolve) => {
+          overlay.addEventListener("ended", resolve, { once: true });
+          signal.addEventListener("abort", resolve, { once: true });
+        });
       }
       if (step.waitForAudioEnd && activeAudio) {
-        await new Promise((resolve) => activeAudio.addEventListener("end", resolve, { once: true }));
+        await new Promise((resolve) => {
+          activeAudio.addEventListener("end", resolve, { once: true });
+          signal.addEventListener("abort", resolve, { once: true });
+        });
       }
       if (step.waitForImageEnd && activeImageSlideshowDone) await activeImageSlideshowDone;
       if (step.wait) {
-        await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }));
+        await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }), signal);
       }
+      if (signal.aborted) break; // the wait/gate above may be what the unpause interrupted
 
       if (step.text !== undefined) label.textContent = step.text;
       if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
@@ -518,9 +571,17 @@ export class PauseFX {
           const showSlideshow = async () => {
             let i = 0;
             while (true) {
+              // Checked BEFORE waiting again, not just relied on to fall out of an
+              // already-resolved wait() -- otherwise an aborted signal (every future wait/
+              // advance resolves instantly) would spin the loop through every remaining
+              // image in one tick instead of actually stopping.
+              if (signal.aborted) {
+                resolveSlideshowDone(); // unblock anything gated on waitForImageEnd, not left hanging
+                return;
+              }
               if (i > 0) el.src = imageFiles[i % imageFiles.length];
-              if (step.imagePulses === 0) await waitForManualAdvance();
-              else await wait(clockMsFor({ units: step.imagePulses }, { borderCycleMs, textCycleMs: resolvedTextCycle }));
+              if (step.imagePulses === 0) await waitForManualAdvance(signal);
+              else await wait(clockMsFor({ units: step.imagePulses }, { borderCycleMs, textCycleMs: resolvedTextCycle }), signal);
               i++;
               if (i >= imageFiles.length) {
                 resolveSlideshowDone(); // one full pass done, looping or not -- fires exactly once
@@ -540,8 +601,10 @@ export class PauseFX {
         activeAudio = null;
       }
       if (step.unpause) {
-        // The pauseGame hook registered above (resetOnUnpause) does the border/style
-        // cleanup -- it fires for ANY unpause, not just one this run triggers itself.
+        // The pauseGame hook registered above (resetOnUnpause) does the actual cleanup
+        // (border/style state, overlay, audio) and aborts this run -- it fires for ANY
+        // unpause, not just one this run triggers itself. Steps after this one -- if any --
+        // never run: the loop's own abort check at the top catches it on the next iteration.
         await game.togglePause(false, { broadcast: true });
       }
     }
