@@ -446,13 +446,11 @@ export class PauseFX {
         });
         root.appendChild(label);
       }
-      // Foundry's own #pause figcaption forces text-transform:uppercase (unlayered core CSS,
-      // confirmed live) -- fine for the stock "Game Paused" caption, but a per-step author now
-      // types exact custom wording, and deserves to see exactly what they typed on screen, not
-      // Foundry's own opinion about casing. An inline style beats any external stylesheet rule
-      // regardless of layer/specificity (short of that rule itself using !important, which this
-      // one doesn't) -- set once here, it stays put no matter how many times a later step
-      // rewrites label.textContent.
+      // Foundry's own #pause figcaption forces text-transform:uppercase -- fine for the stock
+      // "Game Paused" caption, but a per-step author types exact custom wording and deserves
+      // to see it rendered as typed. An inline style beats an external stylesheet rule
+      // regardless of layer/specificity -- set once here, it stays put no matter how many
+      // times a later step rewrites label.textContent.
       label.style.textTransform = "none";
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
       if (initialText !== undefined) label.textContent = initialText; // else leave "Game Paused"
@@ -462,11 +460,11 @@ export class PauseFX {
       Hooks.off("renderPause", skin);
       Hooks.off("renderGamePause", skin);
     };
-    // Always register the hooks AND try a synchronous capture -- confirmed live that
-    // togglePause(true) can replace the pause screen's content even when the game was
-    // ALREADY paused (not just on a session's very first pause), so a synchronous capture
-    // alone can never be trusted as final: whichever applySkin call actually lands last
-    // (sync, or hook-driven) wins, since iconEl/label are shared closure variables.
+    // Always register the hooks AND try a synchronous capture -- togglePause(true) can
+    // replace the pause screen's content even on an already-paused game, not just on a
+    // session's first pause, so a synchronous capture alone can't be trusted as final.
+    // Whichever applySkin call actually lands last (sync, or hook-driven) wins, since
+    // iconEl/label are shared closure variables.
     Hooks.once("renderPause", skin); // pre-V13 class name
     Hooks.once("renderGamePause", skin); // V13+ (GamePause)
     if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element);

@@ -13,22 +13,17 @@
    value, not a toggle; every other badge is a square because it represents a fixed region of
    the pause screen). */
 
-/* Foundry's ApplicationV2 .window-content is plain overflow:hidden by default (confirmed in
-   foundry2.css -- not overflow:hidden auto, that's a legacy V1 .window-app rule that doesn't
-   match these windows at all) -- so a resizable dialog with variable content silently clips
-   instead of scrolling unless a module opts in itself. */
+/* ApplicationV2's .window-content is plain overflow:hidden by default -- a resizable dialog
+   with variable content silently clips instead of scrolling unless a module opts in itself. */
 #pause-fx-composer .window-content,
 #pause-fx-step-editor .window-content {
   overflow-y: auto;
   overflow-x: hidden;
 }
-/* The step editor's root is a real <dialog> now (see step-editor.js, for showModal()) -- the
-   browser's own UA stylesheet gives <dialog> a default ~14px padding that no other Foundry
-   window carries (they're all other tags), which was inset-ing the whole window-header/
-   content frame inward from the border, an unintended peculiar-looking gap Foundry's own
-   windows never have. Foundry's own CSS supplies the real padding/margin everywhere it
-   actually belongs (.window-header, .window-content, etc.) -- this only zeroes what the
-   browser added on top of that, at the outermost <dialog> box itself. */
+/* The step editor's root is a real <dialog> now (see step-editor.js, for showModal()) --
+   the browser's UA stylesheet gives <dialog> a default padding no other Foundry window tag
+   carries. Zero only that; Foundry's own CSS still supplies the real padding/margin
+   everywhere it actually belongs (.window-header, .window-content, etc.). */
 #pause-fx-step-editor.application { margin: 0; padding: 0; }
 
 #pause-fx-composer .pfx-composer,
@@ -46,15 +41,16 @@
   gap: 0.75rem;
   padding: 0.5rem;
 }
-/* The step editor's blocks sit in a deliberate irregular layout, hand-tuned directly against
-   a mockup -- four unequal columns (2fr/1fr/1fr/2fr) and seven explicit rows so each block gets
-   exactly the footprint its own content needs: Duration is a bare pulse count (narrow, short),
-   Icon is a full field (wide, two rows), Text is one field across three columns, Border is one
-   narrow column, Media/Audio each get their own irregular split, Stop spans the full width, and
-   the final row is empty headroom. A shorter block never stretches to match a taller row-mate
-   (align-items: start) -- see the per-block grid-area rules in the "Step editor dialog" section
-   below. Composer's own two fieldsets (Startup, Steps) keep the plain column layout above --
-   there's no grouping to make there. */
+/* The step editor's blocks sit in a deliberate irregular layout -- four unequal columns
+   (2fr/1fr/1fr/2fr) so each block gets exactly the footprint its own content needs: Duration
+   is a bare pulse count (narrow, short), Icon is a full field (wide, two rows), Text is one
+   field across three columns, Border is one narrow column, Media/Audio each get their own
+   irregular split, Stop spans the full width. Rows are auto-sized to content rather than a
+   fixed list (see the commented-out grid-template-rows below, kept as a record of the
+   original tuning). A shorter block never stretches to match a taller row-mate (align-items:
+   start) -- see the per-block grid-area rules in the "Step editor dialog" section below.
+   Composer's own two fieldsets (Startup, Steps) keep the plain column layout above -- there's
+   no grouping to make there. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 2fr;
@@ -135,12 +131,10 @@
 
 /* A row packs several fields side by side instead of one-per-line; wraps if the dialog is
    narrow. Each field keeps its own natural width (see .pfx-field below) rather than
-   stretching to fill the row -- that's what made every text box "almost universally too
-   big" before this. align-self:stretch is explicit, not left to the parent fieldset's own
-   default align-items -- fieldsets have real, documented cross-browser quirks around
-   applying stretch to their flex children, and without this a row silently shrink-wraps to
-   its own content width instead of the fieldset's, which then caps any flex:1 field inside
-   it at whatever that content happened to need. */
+   stretching to fill the row. align-self:stretch is explicit, not left to the parent
+   fieldset's own default align-items -- fieldsets don't reliably stretch their flex
+   children cross-browser, and without this a row shrink-wraps to its own content width
+   instead of the fieldset's. */
 #pause-fx-composer .pfx-row,
 #pause-fx-step-editor .pfx-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.4rem 0.75rem; align-self: stretch; }
 #pause-fx-composer .pfx-field,
@@ -159,10 +153,10 @@
    individually across the row's own width. */
 #pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
-/* Foundry suppresses every number input's native up/down spinner globally (confirmed in
-   foundry2.css) -- border width is a +/- delta around a default, where the spinner actually
-   earns its keep (nudging up/down matters more than for a plain pulse count), so it gets its
-   own override back. Scoped to this one field, not number inputs generally. */
+/* Foundry suppresses every number input's native up/down spinner globally -- border width is
+   a +/- delta around a default, where the spinner actually earns its keep (nudging up/down
+   matters more than for a plain pulse count), so it gets its own override back. Scoped to
+   this one field, not number inputs generally. */
 #pause-fx-step-editor input[name="borderWidthPct"]::-webkit-inner-spin-button,
 #pause-fx-step-editor input[name="borderWidthPct"]::-webkit-outer-spin-button {
   -webkit-appearance: auto;
@@ -170,13 +164,10 @@
 }
 #pause-fx-step-editor input[name="borderWidthPct"] { -moz-appearance: auto; }
 #pause-fx-step-editor input[name="borderWidthPct"] { text-align: center; }
-/* Foundry's own :disabled treatment (confirmed live: input:disabled sets --input-background-
-   color to a darker tone but ALSO --input-border-color to a real, visible one) reads as MORE
-   defined than an enabled field in our theme, since our enabled inputs have no visible border
-   at all here -- a crisp edge next to a borderless field draws the eye more, regardless of
-   which one's fill is technically darker. !important is required -- Foundry's own core CSS is
-   unlayered, and unlayered rules beat ANY layered module rule (which is where Foundry serves
-   ours) regardless of specificity, confirmed elsewhere in this file already. */
+/* Foundry's own :disabled treatment gives a field a real, visible border -- reads as MORE
+   defined than an enabled field here, since our enabled inputs have no border at all. Both
+   properties need !important: Foundry's core CSS is unlayered, and beats any layered module
+   rule (which is where Foundry serves ours) regardless of specificity. */
 #pause-fx-step-editor input:disabled {
   opacity: 0.45 !important;
   border-color: transparent !important;
@@ -197,12 +188,11 @@
 /* Media/Audio's Loop + Timer Waits + Path cluster stays left-anchored; the volume slider
    and its label+number sit right-anchored -- so the spacer column (2nd) is the one that
    absorbs whatever width the fieldset has left over (1fr), not any of the real content.
-   The track is pinned to its own real width (0.9rem), not auto -- an auto track grows to
-   absorb leftover space too, which is the actual bug this whole column arrangement exists
-   to dodge (confirmed live, twice: once for the track itself, once for the label+number
-   column). `display: contents` on the <range-picker> dissolves its own box (a plain flex
-   row internally) without touching its value-sync/change-event behaviour, which lives on
-   the element itself, not its layout -- so its two real children (the slider, the number
+   The track and label+number columns are pinned to fixed sizes, not auto -- an auto column
+   there grows to absorb leftover space too, reopening the bug this arrangement exists to
+   dodge. `display: contents` on the <range-picker> dissolves its own box (a plain flex row
+   internally) without touching its value-sync/change-event behaviour, which lives on the
+   element itself, not its layout -- so its two real children (the slider, the number
    readout) become independent grid items and can be placed in different areas -- here,
    the number sits directly under the "Volume" label (io-vlabel/io-vnum, stacked in the
    4th column) while the slider spans all three rows in the 3rd. */
@@ -274,14 +264,11 @@
   justify-self: center;
 }
 /* Path row: the browse button right-aligned, the text input filling whatever's left.
-   flex:1 alone reopened a column-distortion bug (a bare flex-basis:auto still falls back
-   to the input's own ~162px UA-default intrinsic width as its minimum, pulling that into
-   the outer 2fr/1fr/1fr/2fr grid's own track-sizing pass), and min-width:0 -- the usual fix
-   for that -- turned out NOT to be enough on its own either: confirmed live that hiding the
-   input still measurably shrank the outer grid's columns even with min-width:0 in place.
-   width:0 (an explicit, definite size, not `auto`) is what actually starves that
-   contribution -- confirmed live it drops the outer columns back to their clean ratio,
-   with flex-grow:1 still doing the real work of filling whatever space is available. */
+   flex:1 alone reopens a column-distortion bug -- flex-basis:auto still falls back to the
+   input's own UA-default intrinsic width as a minimum, which leaks into the outer
+   2fr/1fr/1fr/2fr grid's own track-sizing pass. min-width:0 alone isn't enough to stop it;
+   width:0 (an explicit, definite size, not auto) is what actually starves that
+   contribution, with flex-grow:1 still doing the real work of filling available space. */
 #pause-fx-step-editor .pfx-block-media .pfx-with-picker,
 #pause-fx-step-editor .pfx-block-audio .pfx-with-picker {
   flex: 1;
@@ -323,8 +310,7 @@
   transition: background 120ms ease;
 }
 /* !important: Foundry loads every module's CSS inside @layer modules, and foundry2.css's own
-   (unlayered) styles win over ANY layered rule regardless of specificity -- confirmed live
-   earlier tonight. */
+   unlayered styles win over any layered rule regardless of specificity. */
 #pause-fx-composer .pfx-steps > .pfx-step:nth-child(even) {
   background: color-mix(in srgb, var(--pfx-surface) 40%, transparent) !important;
 }

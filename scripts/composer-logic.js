@@ -107,7 +107,7 @@ export function rowFromStep(step) {
     iconNone: step.iconVisible === false,
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
-    iconGlow: step.iconGlow ?? "#4DD0E1", // Andrew's usual teal, not a generic placeholder red
+    iconGlow: step.iconGlow ?? "#4DD0E1", // a deliberate teal default, not an arbitrary placeholder
     borderColorEnabled: step.borderColor !== undefined,
     borderColor: step.borderColor ?? "#4DD0E1",
     borderWidthPct: step.borderWidth ?? "",
