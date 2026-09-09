@@ -22,6 +22,14 @@
   overflow-y: auto;
   overflow-x: hidden;
 }
+/* The step editor's root is a real <dialog> now (see step-editor.js, for showModal()) -- the
+   browser's own UA stylesheet gives <dialog> a default ~14px padding that no other Foundry
+   window carries (they're all other tags), which was inset-ing the whole window-header/
+   content frame inward from the border, an unintended peculiar-looking gap Foundry's own
+   windows never have. Foundry's own CSS supplies the real padding/margin everywhere it
+   actually belongs (.window-header, .window-content, etc.) -- this only zeroes what the
+   browser added on top of that, at the outermost <dialog> box itself. */
+#pause-fx-step-editor.application { margin: 0; padding: 0; }
 
 #pause-fx-composer .pfx-composer,
 #pause-fx-step-editor .pfx-step-editor {
