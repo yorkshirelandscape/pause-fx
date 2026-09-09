@@ -120,7 +120,7 @@ test("rowFromStep: fills every field with a defined default, never undefined", (
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
   const steps = [
     { wait: { units: 1.45 }, text: "...AND SUDDENLY...", textPulse: true },
-    { video: "father-skinsaw.webm", videoVolume: 0.5, loop: true, iconVisible: false },
+    { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false },
     { image: "spooky/", imagePulses: 0, loop: true },
     { image: "spooky.webp" },
     { waitForImageEnd: true },
