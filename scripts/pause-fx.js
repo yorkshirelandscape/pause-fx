@@ -389,7 +389,6 @@ export class PauseFX {
       if (!label) {
         label = document.createElement("div");
         Object.assign(label.style, {
-          textAlign: "center",
           marginTop: "0.5em",
           fontSize: "2rem",
           textShadow: "0 0 8px black",
@@ -400,6 +399,13 @@ export class PauseFX {
       // render as typed. An inline style beats that regardless of specificity, and stays put
       // through every later label.textContent rewrite.
       label.style.textTransform = "none";
+      // A fixed width, not one that shrinks/grows to fit whatever text is currently set --
+      // otherwise a mid-pulse text change (different length) resizes the box, which shifts
+      // the pulse's own scale() transform-origin (the box's own center) out from under it,
+      // showing as a brief wobble riding on top of the pulse. Applied unconditionally since
+      // `label` may be Foundry's own reused caption element, not the freshly-created one above.
+      label.style.width = "min(90vw, 32rem)";
+      label.style.textAlign = "center";
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
       if (initialText !== undefined) label.textContent = initialText; // else leave "Game Paused"
     };
