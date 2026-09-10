@@ -560,9 +560,12 @@ export class PauseFX {
         }
         if (signal.aborted) break;
 
+        // Freeze rather than clean up outright -- holds through post-AV the same way a
+        // video that already reached its own natural end just sits on its last frame.
+        if (isVideo && visualEl) visualEl.pause();
+        if (step.postAV) await wait(clockMsFor(step.postAV, cycles), signal);
         if (hasVisual) { overlay?.remove(); overlay = null; }
         if (boundSound) { boundSound.stop(); activeAudio = null; }
-        if (step.postAV) await wait(clockMsFor(step.postAV, cycles), signal);
       }
 
       if (step.stopAudio) {
