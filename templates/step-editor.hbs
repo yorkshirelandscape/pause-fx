@@ -1,4 +1,16 @@
 <div class="pfx-step-editor">
+  <fieldset class="pfx-block pfx-block-stop">
+    <legend><i class="fa-regular fa-circle-stop"></i> Stop</legend>
+    <div class="pfx-stop-grid">
+      <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Video/Image</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Audio</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopIconSpin" {{checked row.stopIconSpin}}> Icon Spin</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopTextPulse" {{checked row.stopTextPulse}}> Text Pulse</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopBorderPulse" {{checked row.stopBorderPulse}}> Border Pulse</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="unpause" {{checked row.unpause}}> Unpause</label>
+    </div>
+  </fieldset>
+
   <fieldset class="pfx-block pfx-block-wait">
     <legend><i class="fa-solid fa-hourglass-half"></i> Duration</legend>
     <div class="pfx-row">
@@ -32,8 +44,7 @@
         <span class="pfx-field-label-row">
           <span>Icon</span>
           <span class="pfx-checkbox-group">
-            <label class="pfx-checkbox"><input type="checkbox" name="iconNone" data-disables="icon" {{checked row.iconNone}}> None</label>
-            <label class="pfx-checkbox" title="Re-show the icon, e.g. after an earlier step hid it"><input type="checkbox" name="iconShow" {{checked row.iconShow}}> Show</label>
+            <label class="pfx-checkbox" title="Defaults to whatever the previous step left it as"><input type="checkbox" name="iconNone" data-disables="icon" {{checked row.iconNone}}> None</label>
             <span class="pfx-with-toggle" title="Icon Glow">
               <input type="checkbox" name="iconGlowEnabled" data-enables="iconGlow" {{checked row.iconGlowEnabled}}>
               <input type="color" name="iconGlow" value="{{row.iconGlow}}" {{#unless row.iconGlowEnabled}}disabled{{/unless}}>
@@ -111,18 +122,6 @@
           <i class="fa-solid fa-folder-open"></i>
         </button>
       </span>
-    </div>
-  </fieldset>
-
-  <fieldset class="pfx-block pfx-block-stop">
-    <legend><i class="fa-regular fa-circle-stop"></i> Stop</legend>
-    <div class="pfx-stop-grid">
-      <label class="pfx-checkbox"><input type="checkbox" name="closeVideo" {{checked row.closeVideo}}> Video/Image</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Audio</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="stopIconSpin" {{checked row.stopIconSpin}}> Icon Spin</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="stopTextPulse" {{checked row.stopTextPulse}}> Text Pulse</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="stopBorderPulse" {{checked row.stopBorderPulse}}> Border Pulse</label>
-      <label class="pfx-checkbox"><input type="checkbox" name="unpause" {{checked row.unpause}}> Unpause</label>
     </div>
   </fieldset>
 </div>

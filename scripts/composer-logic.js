@@ -14,6 +14,22 @@ export function defaultStep() {
   return { wait: { units: 1 } };
 }
 
+/** Icon visibility carries forward step to step (same principle as the runtime engine's own
+ *  "nothing new set, keep doing what it was already doing" behavior) -- so a step new to the
+ *  Composer (freshly added, or loaded from a hand-written macro that never touched icon
+ *  visibility) should start already reflecting whatever the sequence's state actually is by
+ *  that point, not an ambiguous blank. Walks backward for the nearest explicit value; defaults
+ *  to visible when nothing before it has ever set one.
+ * @param {Array<object>} precedingSteps - the steps before the one being seeded.
+ * @returns {boolean}
+ */
+export function effectiveIconVisible(precedingSteps) {
+  for (let i = precedingSteps.length - 1; i >= 0; i--) {
+    if (precedingSteps[i].iconVisible !== undefined) return precedingSteps[i].iconVisible;
+  }
+  return true;
+}
+
 const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text"];
 
 /**
@@ -82,12 +98,10 @@ export function stepFromRow(row) {
     }
     if (row.loop) step.loop = true;
   }
-  if (row.iconNone) {
-    step.iconVisible = false; // explicitly hidden, not "untouched" -- same pattern as textNone
-  } else {
-    if (row.iconShow) step.iconVisible = true; // explicitly re-shown -- e.g. after an earlier step hid it
-    if (row.icon) step.icon = row.icon;
-  }
+  // Always a concrete true/false -- the single None checkbox has no third "untouched" state,
+  // so every Composer-authored step now says its own piece rather than inheriting silently.
+  step.iconVisible = !row.iconNone;
+  if (!row.iconNone && row.icon) step.icon = row.icon;
   if (row.iconSpin) step.iconSpin = true;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
@@ -100,7 +114,11 @@ export function stepFromRow(row) {
 /**
  * The inverse of stepFromRow -- a step object -> editable row fields, for populating the
  * dialog when a step (or a loaded macro's saved step) is opened for editing.
- * `stepFromRow(rowFromStep(step))` round-trips `step`.
+ * `stepFromRow(rowFromStep(step))` round-trips `step`, with one exception: iconVisible is a
+ * single checkbox now (see the step-editor template), not omittable -- an input step missing
+ * it round-trips as `iconVisible: true`, not back to missing. Call sites that create a step
+ * from scratch (composer.js's load/addStep) seed a real value themselves first, via
+ * effectiveIconVisible, so this only surfaces for a step object built by hand without it.
  * @param {object} step
  * @returns {object} row fields, all defined (never undefined) so they bind cleanly to inputs.
  */
@@ -130,7 +148,6 @@ export function rowFromStep(step) {
     loop: !!step.loop,
     icon: step.icon ?? "",
     iconNone: step.iconVisible === false,
-    iconShow: step.iconVisible === true,
     iconSpin: !!step.iconSpin,
     iconGlowEnabled: step.iconGlow !== undefined,
     iconGlow: step.iconGlow ?? "#4DD0E1", // a deliberate teal default, not an arbitrary placeholder
@@ -144,7 +161,7 @@ const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borde
 const BOOL_FIELDS = new Set([
   "textNone", "textPulse", "closeVideo", "stopAudio", "stopTextPulse",
   "stopIconSpin", "stopBorderPulse", "unpause", "waitForVideoEnd", "waitForAudioEnd",
-  "waitForImageEnd", "iconNone", "iconShow", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
+  "waitForImageEnd", "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -182,7 +199,7 @@ export function stepBadges(step, pulseLengthS) {
   if (step.waitForAudioEnd) badges.push({ type: "waitForAudioEnd" });
   if (step.waitForImageEnd) badges.push({ type: "waitForImageEnd" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
-  if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible !== undefined) {
+  if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible === false) {
     badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });
   }
   if (step.video) badges.push({ type: "video" });

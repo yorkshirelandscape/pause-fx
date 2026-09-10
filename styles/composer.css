@@ -38,11 +38,11 @@
   grid-template-columns: 2fr 1fr 1fr 2fr;
   /* grid-template-rows: 4rem 0.5rem 5.5rem 1rem 9.5rem 5rem auto; */
   grid-template-areas:
+    "stop   stop   stop   stop  "
     "wait   icon   icon   icon  "
     "text   text   text   border"
     "media  media  .      border"
     "media  media  audio  audio "
-    "stop   stop   stop   stop  "
     ". . . .";
   align-items: start;
 }

@@ -6,7 +6,7 @@ import { PauseFX } from "./pause-fx.js";
 import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
-  stepsFromConfig,
+  stepsFromConfig, effectiveIconVisible,
 } from "./composer-logic.js";
 import { PauseFXStepEditor } from "./step-editor.js";
 
@@ -194,7 +194,12 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       ui.notifications.warn(`pause-fx: recognized "${macro.name}" as a sequence but couldn't read its config back out -- open it in a text editor instead.`);
       return;
     }
-    this.rows = stepsFromConfig(config).map(rowFromStep);
+    // Steps missing iconVisible (hand-written, or saved before this field existed) get one
+    // seeded from where the sequence's state already is, so the loaded row isn't ambiguous.
+    const steps = stepsFromConfig(config);
+    this.rows = steps.map((step, i) => rowFromStep(
+      step.iconVisible !== undefined ? step : { ...step, iconVisible: effectiveIconVisible(steps.slice(0, i)) },
+    ));
     this.globals.pulseLengthS = config.borderCycleMs !== undefined ? String(msToSeconds(config.borderCycleMs)) : "";
     this.globals.endCombat = !!config.endCombat;
     this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
@@ -204,7 +209,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static #onAddStep() {
-    this.rows.push(rowFromStep(defaultStep()));
+    const iconVisible = effectiveIconVisible(this.rows.map(stepFromRow));
+    this.rows.push(rowFromStep({ ...defaultStep(), iconVisible }));
     this.render({ parts: ["body"] });
   }
 
