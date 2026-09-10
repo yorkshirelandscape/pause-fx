@@ -10,10 +10,11 @@ import {
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
-  waitUnits: "", waitClock: "border", text: "", textNone: false, textPulse: false,
-  closeVideo: false, stopAudio: false, stopTextPulse: false,
-  stopIconSpin: false, stopBorderPulse: false, unpause: false, waitForVideoEnd: false,
-  waitForAudioEnd: false, waitForImageEnd: false, audio: "", audioVolume: "", audioLoop: false,
+  waitUnits: "", waitClock: "border", preAvUnits: "", postAvUnits: "",
+  text: "", textNone: false, textPulse: false,
+  stopAudio: false, stopTextPulse: false,
+  stopIconSpin: false, stopBorderPulse: false, unpause: false,
+  waitForAudioEnd: false, audio: "", audioVolume: "", audioLoop: false,
   mediaType: "none", mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "",
   iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#4DD0E1",
   borderColorEnabled: false, borderColor: "#4DD0E1", borderWidthPct: "",
@@ -102,13 +103,16 @@ test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIcon
   );
 });
 
-test("stepFromRow: waitForVideoEnd/waitForAudioEnd/waitForImageEnd are gates, independent of wait itself", () => {
-  const row = {
-    ...BLANK_ROW, waitUnits: "1", waitForVideoEnd: true, waitForAudioEnd: true, waitForImageEnd: true,
-  };
+test("stepFromRow: preAV/postAV carry through independently of wait itself", () => {
+  const row = { ...BLANK_ROW, waitUnits: "1", preAvUnits: "0.5", postAvUnits: "1.5" };
   assert.deepEqual(stepFromRow(row), {
-    wait: { units: 1 }, waitForVideoEnd: true, waitForAudioEnd: true, waitForImageEnd: true, iconVisible: true,
+    wait: { units: 1 }, preAV: { units: 0.5 }, postAV: { units: 1.5 }, iconVisible: true,
   });
+});
+
+test("stepFromRow: waitForAudioEnd binds audio to this step's AV lifecycle -- same field, new meaning", () => {
+  const row = { ...BLANK_ROW, audio: "sting.ogg", waitForAudioEnd: true };
+  assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", waitForAudioEnd: true, iconVisible: true });
 });
 
 test("stepFromRow: mediaType picks video vs. image -- video carries volume/loop, image carries imagePulses/loop", () => {
@@ -124,15 +128,15 @@ test("stepFromRow: audio carries its own volume and loop, independent of media f
   assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5, audioLoop: true, iconVisible: true });
 });
 
-test("stepFromRow: stopAudio is the audio equivalent of closeVideo -- its own step, own field", () => {
+test("stepFromRow: stopAudio is its own field -- explicitly stops detached audio a later step started", () => {
   assert.deepEqual(stepFromRow({ ...BLANK_ROW, stopAudio: true }), { stopAudio: true, iconVisible: true });
 });
 
-test("stepFromRow: unpause is its own field, same 'Stop' block as closeVideo/stopAudio", () => {
+test("stepFromRow: unpause is its own field, same 'Stop' block as stopAudio", () => {
   assert.deepEqual(stepFromRow({ ...BLANK_ROW, unpause: true }), { unpause: true, iconVisible: true });
   assert.deepEqual(
-    stepFromRow({ ...BLANK_ROW, closeVideo: true, stopAudio: true, unpause: true }),
-    { closeVideo: true, stopAudio: true, unpause: true, iconVisible: true },
+    stepFromRow({ ...BLANK_ROW, stopAudio: true, unpause: true }),
+    { stopAudio: true, unpause: true, iconVisible: true },
   );
 });
 
@@ -169,16 +173,15 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     { wait: { units: 1.45 }, text: "...AND SUDDENLY...", textPulse: true, iconVisible: true },
     { wait: { units: 2, clock: "text" }, text: "A MANNEQUIN BEGINS TO TWITCH", iconVisible: true },
     { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false },
-    { closeVideo: true, iconVisible: true, borderColor: "#FF0000" },
+    { preAV: { units: 0.5 }, video: "reveal.webm", iconVisible: true, borderColor: "#FF0000" },
+    { postAV: { units: 1.5 }, iconVisible: true },
     { image: "spooky/", imagePulses: 0, loop: true, iconVisible: true },
     { image: "spooky.webp", iconVisible: true },
-    { waitForImageEnd: true, iconVisible: true },
     { audio: "sting.ogg", audioVolume: 0.8, audioLoop: true, waitForAudioEnd: true, iconVisible: true },
     {
-      closeVideo: true, stopAudio: true, unpause: true, stopTextPulse: true,
+      stopAudio: true, unpause: true, stopTextPulse: true,
       stopIconSpin: true, stopBorderPulse: true, iconVisible: true,
     },
-    { waitForVideoEnd: true, iconVisible: true },
     { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150, iconVisible: true },
     { text: "", iconVisible: true }, // explicit blank
   ];
@@ -190,7 +193,7 @@ test("coerceStepField: bool fields always become real booleans", () => {
   assert.equal(coerceStepField("textPulse", ""), false); // an unchecked box's raw value
   assert.equal(coerceStepField("iconGlowEnabled", true), true);
   assert.equal(coerceStepField("iconNone", true), true);
-  assert.equal(coerceStepField("waitForImageEnd", true), true);
+  assert.equal(coerceStepField("waitForAudioEnd", true), true);
   assert.equal(coerceStepField("loop", true), true);
 });
 
@@ -230,15 +233,17 @@ test("stepBadges: a clock:\"text\" wait uses double pulseLengthS, matching resol
 
 test("stepBadges: one badge per active field, in a stable order", () => {
   const step = {
-    waitForVideoEnd: true, waitForAudioEnd: true, waitForImageEnd: true, borderColor: "#FF0000",
+    preAV: { units: 0.5 }, wait: { units: 2 }, postAV: { units: 1.5 },
+    waitForAudioEnd: true, borderColor: "#FF0000",
     icon: "eye.gif", video: "a.webm", audio: "sting.ogg", loop: true, textPulse: true,
-    stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true, closeVideo: true,
+    stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true,
     stopAudio: true, unpause: true,
   };
   assert.deepEqual(stepBadges(step), [
-    { type: "waitForVideoEnd" },
-    { type: "waitForAudioEnd" },
-    { type: "waitForImageEnd" },
+    { type: "preAV", label: "0.5x" },
+    { type: "wait", label: "2x" },
+    { type: "postAV", label: "1.5x" },
+    { type: "audioBound" },
     { type: "border", colour: "#FF0000" },
     { type: "icon", icon: "eye.gif", glow: undefined, spin: false, visible: undefined },
     { type: "video" },
@@ -248,10 +253,13 @@ test("stepBadges: one badge per active field, in a stable order", () => {
     { type: "stopTextPulse" },
     { type: "stopIconSpin" },
     { type: "stopBorderPulse" },
-    { type: "closeVideo" },
     { type: "stopAudio" },
     { type: "unpause" },
   ]);
+});
+
+test("stepBadges: audio alone (not bound) still gets the plain audio badge, no audioBound", () => {
+  assert.deepEqual(stepBadges({ audio: "sting.ogg" }), [{ type: "audio" }]);
 });
 
 test("stepBadges: loop badge fires off audioLoop too, not just the video/image loop", () => {

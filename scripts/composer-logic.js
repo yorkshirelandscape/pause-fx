@@ -65,18 +65,24 @@ export function stepFromRow(row) {
     step.wait = { units: Number(row.waitUnits) };
     if (row.waitClock === "text") step.wait.clock = "text";
   }
+  // //+pre-av-duration-post-av-step-model preAV/postAV only mean anything on a step with
+  // media (see pause-fx.js) -- harmless to always carry them through regardless.
+  if (row.preAvUnits !== "" && row.preAvUnits !== null && row.preAvUnits !== undefined) {
+    step.preAV = { units: Number(row.preAvUnits) };
+  }
+  if (row.postAvUnits !== "" && row.postAvUnits !== null && row.postAvUnits !== undefined) {
+    step.postAV = { units: Number(row.postAvUnits) };
+  }
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
   if (row.textPulse) step.textPulse = true;
-  if (row.closeVideo) step.closeVideo = true;
   if (row.stopAudio) step.stopAudio = true;
   if (row.stopTextPulse) step.stopTextPulse = true;
   if (row.stopIconSpin) step.stopIconSpin = true;
   if (row.stopBorderPulse) step.stopBorderPulse = true;
   if (row.unpause) step.unpause = true;
-  if (row.waitForVideoEnd) step.waitForVideoEnd = true;
+  // Bound audio (see pause-fx.js) vs. detached -- same checkbox as before, new meaning.
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
-  if (row.waitForImageEnd) step.waitForImageEnd = true;
   if (row.audio) {
     step.audio = row.audio;
     if (row.audioVolume !== "" && row.audioVolume !== null && row.audioVolume !== undefined) {
@@ -126,18 +132,17 @@ export function rowFromStep(step) {
   return {
     waitUnits: step.wait?.units ?? "",
     waitClock: step.wait?.clock ?? "border",
+    preAvUnits: step.preAV?.units ?? "",
+    postAvUnits: step.postAV?.units ?? "",
     text: step.text ?? "",
     textNone: step.text === "",
     textPulse: !!step.textPulse,
-    closeVideo: !!step.closeVideo,
     stopAudio: !!step.stopAudio,
     stopTextPulse: !!step.stopTextPulse,
     stopIconSpin: !!step.stopIconSpin,
     stopBorderPulse: !!step.stopBorderPulse,
     unpause: !!step.unpause,
-    waitForVideoEnd: !!step.waitForVideoEnd,
     waitForAudioEnd: !!step.waitForAudioEnd,
-    waitForImageEnd: !!step.waitForImageEnd,
     audio: step.audio ?? "",
     audioVolume: step.audioVolume ?? "",
     audioLoop: !!step.audioLoop,
@@ -157,11 +162,13 @@ export function rowFromStep(step) {
   };
 }
 
-const NUMBER_FIELDS = new Set(["waitUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses"]);
+const NUMBER_FIELDS = new Set([
+  "waitUnits", "preAvUnits", "postAvUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses",
+]);
 const BOOL_FIELDS = new Set([
-  "textNone", "textPulse", "closeVideo", "stopAudio", "stopTextPulse",
-  "stopIconSpin", "stopBorderPulse", "unpause", "waitForVideoEnd", "waitForAudioEnd",
-  "waitForImageEnd", "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
+  "textNone", "textPulse", "stopAudio", "stopTextPulse",
+  "stopIconSpin", "stopBorderPulse", "unpause", "waitForAudioEnd",
+  "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -188,16 +195,19 @@ export function coerceStepField(field, rawValue) {
  *   resolveTextCycleMs's own default multiplier -- see pause-fx.js.
  * @returns {Array<object>} badge descriptors, e.g. {type: "wait", label: "2.0s"}.
  */
+// Same "pulse units -> real seconds, given a clock" rendering as the wait badge itself --
+// preAV/postAV share its shape (units + optional clock) so they share this too.
+function pulseLabel(waitSpec, pulseLengthS) {
+  const cycleS = pulseLengthS ? Number(pulseLengthS) * (waitSpec.clock === "text" ? 2 : 1) : null;
+  return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${waitSpec.units}x`;
+}
+
 export function stepBadges(step, pulseLengthS) {
   const badges = [];
-  if (step.wait) {
-    const cycleS = pulseLengthS ? Number(pulseLengthS) * (step.wait.clock === "text" ? 2 : 1) : null;
-    const seconds = cycleS ? (step.wait.units * cycleS).toFixed(1) + "s" : `${step.wait.units}x`;
-    badges.push({ type: "wait", label: seconds });
-  }
-  if (step.waitForVideoEnd) badges.push({ type: "waitForVideoEnd" });
-  if (step.waitForAudioEnd) badges.push({ type: "waitForAudioEnd" });
-  if (step.waitForImageEnd) badges.push({ type: "waitForImageEnd" });
+  if (step.preAV) badges.push({ type: "preAV", label: pulseLabel(step.preAV, pulseLengthS) });
+  if (step.wait) badges.push({ type: "wait", label: pulseLabel(step.wait, pulseLengthS) });
+  if (step.postAV) badges.push({ type: "postAV", label: pulseLabel(step.postAV, pulseLengthS) });
+  if (step.audio && step.waitForAudioEnd) badges.push({ type: "audioBound" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
   if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible === false) {
     badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });
@@ -210,7 +220,6 @@ export function stepBadges(step, pulseLengthS) {
   if (step.stopTextPulse) badges.push({ type: "stopTextPulse" });
   if (step.stopIconSpin) badges.push({ type: "stopIconSpin" });
   if (step.stopBorderPulse) badges.push({ type: "stopBorderPulse" });
-  if (step.closeVideo) badges.push({ type: "closeVideo" });
   if (step.stopAudio) badges.push({ type: "stopAudio" });
   if (step.unpause) badges.push({ type: "unpause" });
   return badges;

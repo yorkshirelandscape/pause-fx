@@ -321,6 +321,13 @@
   color: var(--pfx-accent);
   background: color-mix(in srgb, var(--pfx-accent) 12%, transparent);
 }
+/* Muted, not accent -- pre/post-AV support the main Duration pill, not co-equal with it. */
+#pause-fx-composer .pfx-badge-preav,
+#pause-fx-composer .pfx-badge-postav {
+  border-color: var(--pfx-surface-border);
+  color: var(--pfx-text-body);
+  background: transparent;
+}
 #pause-fx-composer .pfx-badge-swatch {
   display: inline-block;
   width: 0.9rem;

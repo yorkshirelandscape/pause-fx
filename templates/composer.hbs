@@ -23,10 +23,10 @@
         <button type="button" class="pfx-step-open" data-action="editStep">
           <span class="pfx-step-badges">
             {{#each row.badges as |b|}}
+              {{#if (eq b.type "preAV")}}<span class="pfx-badge pfx-badge-wait pfx-badge-preav" title="Pre-AV">{{b.label}}</span>{{/if}}
               {{#if (eq b.type "wait")}}<span class="pfx-badge pfx-badge-wait" title="Wait">{{b.label}}</span>{{/if}}
-              {{#if (eq b.type "waitForVideoEnd")}}<i class="fa-solid fa-hourglass-half pfx-badge" title="Wait for Video End"></i>{{/if}}
-              {{#if (eq b.type "waitForAudioEnd")}}<i class="fa-solid fa-hourglass-end pfx-badge" title="Wait for Audio End"></i>{{/if}}
-              {{#if (eq b.type "waitForImageEnd")}}<i class="fa-solid fa-hourglass pfx-badge" title="Wait for Slideshow End"></i>{{/if}}
+              {{#if (eq b.type "postAV")}}<span class="pfx-badge pfx-badge-wait pfx-badge-postav" title="Post-AV">{{b.label}}</span>{{/if}}
+              {{#if (eq b.type "audioBound")}}<i class="fa-solid fa-link pfx-badge" title="Audio bound to this step"></i>{{/if}}
               {{#if (eq b.type "border")}}<span class="pfx-badge pfx-badge-swatch" style="border-color:{{b.colour}}" title="Border: {{b.colour}}"></span>{{/if}}
               {{#if (eq b.type "icon")}}
                 <span class="pfx-badge pfx-badge-icon" style="border-color:{{b.glow}}" title="Icon">
@@ -44,7 +44,6 @@
               {{#if (eq b.type "stopTextPulse")}}<i class="fa-solid fa-pause pfx-badge" title="Stop Text Pulse"></i>{{/if}}
               {{#if (eq b.type "stopIconSpin")}}<i class="fa-solid fa-circle-pause pfx-badge" title="Stop Icon Spin"></i>{{/if}}
               {{#if (eq b.type "stopBorderPulse")}}<i class="fa-solid fa-pause pfx-badge" title="Stop Border Pulse"></i>{{/if}}
-              {{#if (eq b.type "closeVideo")}}<i class="fa-solid fa-ban pfx-badge" title="Close Media"></i>{{/if}}
               {{#if (eq b.type "stopAudio")}}<i class="fa-solid fa-volume-xmark pfx-badge" title="Stop Audio"></i>{{/if}}
               {{#if (eq b.type "unpause")}}<i class="fa-solid fa-circle-play pfx-badge" title="Unpause"></i>{{/if}}
             {{/each}}

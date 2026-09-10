@@ -428,8 +428,6 @@ export class PauseFX {
 
     let overlay = null; // the current video/image element, if any
     let activeAudio = null; // the current standalone Sound, if any (see step.audio)
-    let activeImageSlideshowDone = null; // resolves once the current slideshow completes one
-    // full pass (looping or not) -- see step.waitForImageEnd below
 
     for (const step of steps) {
       // An unpause (this run's own step.unpause included) cuts the sequence off here.
@@ -457,86 +455,125 @@ export class PauseFX {
       if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
       if (step.stopBorderPulse) document.body.classList.add(BORDER_FROZEN_CLASS);
 
-      if (step.audio) {
+      // //+pre-av-duration-post-av-step-model AV phase: video/image self-contained per step;
+      // audio joins it only when waitForAudioEnd binds it, else detached (starts now, stoppable later).
+      const hasVisual = !!(step.video || step.image);
+      const audioBound = !!step.audio && !!step.waitForAudioEnd;
+      const cycles = { borderCycleMs, textCycleMs: resolvedTextCycle };
+
+      if (step.audio && !audioBound) {
         activeAudio = await foundry.audio.AudioHelper.play(
           { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: !!step.audioLoop },
           false,
         );
       }
 
-      if (step.video || step.image) {
+      if (hasVisual || audioBound) {
         const isVideo = !!step.video;
-        const imageFiles = isVideo ? null : await resolveImageFiles(step.image);
-
-        const el = document.createElement(isVideo ? "video" : "img");
-        Object.assign(el.style, {
-          position: "fixed",
-          inset: "0",
-          margin: "auto",
-          width: "min(90vmin, 800px)",
-          maxHeight: "90vh",
-          zIndex: "100000", // above Foundry's own UI chrome, not just #pause
-        });
-        if (isVideo) {
-          Object.assign(el, { src: step.video, autoplay: true, loop: !!step.loop, controls: false, volume: step.videoVolume ?? 0.5 });
-        } else {
-          el.src = imageFiles[0]; // a folder's first file, alphabetically, or the single file itself
+        const imageFiles = hasVisual && !isVideo ? await resolveImageFiles(step.image) : null;
+        let visualEl = null;
+        if (hasVisual) {
+          visualEl = document.createElement(isVideo ? "video" : "img");
+          Object.assign(visualEl.style, {
+            position: "fixed",
+            inset: "0",
+            margin: "auto",
+            width: "min(90vmin, 800px)",
+            maxHeight: "90vh",
+            zIndex: "100000", // above Foundry's own UI chrome, not just #pause
+          });
+          // Loaded but not yet playing -- pre-AV (below) elapses before anything actually starts.
+          if (isVideo) {
+            Object.assign(visualEl, { src: step.video, autoplay: false, loop: !!step.loop, controls: false, volume: step.videoVolume ?? 0.5 });
+          }
+          document.body.appendChild(visualEl);
+          overlay = visualEl;
         }
-        document.body.appendChild(el);
-        overlay = el;
+        let boundSound = null;
+        if (audioBound) {
+          boundSound = await foundry.audio.AudioHelper.play(
+            { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: false, loop: !!step.audioLoop },
+            false,
+          );
+          activeAudio = boundSound;
+        }
 
-        // A slideshow (imagePulses set): 0 units means wait for a manual advance instead.
-        if (!isVideo && step.imagePulses !== undefined) {
-          let resolveSlideshowDone;
-          activeImageSlideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
-          const showSlideshow = async () => {
-            let i = 0;
-            while (true) {
-              // Checked before waiting again -- an aborted signal resolves every future wait
-              // instantly, so this stops the loop instead of spinning through every image.
-              if (signal.aborted) {
-                resolveSlideshowDone(); // unblock anything gated on waitForImageEnd, not left hanging
-                return;
-              }
-              if (i > 0) el.src = imageFiles[i % imageFiles.length];
-              if (step.imagePulses === 0) await waitForManualAdvance(signal);
-              else await wait(clockMsFor({ units: step.imagePulses }, { borderCycleMs, textCycleMs: resolvedTextCycle }), signal);
-              i++;
-              if (i >= imageFiles.length) {
-                resolveSlideshowDone(); // one full pass done, looping or not -- fires exactly once
-                if (!step.loop) break;
-              }
+        if (step.preAV) await wait(clockMsFor(step.preAV, cycles), signal);
+        if (signal.aborted) break;
+
+        // 0-units imagePulses waits for a manual advance between slides; no imagePulses at
+        // all is a single still with nothing to advance through.
+        let slideshowDone = null;
+        if (hasVisual) {
+          if (isVideo) {
+            visualEl.play();
+          } else {
+            visualEl.src = imageFiles[0];
+            if (step.imagePulses !== undefined) {
+              let resolveSlideshowDone;
+              slideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
+              const showSlideshow = async () => {
+                let i = 0;
+                while (true) {
+                  if (signal.aborted) { resolveSlideshowDone(); return; }
+                  if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
+                  if (step.imagePulses === 0) await waitForManualAdvance(signal);
+                  else await wait(clockMsFor({ units: step.imagePulses }, cycles), signal);
+                  i++;
+                  if (i >= imageFiles.length) {
+                    resolveSlideshowDone(); // one full pass done, looping or not -- fires once
+                    if (!step.loop) break;
+                  }
+                }
+              };
+              void showSlideshow();
             }
-          };
-          void showSlideshow();
+          }
         }
+        if (boundSound) boundSound.play();
+
+        // Explicit Duration always wins when set. Unset, wait for the later of whichever
+        // channels aren't looping -- see the linked note if everything loops instead.
+        const naturalEnds = [];
+        if (hasVisual && !step.loop) {
+          if (isVideo) {
+            naturalEnds.push(new Promise((resolve) => {
+              visualEl.addEventListener("ended", resolve, { once: true });
+              signal.addEventListener("abort", resolve, { once: true });
+            }));
+          } else if (slideshowDone) {
+            naturalEnds.push(slideshowDone);
+          }
+        }
+        if (audioBound && !step.audioLoop) {
+          naturalEnds.push(new Promise((resolve) => {
+            boundSound.addEventListener("end", resolve, { once: true });
+            signal.addEventListener("abort", resolve, { once: true });
+          }));
+        }
+        if (step.wait) {
+          await wait(clockMsFor(step.wait, cycles), signal);
+        } else if (naturalEnds.length) {
+          await Promise.all(naturalEnds);
+        } else {
+          ui.notifications.error("pause-fx: a step's media all loops with no Duration set -- add one so it knows when to stop.");
+        }
+        if (signal.aborted) break;
+
+        if (hasVisual) { overlay?.remove(); overlay = null; }
+        if (boundSound) { boundSound.stop(); activeAudio = null; }
+        if (step.postAV) await wait(clockMsFor(step.postAV, cycles), signal);
       }
-      if (step.closeVideo) {
-        overlay?.remove();
-        overlay = null;
-      }
+
       if (step.stopAudio) {
         activeAudio?.stop();
         activeAudio = null;
       }
       if (signal.aborted) break;
 
-      // Hold this step's own state: media gates first, then its own explicit `wait`.
-      if (step.waitForVideoEnd && overlay instanceof HTMLVideoElement) {
-        await new Promise((resolve) => {
-          overlay.addEventListener("ended", resolve, { once: true });
-          signal.addEventListener("abort", resolve, { once: true });
-        });
-      }
-      if (step.waitForAudioEnd && activeAudio) {
-        await new Promise((resolve) => {
-          activeAudio.addEventListener("end", resolve, { once: true });
-          signal.addEventListener("abort", resolve, { once: true });
-        });
-      }
-      if (step.waitForImageEnd && activeImageSlideshowDone) await activeImageSlideshowDone;
-      if (step.wait) {
-        await wait(clockMsFor(step.wait, { borderCycleMs, textCycleMs: resolvedTextCycle }), signal);
+      // A step with no AV phase of its own just holds for its plain Duration, as always.
+      if (!hasVisual && !audioBound && step.wait) {
+        await wait(clockMsFor(step.wait, cycles), signal);
       }
       if (signal.aborted) break; // the wait/gate above may be what the unpause interrupted
 
