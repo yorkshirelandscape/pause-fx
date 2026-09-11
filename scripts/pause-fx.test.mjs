@@ -1,6 +1,6 @@
 // Unit tests for pause-fx's pure/isolable logic (node's built-in test runner, no
 // dependencies) -- not the full PauseFX.run() sequence, which needs a real Foundry
-// runtime and is covered by live testing instead.
+// runtime and is covered by live testing instead. [CC+: whole-file preamble]
 //
 // Minimal Foundry globals (`ui`, `foundry`, `Hooks`) are stubbed just enough for
 // closeAllWindowsHandler to run and for the module to import cleanly without socketlib
@@ -16,7 +16,9 @@ globalThis.game = { user: { isGM: false } };
 // Hooks.once("socketlib.ready", ...) on import -- stub just enough for that to no-op cleanly.
 globalThis.Hooks = { once() {} };
 
-const { isRealWindow, closeAllWindowsHandler, resolveTextCycleMs, clockMsFor } = await import("./pause-fx.js");
+const {
+  isRealWindow, closeAllWindowsHandler, resolveTextCycleMs, clockMsFor, wait, waitForEvent,
+} = await import("./pause-fx.js");
 
 test("isRealWindow: true only for apps with a real frame (a titled window with a close control)", () => {
   assert.equal(isRealWindow({ hasFrame: true }), true);
@@ -25,9 +27,8 @@ test("isRealWindow: true only for apps with a real frame (a titled window with a
 });
 
 test("closeAllWindowsHandler: closes real floating windows, leaves docked UI chrome alone", () => {
-  // Regression test: naively closing every entry in foundry.applications.instances also
-  // closes persistent chrome (sidebar, hotbar, players, scene-controls, ...), blanking a
-  // client's whole UI rather than just its open dialogs.
+  // Regression: closing every foundry.applications.instances entry also takes out persistent
+  // chrome (sidebar, hotbar, ...), blanking a client's whole UI, not just its open dialogs.
   const closed = [];
   const mkApp = (id, hasFrame) => ({ id, hasFrame, close: () => closed.push(id) });
 
@@ -102,3 +103,51 @@ for (const [label, waitSpec, expected] of CLOCK_MS_CASES) {
     assert.equal(clockMsFor(waitSpec, clocks), expected);
   });
 }
+
+// A real AbortSignal that also counts its own live listeners -- a sequence runs dozens of
+// waits against one signal, so each has to detach itself however it finishes.
+function countingSignal() {
+  const controller = new AbortController();
+  const { signal } = controller;
+  let live = 0;
+  const { addEventListener, removeEventListener } = signal;
+  signal.addEventListener = (...args) => { live++; return addEventListener.apply(signal, args); };
+  signal.removeEventListener = (...args) => { live--; return removeEventListener.apply(signal, args); };
+  return { controller, signal, liveListeners: () => live };
+}
+
+test("wait: resolves immediately on an already-aborted signal, without listening at all", async () => {
+  const { controller, signal, liveListeners } = countingSignal();
+  controller.abort();
+  await wait(60_000, signal); // would hang for a minute if the aborted check didn't short-circuit
+  assert.equal(liveListeners(), 0);
+});
+
+test("wait: an abort mid-wait resolves it early", async () => {
+  const { controller, signal } = countingSignal();
+  const pending = wait(60_000, signal);
+  controller.abort();
+  await pending;
+});
+
+test("wait: detaches its abort listener once the timer fires normally", async () => {
+  const { signal, liveListeners } = countingSignal();
+  await wait(1, signal);
+  assert.equal(liveListeners(), 0);
+});
+
+test("waitForEvent: the first of its events resolves it, and every listener detaches", async () => {
+  const { signal, liveListeners } = countingSignal();
+  const target = new EventTarget();
+  const pending = waitForEvent(target, ["ended", "error"], signal);
+  target.dispatchEvent(new Event("error")); // an unloadable video -- "ended" never comes
+  await pending;
+  assert.equal(liveListeners(), 0);
+});
+
+test("waitForEvent: an abort resolves it too, so an unpause can't leave a step hung", async () => {
+  const { controller, signal } = countingSignal();
+  const pending = waitForEvent(new EventTarget(), ["ended"], signal);
+  controller.abort();
+  await pending;
+});

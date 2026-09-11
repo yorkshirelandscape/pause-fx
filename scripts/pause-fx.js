@@ -7,6 +7,7 @@
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered";
 const BORDER_FROZEN_CLASS = "pause-fx-border-frozen";
+const BAND_ID = "pause-fx-band"; // #pause's own background, recreated behind media -- see injectStyles
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const BORDER_SCALE_VAR = "--pause-fx-border-scale";
 // No icon-GIF-timing auto-detection -- pass borderCycleMs explicitly to sync against a
@@ -42,12 +43,15 @@ let advanceResolvers = [];
 function waitForManualAdvance(signal) {
   return new Promise((resolve) => {
     if (signal?.aborted) return resolve();
-    advanceResolvers.push(resolve);
-    signal?.addEventListener("abort", () => {
-      const i = advanceResolvers.indexOf(resolve);
+    // Each side detaches the other, so neither outlives the wait it belongs to.
+    const advance = () => { signal?.removeEventListener("abort", onAbort); resolve(); };
+    const onAbort = () => {
+      const i = advanceResolvers.indexOf(advance);
       if (i !== -1) advanceResolvers.splice(i, 1);
       resolve();
-    }, { once: true });
+    };
+    advanceResolvers.push(advance);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -95,11 +99,27 @@ export function closeAllWindowsHandler({ players = true, gm = true } = {}) {
 }
 
 // `signal` is a run's own AbortController (see PauseFX.run) -- resolves this early on unpause.
-const wait = (ms, signal) => new Promise((resolve) => {
+// The listener is detached on a normal timeout, so a long sequence doesn't pile them up.
+export const wait = (ms, signal) => new Promise((resolve) => {
   if (signal?.aborted) return resolve();
-  const id = setTimeout(resolve, ms);
-  signal?.addEventListener("abort", () => { clearTimeout(id); resolve(); }, { once: true });
+  const onAbort = () => { clearTimeout(id); resolve(); };
+  const id = setTimeout(() => { signal?.removeEventListener("abort", onAbort); resolve(); }, ms);
+  signal?.addEventListener("abort", onAbort, { once: true });
 });
+
+// Resolves on the first of `events` to fire on `target`, or early on abort -- every listener
+// self-detaches either way, so a long sequence doesn't pile them up on the run's own signal.
+export function waitForEvent(target, events, signal) {
+  return new Promise((resolve) => {
+    const done = () => {
+      for (const event of events) target.removeEventListener(event, done);
+      signal.removeEventListener("abort", done);
+      resolve();
+    };
+    for (const event of events) target.addEventListener(event, done, { once: true });
+    signal.addEventListener("abort", done, { once: true });
+  });
+}
 
 /**
  * @param {object} opts
@@ -128,6 +148,7 @@ export function clockMsFor(waitSpec, { borderCycleMs }) {
 let styleEl = null;
 
 function injectStyles({ borderCycleMs, textCycleMs }) {
+  styleEl?.remove(); // never orphan an earlier run's sheet under the same id
   styleEl = document.createElement("style");
   styleEl.id = "pause-fx-styles";
   styleEl.textContent = `
@@ -139,6 +160,21 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
          both in play (measured live). top shifts too, keeping Foundry's own visual center. */
       height: 240px;
       top: calc(50vh - 130px);
+      /* Raised above the video/image overlay's 100000 -- a caption stays readable instead of
+         buried under it. Its own band moves to #${BAND_ID} below, else it'd paint over the video. */
+      background: none;
+      z-index: 100001;
+    }
+    /* #pause's own band, recreated as its own element so it can sit behind the video/image
+       overlay while #pause itself (icon/text) sits in front -- same gradient, same box. */
+    #${BAND_ID} {
+      position: fixed;
+      width: 100%;
+      height: 240px;
+      top: calc(50vh - 130px);
+      left: 0;
+      background: linear-gradient(to right, transparent 0%, var(--color-cool-5-50) 40%, var(--color-cool-5-50) 60%, transparent 100%);
+      pointer-events: none;
     }
 
     body.${BORDER_CLASS}:before {
@@ -171,12 +207,14 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       }
     }
 
+    /* Rides on the same border colour the author actually picked (was hardcoded red-orange,
+       against the docs' own claim -- see the run()-level JSDoc this fixes). */
     @keyframes pause-fx-text-pulse {
-      0%, 100% { color: #330000; transform: scale(1); }
-      50% { color: #FF2400; transform: scale(1.08); }
+      0%, 100% { color: color-mix(in srgb, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)) 30%, black); transform: scale(1); }
+      50% { color: rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)); transform: scale(1.08); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .pause-fx-label { color: #FF2400; }
+      .pause-fx-label { color: rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)); }
     }
     @media (prefers-reduced-motion: no-preference) {
       .pause-fx-label { animation: pause-fx-text-pulse ${textCycleMs / 1000}s ease-in-out infinite; }
@@ -206,6 +244,7 @@ function resolveRgbTriplet(colour) {
     colourProbe.style.display = "none";
     document.body.appendChild(colourProbe);
   }
+  colourProbe.style.color = ""; // reset first, else an unparseable colour keeps the last one
   colourProbe.style.color = colour;
   const [r, g, b] = getComputedStyle(colourProbe).color.match(/\d+(\.\d+)?/g) ?? [255, 0, 0];
   return `${r}, ${g}, ${b}`;
@@ -251,6 +290,20 @@ async function resolveImageFiles(path) {
     return images.length ? images : [path];
   } catch {
     return [path]; // not a browsable folder -- treat the path as a single file after all
+  }
+}
+
+/**
+ * A missing or unplayable sound shouldn't take the whole sequence down with it.
+ * @returns {Promise<object|null>} the Sound, or null if it couldn't be played.
+ */
+async function playSound(spec) {
+  try {
+    return await foundry.audio.AudioHelper.play(spec, false);
+  } catch (error) {
+    console.error("pause-fx | audio playback failed", error);
+    ui.notifications.warn(`pause-fx: couldn't play "${spec.src}" -- carrying on without it.`);
+    return null;
   }
 }
 
@@ -330,7 +383,7 @@ export class PauseFX {
       iconGlow,
       borderColor,
       borderWidth,
-      iconSpin = false,
+      iconSpin,
       text: initialText,
       borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
       textCycleMs,
@@ -344,7 +397,10 @@ export class PauseFX {
     if (shouldEndCombat) await game.combat?.endCombat();
     if (closeAllWindows) {
       if (!socket) ui.notifications.warn("pause-fx: socketlib isn't ready yet, skipping closeAllWindows.");
-      else await socket.executeForEveryone("closeAllWindows", closeAllWindows);
+      // A socket hiccup shouldn't cost the whole reveal -- the GM's own screen still works.
+      else await socket.executeForEveryone("closeAllWindows", closeAllWindows).catch((error) => {
+        console.error("pause-fx | closeAllWindows broadcast failed", error);
+      });
     }
 
     // Opt-in -- an un-customized run looks like Foundry's own pause screen, not a themed one.
@@ -354,19 +410,27 @@ export class PauseFX {
     }
     if (borderWidth !== undefined) setBorderWidth(borderWidth);
 
-    // overlay/activeAudio are declared further down -- safe to close over here since this
-    // function isn't called until the pauseGame hook fires, well after those declarations run.
+    // Every sound this run started and hasn't stopped yet -- a set, not a single slot, so an
+    // earlier detached track can't be orphaned (and left looping past unpause) by a later one.
+    const activeSounds = new Set();
+    const stopAllSounds = () => {
+      for (const sound of activeSounds) sound.stop();
+      activeSounds.clear();
+    };
+
+    // `overlay` is declared further down -- safe to close over here since this function isn't
+    // called until the pauseGame hook fires, well after that declaration runs.
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
       runController.abort(); // stop every pending wait/gate/background loop this run owns
       overlay?.remove();
       overlay = null;
-      activeAudio?.stop();
-      activeAudio = null;
+      stopAllSounds();
       clearBorderColour();
       clearBorderWidth();
       document.body.classList.remove(BORDER_FROZEN_CLASS);
       removeStyles();
+      document.getElementById(BAND_ID)?.remove();
       Hooks.off("pauseGame", resetOnUnpause);
     };
     Hooks.on("pauseGame", resetOnUnpause);
@@ -375,6 +439,11 @@ export class PauseFX {
     const applySkin = (_app, html) => {
       const root = document.getElementById("pause") ?? (html instanceof jQuery ? html[0] : html);
       if (!root) return;
+      if (!document.getElementById(BAND_ID)) {
+        const band = document.createElement("div");
+        band.id = BAND_ID;
+        document.body.appendChild(band);
+      }
 
       iconEl = root.querySelector("img, svg, i");
       if (iconEl && iconEl.tagName !== "IMG") {
@@ -383,7 +452,10 @@ export class PauseFX {
         iconEl.replaceWith(img);
         iconEl = img;
       }
-      if (icon !== undefined) applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, { borderCycleMs, textCycleMs: resolvedTextCycle });
+      // Any of the three on its own is enough -- glow or spin without a new icon path still applies.
+      if (icon !== undefined || iconSpin !== undefined || iconGlow !== undefined) {
+        applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, { borderCycleMs, textCycleMs: resolvedTextCycle });
+      }
 
       label = [...root.children].find((el) => el !== iconEl);
       if (!label) {
@@ -441,7 +513,6 @@ export class PauseFX {
     }
 
     let overlay = null; // the current video/image element, if any
-    let activeAudio = null; // the current standalone Sound, if any (see step.audio)
 
     for (const step of steps) {
       // An unpause (this run's own step.unpause included) cuts the sequence off here.
@@ -476,10 +547,10 @@ export class PauseFX {
       const cycles = { borderCycleMs, textCycleMs: resolvedTextCycle };
 
       if (step.audio && !audioBound) {
-        activeAudio = await foundry.audio.AudioHelper.play(
+        const detached = await playSound(
           { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: !!step.audioLoop },
-          false,
         );
+        if (detached) activeSounds.add(detached);
       }
 
       if (hasVisual || audioBound) {
@@ -494,7 +565,7 @@ export class PauseFX {
             margin: "auto",
             width: "min(90vmin, 800px)",
             maxHeight: "90vh",
-            zIndex: "100000", // above Foundry's own UI chrome, not just #pause
+            zIndex: "100000", // above Foundry's own UI chrome -- #pause's icon/text sit higher still
           });
           // Loaded but not yet playing -- pre-AV (below) elapses before anything actually starts.
           if (isVideo) {
@@ -505,11 +576,10 @@ export class PauseFX {
         }
         let boundSound = null;
         if (audioBound) {
-          boundSound = await foundry.audio.AudioHelper.play(
+          boundSound = await playSound(
             { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: false, loop: !!step.audioLoop },
-            false,
           );
-          activeAudio = boundSound;
+          if (boundSound) activeSounds.add(boundSound);
         }
 
         if (step.preAV) await wait(clockMsFor(step.preAV, cycles), signal);
@@ -529,7 +599,9 @@ export class PauseFX {
               const showSlideshow = async () => {
                 let i = 0;
                 while (true) {
-                  if (signal.aborted) { resolveSlideshowDone(); return; }
+                  // isConnected: the step already ended and took the element with it -- a
+                  // looping slideshow would otherwise keep cycling for the rest of the run.
+                  if (signal.aborted || !visualEl.isConnected) { resolveSlideshowDone(); return; }
                   if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
                   if (step.imagePulses === 0) await waitForManualAdvance(signal);
                   else await wait(clockMsFor({ units: step.imagePulses }, cycles), signal);
@@ -550,20 +622,12 @@ export class PauseFX {
         // channels aren't looping -- see the linked note if everything loops instead.
         const naturalEnds = [];
         if (hasVisual && !step.loop) {
-          if (isVideo) {
-            naturalEnds.push(new Promise((resolve) => {
-              visualEl.addEventListener("ended", resolve, { once: true });
-              signal.addEventListener("abort", resolve, { once: true });
-            }));
-          } else if (slideshowDone) {
-            naturalEnds.push(slideshowDone);
-          }
+          // "error" too: an unloadable video never fires "ended", and would hang the sequence.
+          if (isVideo) naturalEnds.push(waitForEvent(visualEl, ["ended", "error"], signal));
+          else if (slideshowDone) naturalEnds.push(slideshowDone);
         }
-        if (audioBound && !step.audioLoop) {
-          naturalEnds.push(new Promise((resolve) => {
-            boundSound.addEventListener("end", resolve, { once: true });
-            signal.addEventListener("abort", resolve, { once: true });
-          }));
+        if (boundSound && !step.audioLoop) {
+          naturalEnds.push(waitForEvent(boundSound, ["end"], signal));
         }
         if (step.wait) {
           await wait(clockMsFor(step.wait, cycles), signal);
@@ -579,13 +643,10 @@ export class PauseFX {
         if (isVideo && visualEl) visualEl.pause();
         if (step.postAV) await wait(clockMsFor(step.postAV, cycles), signal);
         if (hasVisual) { overlay?.remove(); overlay = null; }
-        if (boundSound) { boundSound.stop(); activeAudio = null; }
+        if (boundSound) { boundSound.stop(); activeSounds.delete(boundSound); }
       }
 
-      if (step.stopAudio) {
-        activeAudio?.stop();
-        activeAudio = null;
-      }
+      if (step.stopAudio) stopAllSounds();
       if (signal.aborted) break;
 
       // A step with no AV phase of its own just holds for its plain Duration, as always.
@@ -605,12 +666,6 @@ export class PauseFX {
 
 Hooks.once("ready", () => {
   const mod = game.modules.get(MODULE_ID);
-  if (mod) mod.api = { run: PauseFX.run.bind(PauseFX) };
+  // ??=, not a plain assignment -- composer.js adds openComposer to this same object.
+  if (mod) (mod.api ??= {}).run = PauseFX.run.bind(PauseFX);
 });
-
-
-
-
-
-
-
