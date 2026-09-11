@@ -42,6 +42,7 @@ await game.modules.get("pause-fx").api.run({
       "text": "...or run detached, stopped explicitly, later",
       "audio": "sounds/notify.wav", "audioVolume": 0.5, "audioLoop": true, "wait": { "units": 2 }
     },
+    { "text": "...and it's still looping, right through this unrelated step", "wait": { "units": 2 } },
     { "stopAudio": true, "text": "stopped, right on cue", "wait": { "units": 1.5 } },
     { "borderColor": "#4DD0E1", "text": "that's the whole toolkit -- unpausing now", "wait": { "units": 2 } },
     { "unpause": true }
