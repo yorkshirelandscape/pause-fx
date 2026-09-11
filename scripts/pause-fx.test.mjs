@@ -93,13 +93,10 @@ test("resolveTextCycleMs: a custom multiplier is honored when textCycleMs is omi
 // Table-driven -- one test() per row, not a loop of asserts inside one, so each row still
 // reports individually and `--test-name-pattern` can target just one.
 const CLOCK_MS_CASES = [
-  ["border clock", { units: 1.5, clock: "border" }, 5460],
-  ["text clock, not border", { units: 2, clock: "text" }, 14560],
-  ["fractional units, text", { units: 1.45, clock: "text" }, 10556],
-  ["fractional units, border", { units: 0.5, clock: "border" }, 1820],
-  ["missing clock defaults to border (matches run()'s own fallback)", { units: 1 }, 3640],
+  ["whole units", { units: 1.5 }, 5460],
+  ["fractional units", { units: 0.5 }, 1820],
 ];
-const clocks = { borderCycleMs: 3640, textCycleMs: 7280 };
+const clocks = { borderCycleMs: 3640 };
 for (const [label, waitSpec, expected] of CLOCK_MS_CASES) {
   test(`clockMsFor: ${label}`, () => {
     assert.equal(clockMsFor(waitSpec, clocks), expected);

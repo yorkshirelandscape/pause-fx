@@ -114,16 +114,13 @@ export function resolveTextCycleMs({ textCycleMs, borderCycleMs, textCycleMultip
 
 /**
  * @param {object} waitSpec
- * @param {number} waitSpec.units
- * @param {"border"|"text"} [waitSpec.clock="border"]
+ * @param {number} waitSpec.units - always in border-pulses; there's no other clock any more.
  * @param {object} clocks
  * @param {number} clocks.borderCycleMs
- * @param {number} clocks.textCycleMs
  * @returns {number} the wait, in ms.
  */
-export function clockMsFor(waitSpec, { borderCycleMs, textCycleMs }) {
-  const cycleMs = waitSpec.clock === "text" ? textCycleMs : borderCycleMs;
-  return waitSpec.units * cycleMs;
+export function clockMsFor(waitSpec, { borderCycleMs }) {
+  return waitSpec.units * borderCycleMs;
 }
 
 // ---- style injection (border + text pulse keyframes, scoped to this run) ----
@@ -138,6 +135,10 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
        complementing it, since the two are never in phase. */
     #pause.paused {
       animation: none !important;
+      /* Foundry's own 180px overflows once our text pulse + a wrapped 2-line message are
+         both in play (measured live). top shifts too, keeping Foundry's own visual center. */
+      height: 240px;
+      top: calc(50vh - 130px);
     }
 
     body.${BORDER_CLASS}:before {
@@ -400,6 +401,19 @@ export class PauseFX {
       // Fixed, not content-based -- avoids moving scale()'s own anchor point mid-pulse.
       label.style.width = "min(90vw, 32rem)";
       label.style.textAlign = "center";
+      label.style.textWrap = "balance"; // spreads a wrap across the min line count evenly
+      // Foundry's figcaption rule sets line-height:1rem, cramming a wrapped second line into
+      // the first. Reserve room for two lines always (like width above) so length never nudges the icon.
+      label.style.lineHeight = "1.15";
+      label.style.height = "2.3em";
+      // Hard 2-line cap (ellipsis past it) -- webkit-box, not flex, since line-clamp needs it;
+      // box-pack replaces align-items for centering a short message within the reserved height.
+      label.style.display = "-webkit-box";
+      label.style.webkitBoxOrient = "vertical";
+      label.style.webkitBoxPack = "center";
+      label.style.webkitLineClamp = "2";
+      label.style.overflow = "hidden";
+      label.style.textOverflow = "ellipsis";
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
       if (initialText !== undefined) label.textContent = initialText; // else leave "Game Paused"
     };
