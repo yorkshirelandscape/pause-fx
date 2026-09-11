@@ -22,6 +22,19 @@
   "styles": [
     "styles/composer.css"
   ],
+  "packs": [
+    {
+      "name": "macros",
+      "label": "Pause FX Macros",
+      "path": "packs/macros",
+      "type": "Macro",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    }
+  ],
   "relationships": {
     "requires": [
       {

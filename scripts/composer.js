@@ -19,6 +19,13 @@ function isPauseFxMacro(macro) {
   return !!macro.getFlag(MODULE_ID, "config") || hasMacroMarker(macro.command);
 }
 
+/** Finds (or creates) the "Pause FX" Macro folder, so Composer-saved sequences land grouped
+ *  together instead of loose in the directory. */
+async function ensurePauseFxFolder() {
+  return game.folders.find((f) => f.type === "Macro" && f.name === "Pause FX")
+    ?? Folder.create({ name: "Pause FX", type: "Macro" });
+}
+
 export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "pause-fx-composer",
@@ -248,11 +255,12 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     if (existing) {
       await existing.update({ type: "script", command, flags: { [MODULE_ID]: { config } } });
     } else {
-      // On-brand default thumbnail -- only on create, never forced onto an existing macro
-      // whose own img the author may have deliberately changed since.
+      // On-brand thumbnail + grouping folder -- only on create, never forced onto an
+      // existing macro whose img/folder the author may have deliberately changed since.
+      const folder = await ensurePauseFxFolder();
       await Macro.create({
         name, type: "script", scope: "global", command, flags: { [MODULE_ID]: { config } },
-        img: `modules/${MODULE_ID}/ui/clapperboard.svg`,
+        img: `modules/${MODULE_ID}/ui/clapperboard.svg`, folder: folder.id,
       });
     }
     this.globals.macroName = name;
