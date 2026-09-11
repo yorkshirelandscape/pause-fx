@@ -25,6 +25,9 @@
   --pfx-text-body: var(--color-text-light-primary, #b5b3a4);
   --pfx-text-bright: var(--color-text-light-highlight, #f0f0e0);
   --pfx-danger: var(--color-level-error, #ce0707);
+  --pfx-teal: #4dd0e1; /* matches iconGlow/borderColor's own JS-side default */
+  --pfx-blue: #4d94ff; /* pre/post-AV badge pair -- bright, temperature-graph style */
+  --pfx-red: #ff5c5c;
 
   display: flex;
   flex-direction: column;
@@ -35,15 +38,13 @@
    rules further down. Rows auto-size now, not the fixed list still commented out below. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 2fr;
+  grid-template-columns: 3fr 1fr 1fr 2fr 1fr 1fr;
   /* grid-template-rows: 4rem 0.5rem 5.5rem 1rem 9.5rem 5rem auto; */
   grid-template-areas:
-    "stop   stop   stop   stop  "
-    "wait   icon   icon   icon  "
-    "text   text   text   border"
-    "media  media  .      border"
-    "media  media  audio  audio "
-    ". . . .";
+    "stop     stop     stop     stop     stop   stop  "
+    "wait     wait     text     text     text   text  "
+    "icon     icon     icon     icon     border border"
+    "media    media    media    audio    audio  audio ";
   align-items: start;
 }
 
@@ -66,7 +67,15 @@
 }
 #pause-fx-composer legend i,
 #pause-fx-step-editor legend i { color: var(--pfx-text-body); font-size: 0.85em; }
-#pause-fx-step-editor .pfx-block-stop legend i { font-size: 1.1em; } /* the outline circle-stop glyph reads small at the shared size */
+/* fa-lg's own values (measured live off Foundry's actual rule) -- baked in directly since
+   our selector's specificity would beat a bare .fa-lg class anyway. */
+#pause-fx-step-editor .pfx-block-stop legend i,
+#pause-fx-composer .pfx-startup legend i,
+#pause-fx-composer .pfx-steps-fieldset legend i {
+  font-size: 1.25em;
+  line-height: 0.0625em;
+  vertical-align: -0.09375em;
+}
 
 /* A visible focus ring on everything interactive that doesn't already have one -- Foundry's
    own checkboxes get their own glow natively, so this is buttons/selects/text inputs. */
@@ -91,7 +100,8 @@
   height: 1.7rem;
   padding: 0;
   border-radius: 4px;
-  border: 1px solid var(--pfx-surface-border);
+  /* Brighter than the muted default -- reads as active -- but not full text-body brightness. */
+  border: 1px solid color-mix(in srgb, var(--pfx-text-body) 55%, var(--pfx-surface-border));
 }
 #pause-fx-composer .pfx-checkbox,
 #pause-fx-step-editor .pfx-checkbox {
@@ -99,7 +109,7 @@
   flex-direction: row;
   align-items: center;
   gap: 0.3rem;
-  font-size: var(--font-size-12, 0.75rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
   white-space: nowrap;
 }
@@ -116,21 +126,13 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  font-size: var(--font-size-12, 0.75rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
   align-self: flex-start; /* don't stretch to the column's full width when standing alone */
 }
 /* Text's "None"/"Pulse" checkboxes group as one unit at the row's far end, not spread out. */
 #pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
-/*+unlayered-css-always-wins Border width earns back the native spinner Foundry suppresses
-   globally -- a +/- delta is exactly where nudging up/down matters. Scoped to this field only. */
-#pause-fx-step-editor input[name="borderWidthPct"]::-webkit-inner-spin-button,
-#pause-fx-step-editor input[name="borderWidthPct"]::-webkit-outer-spin-button {
-  -webkit-appearance: auto;
-  appearance: auto;
-}
-#pause-fx-step-editor input[name="borderWidthPct"] { -moz-appearance: auto; }
 #pause-fx-step-editor input[name="borderWidthPct"] { text-align: center; }
 /*+disabled-input-border-paradox Foundry's :disabled border reads as MORE defined than an
    enabled field here, since ours have no border at all. */
@@ -138,9 +140,26 @@
   opacity: 0.45 !important;
   border-color: transparent !important;
 }
+/* Color swatches skip the opacity dim -- it misrepresents the color. Drops to the muted
+   default border instead of the brighter active one above -- distinct enough on its own. */
+#pause-fx-step-editor input[type="color"]:disabled {
+  opacity: 1 !important;
+  border-color: var(--pfx-surface-border) !important;
+}
+/* Label beside the input instead of above it, its two words stacked -- shorter than the
+   shared .pfx-field's column layout, freeing up vertical space in the Startup row. */
+#pause-fx-composer .pfx-field-pulse-time {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.05;
+}
+#pause-fx-composer .pfx-field-pulse-time span { text-align: center; }
 /* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
+/* A hair narrower/shorter than the shared size -- must follow it (same specificity). */
+#pause-fx-step-editor input[name="borderWidthPct"] { width: 4rem; height: 1.6rem; }
 #pause-fx-step-editor .pfx-field-narrow select { width: 6rem; }
 /* Everything else (paths, free text, the macro picker) gets a real but bounded width --
    not the dialog's full ~450px. */
@@ -151,36 +170,35 @@
 #pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
 #pause-fx-step-editor .pfx-with-picker input[type="text"] { width: auto; }
 
-/*+media-io-spacer-column-layout Loop/Timer-Waits/Path stay left-anchored; volume slider +
+/*+media-io-spacer-column-layout Loop/Bound/Path stay left-anchored; volume slider +
    label/number sit right-anchored via the spacer column absorbing the leftover width. */
 #pause-fx-step-editor .pfx-media-io {
   display: grid;
-  grid-template-columns: 3.4rem 1fr 0.9rem max-content;
+  grid-template-columns: 3.4rem 1fr 1rem max-content;
   /*+media-io-spacer-column-layout Rows fixed, not auto -- io-track's height:100% needs a
      definite size to resolve against. */
   grid-template-rows: 1.6rem 1.6rem 1.3rem;
   grid-template-areas:
-    "io-loop . io-track io-vlabel"
-    "io-wait . io-track io-vnum"
+    "io-togl . io-track io-vlabel"
+    "io-loop . io-track io-vnum"
     "io-path . io-track .";
   column-gap: 0.5rem;
   row-gap: 0.15rem;
   align-items: center;
 }
-#pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Timer Waits" wraps in this narrow a column */
-/* Left at default stretch -- same box width regardless of "Loop" vs. the wrapped "Timer"/"Waits". */
+#pause-fx-step-editor .pfx-media-io .pfx-checkbox { white-space: normal; } /* "Bound" wraps in this narrow a column */
 #pause-fx-step-editor .pfx-io-loop { grid-area: io-loop; }
-#pause-fx-step-editor .pfx-io-wait { grid-area: io-wait; }
+#pause-fx-step-editor .pfx-io-toggle { grid-area: io-togl; }
 /* Just the "Path" text joins the grid -- the input+button stay in their own .pfx-row below. */
 #pause-fx-step-editor .pfx-io-path-label {
   grid-area: io-path;
-  font-size: var(--font-size-12, 0.75rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
   align-self: end;
 }
 #pause-fx-step-editor .pfx-io-vlabel {
   grid-area: io-vlabel;
-  font-size: var(--font-size-12, 0.75rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
   justify-self: end;
   text-align: right;
@@ -206,11 +224,51 @@
   grid-area: io-track;
   writing-mode: vertical-lr;
   direction: rtl; /* min at the bottom, max at the top -- the usual vertical-slider convention */
-  width: 0.9rem;
+  width: 1rem;
   height: 100%; /* now resolvable -- every row it spans is a fixed, not auto, size */
   min-height: 0;
   align-self: stretch;
   justify-self: center;
+  background: transparent;
+  cursor: pointer;
+}
+/*+range-picker-native-styling-override Native rendering breaks here (vertical + Foundry) --
+   drawn by hand instead. One rule per vendor pseudo-element -- see the note. */
+#pause-fx-step-editor .pfx-io-range > input[type="range"]::-webkit-slider-runnable-track {
+  width: 8px;
+  height: 100%;
+  margin: 0 auto; /* input box is deliberately wider than the track -- centers it */
+  background: var(--pfx-surface-border);
+  border: 0.5px solid color-mix(in srgb, var(--pfx-text-body) 70%, black);
+  border-radius: 4px;
+}
+#pause-fx-step-editor .pfx-io-range > input[type="range"]::-moz-range-track {
+  width: 8px;
+  height: 100%;
+  margin: 0 auto;
+  background: var(--pfx-surface-border);
+  border: 0.5px solid color-mix(in srgb, var(--pfx-text-body) 70%, black);
+  border-radius: 4px;
+}
+/*+range-picker-native-styling-override WebKit-only thumb centering nudge -- see the note. */
+#pause-fx-step-editor .pfx-io-range > input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: var(--pfx-accent);
+  border: 0.5px solid color-mix(in srgb, var(--pfx-text-body) 70%, black);
+  margin-left: -5px;
+  cursor: pointer;
+}
+#pause-fx-step-editor .pfx-io-range > input[type="range"]::-moz-range-thumb {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 0.5px solid color-mix(in srgb, var(--pfx-text-body) 70%, black);
+  border-radius: 50%;
+  background: var(--pfx-accent);
+  cursor: pointer;
 }
 /*+path-input-width-zero-fix width:0 keeps the input's own intrinsic width from leaking
    into the outer grid's track-sizing; flex-grow:1 still fills available space. */
@@ -237,7 +295,7 @@
   gap: 0.4rem 0.75rem;
 }
 #pause-fx-composer .pfx-inline-label {
-  font-size: var(--font-size-12, 0.75rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
   /* Padded out to match a real checkbox's ~27px box height, so flex-end alignment lines up
      this label's text with the checkboxes' visual centre, not just the two boxes' edges. */
@@ -321,12 +379,16 @@
   color: var(--pfx-accent);
   background: color-mix(in srgb, var(--pfx-accent) 12%, transparent);
 }
-/* Muted, not accent -- pre/post-AV support the main Duration pill, not co-equal with it. */
-#pause-fx-composer .pfx-badge-preav,
+/* Temperature-pair coded, not muted -- blue before playback starts, red after it ends. */
+#pause-fx-composer .pfx-badge-preav {
+  border-color: var(--pfx-blue);
+  color: var(--pfx-blue);
+  background: color-mix(in srgb, var(--pfx-blue) 12%, transparent);
+}
 #pause-fx-composer .pfx-badge-postav {
-  border-color: var(--pfx-surface-border);
-  color: var(--pfx-text-body);
-  background: transparent;
+  border-color: var(--pfx-red);
+  color: var(--pfx-red);
+  background: color-mix(in srgb, var(--pfx-red) 12%, transparent);
 }
 #pause-fx-composer .pfx-badge-swatch {
   display: inline-block;
@@ -406,11 +468,19 @@
 /* ---- Step editor dialog ---- */
 #pause-fx-step-editor .pfx-block { display: flex; flex-direction: column; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-block-wait { grid-area: wait; }
-#pause-fx-step-editor .pfx-block-text { grid-area: text; }
-/* One field, same shape as Text -- a bit less top padding since there's no second row. */
+/* Stretches to match Duration's row height, centered rather than top-pinned -- same
+   reasoning as Icon below. */
+#pause-fx-step-editor .pfx-block-text {
+  grid-area: text;
+  justify-content: center;
+  align-self: stretch;
+}
+/* One field, same shape as Text -- centered rather than top-pinned, since it stretches to
+   match Border's now-shorter row height and top-pinning left visible dead space below it. */
 #pause-fx-step-editor .pfx-block-icon {
   grid-area: icon;
-  padding-top: 0.35rem;
+  justify-content: center;
+  align-self: stretch;
 }
 #pause-fx-step-editor .pfx-block-border { grid-area: border; }
 #pause-fx-step-editor .pfx-block-media { grid-area: media; }
@@ -431,27 +501,54 @@
 #pause-fx-step-editor .pfx-block-icon .pfx-with-picker { flex: 1; }
 #pause-fx-step-editor .pfx-block-icon .pfx-with-picker input[type="text"] { flex: 1; width: auto; }
 
-/* Duration and Border are both a single narrow field/toggle with no reason to hug the
-   fieldset's left edge -- center each row's own content instead. */
+/* Denser than the shared fieldset padding -- Duration now holds the compact AV pair too,
+   not just one field, and doesn't need as much breathing room around it. */
+#pause-fx-step-editor .pfx-block-wait { padding: 0.15rem 0.85rem 0.5rem 0.6rem; }
+/* The legend's own icon+text sets a height padding-top can't shrink past -- pull the row
+   up into it instead, rather than shrinking the legend and losing consistency with the rest. */
+#pause-fx-step-editor .pfx-block-wait legend { margin-bottom: -0.1rem; }
+
+/* Duration/Border center their row's content horizontally, no reason to hug the left edge.
+   Duration also centers vertically -- flex-end (the default) hugged Pulses to the AV pair's bottom. */
+#pause-fx-step-editor .pfx-block-wait .pfx-row { align-items: center; }
 #pause-fx-step-editor .pfx-block-wait .pfx-row,
 #pause-fx-step-editor .pfx-block-border .pfx-row {
   justify-content: center;
 }
-/* Center "Pulses" and its value too, not just the field's position in the row. */
+/* Center "Pulses" and its value too, not just the field's position in the row -- align-self
+   overrides the shared .pfx-field's own flex-start, which otherwise beats the row's align-items. */
 #pause-fx-step-editor .pfx-block-wait .pfx-field {
   align-items: center;
+  align-self: center;
   text-align: center;
 }
-/* 5.25rem is the ceiling before the fieldset itself starts growing to accommodate it. */
+/* Smaller than before -- gives the AV pair (below) more room to breathe in the same row. */
 #pause-fx-step-editor .pfx-block-wait input[name="waitUnits"] {
   text-align: center;
-  width: 5.25rem;
-  font-size: 1.1rem;
+  width: 2.5rem;
+  font-size: 0.95rem;
 }
+
+/* Pre/Post-AV share Duration's fieldset -- a 2-column grid so "AV" (column 2) always
+   lands centered over the input column, whatever width that column ends up being. */
+#pause-fx-step-editor .pfx-field-label { font-size: var(--font-size-13, 0.8125rem); color: var(--pfx-text-body); }
+#pause-fx-step-editor .pfx-av-pair {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+  align-items: center;
+}
+#pause-fx-step-editor .pfx-av-header { grid-column: 2; grid-row: 1; text-align: center; }
+#pause-fx-step-editor label[for="preAvUnits"] { grid-column: 1; grid-row: 2; }
+#pause-fx-step-editor input#preAvUnits { grid-column: 2; grid-row: 2; }
+#pause-fx-step-editor label[for="postAvUnits"] { grid-column: 1; grid-row: 3; }
+#pause-fx-step-editor input#postAvUnits { grid-column: 2; grid-row: 3; }
+#pause-fx-step-editor input.pfx-field-av { width: 2.75rem; text-align: center; }
 /* Muted, not accent-colored like .pfx-badge-wait -- this is metadata about the field, not a
    value in its own right (only appears for a hand-written macro's clock:"text" step). */
 #pause-fx-step-editor .pfx-tag {
-  font-size: var(--font-size-11, 0.6875rem);
+  font-size: var(--font-size-12, 0.75rem);
   padding: 0.1rem 0.5rem;
   border: 1px solid var(--pfx-surface-border);
   border-radius: 999px;
@@ -467,25 +564,25 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 0.4rem 0.75rem;
 }
+#pause-fx-step-editor .pfx-stop-unpause { grid-column: 3; grid-row: 2; } /* off auto-flow -- 2,2 stays empty */
 
-/* Bottom-align the Icon label against Spin/Glow's taller row (the swatch is 1.7rem,
-   taller than the label's own line height). */
-#pause-fx-step-editor .pfx-block-icon .pfx-field-label-row { align-items: flex-end; }
+/* Centered, matching Text's own field-label-row -- despite Icon Glow's swatch (1.7rem)
+   standing taller than the label's line height, flex-end here read as a mismatch. */
+#pause-fx-step-editor .pfx-block-icon .pfx-field-label-row { align-items: center; }
 
 /*+media-toggle-accessible-switch A real checkbox underneath, restyled as a two-position
-   switch. Unchecked = video (left/off), checked = image (right/on, accent-filled). */
+   switch -- teal (video) / accent orange (image), so both sides read as "on". */
 #pause-fx-step-editor .pfx-media-toggle { display: flex; align-items: center; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-media-toggle-label {
-  font-size: var(--font-size-12, 0.75rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
 }
-#pause-fx-step-editor .pfx-switch { 
-  position: relative; 
-  display: inline-block; 
-  width: 2.2rem; 
-  height: 1.2rem; 
-  flex: 0 0 auto; 
-  margin-bottom: 0.5rem;
+#pause-fx-step-editor .pfx-switch {
+  position: relative;
+  display: inline-block;
+  width: 2.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
 }
 #pause-fx-step-editor .pfx-switch input {
   position: absolute;
@@ -497,7 +594,7 @@
 #pause-fx-step-editor .pfx-switch-track {
   position: absolute;
   inset: 0;
-  background: var(--pfx-surface-border);
+  background: var(--pfx-teal);
   border-radius: 999px;
   transition: background 150ms ease;
   pointer-events: none;

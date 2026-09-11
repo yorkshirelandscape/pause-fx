@@ -1,6 +1,5 @@
 // Step editor -- one dialog, shared by every row (including the undeletable first one).
-// Every field is always visible (a fixed 2-column layout -- see composer.css); nothing here
-// hides or resets fields on its own, since there's no "block off" state to keep tidy anymore.
+// Every field is always visible (see composer.css) -- nothing here hides/resets on its own.
 
 import { coerceStepField } from "./composer-logic.js";
 
@@ -48,12 +47,12 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
   _onRender(context, options) {
     super._onRender(context, options);
     this.#syncMediaTypeFields(this.row.mediaType); // reflect the current type on every (re)render
+    this.#setManualAdvancePlaceholder();
     this.element.addEventListener("change", (event) => {
       const field = event.target.name;
       if (!field) return;
-      // The Video/Image switch is a real checkbox (restyled -- see composer.css) but the row
-      // field it drives is the same "video"/"image" string the old radio pair set, not a bare
-      // boolean -- unchecked reads as video, checked as image.
+      // The Video/Image switch is a real checkbox (see composer.css) driving the same
+      // "video"/"image" string the old radio pair set, not a bare boolean.
       const raw = field === "mediaType" ? (event.target.checked ? "image" : "video")
         : event.target.type === "checkbox" ? event.target.checked
         : event.target.value;
@@ -63,11 +62,22 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     });
   }
 
-  // The Media block shows one set of fields for video, a different set for image (a slideshow
-  // timer instead of volume). A freshly-blank row's mediaType is "none" -- matches neither, so
-  // it falls back to showing the video fields (the switch's own unchecked/left position).
+  // Shows the actually-configured "Advance Pause FX" keybind (unbound by default -- see
+  // its own registration) in place of the template's static "manual" placeholder.
+  #setManualAdvancePlaceholder() {
+    const field = this.element.querySelector('[name="imagePulses"]');
+    const [binding] = game.keybindings.bindings.get(`${MODULE_ID}.advance`) ?? [];
+    if (!field || !binding) return; // stays "manual" from the template if still unbound
+    const { KeyboardManager } = foundry.helpers.interaction;
+    const keys = [...binding.modifiers, binding.key]
+      .map((code) => KeyboardManager.getKeycodeDisplayString(code)).join("+");
+    field.placeholder = `"${keys}"`; // quoted -- a bound digit key would read as a real value otherwise
+  }
+
+  // Video and image show different field sets. A blank row's mediaType is "none" -- falls
+  // back to image (the switch's own default checked position), not video.
   #syncMediaTypeFields(type) {
-    const effective = type === "image" ? "image" : "video";
+    const effective = type === "video" ? "video" : "image";
     this.element.querySelectorAll("[data-media-show]").forEach((el) => {
       el.hidden = el.dataset.mediaShow !== effective;
     });
