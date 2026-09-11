@@ -12,7 +12,7 @@ await game.modules.get("pause-fx").api.run({
   "steps": [
     {
       "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "borderColor": "#4DD0E1",
-      "text": "PAUSE FX", "wait": { "units": 2 },
+      "text": "PAUSE FX", "wait": { "units": 2 }
     },
     { "text": "a quick tour of what it can do", "wait": { "units": 2 } },
     { "textPulse": true, "text": "text can pulse in time with the border", "wait": { "units": 3 } },
@@ -26,24 +26,24 @@ await game.modules.get("pause-fx").api.run({
     {
       "iconVisible": false, "text": "here's a short video, full-screen",
       "video": "toolclips/tools/token-target.webm", "videoVolume": 0,
-      "preAV": { "units": 0.5 }, "postAV": { "units": 1 },
+      "preAV": { "units": 0.5 }, "postAV": { "units": 1 }
     },
     { "iconVisible": true, "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "text": "pre/post-AV timed that hold automatically", "wait": { "units": 2 } },
     {
       "text": "a still image works the same way", "image": "icons/dice/d20black.svg",
-      "imagePulses": 2, "preAV": { "units": 0.3 }, "postAV": { "units": 0.5 },
+      "imagePulses": 2, "preAV": { "units": 0.3 }, "postAV": { "units": 0.5 }
     },
     {
       "text": "sound can be bound to a step's own timing",
       "audio": "sounds/combat/epic-start-horn.ogg", "audioVolume": 0.6, "waitForAudioEnd": true,
-      "preAV": { "units": 0.3 }, "postAV": { "units": 0.5 },
+      "preAV": { "units": 0.3 }, "postAV": { "units": 0.5 }
     },
     {
       "text": "...or run detached, stopped explicitly, later",
-      "audio": "sounds/notify.wav", "audioVolume": 0.5, "audioLoop": true, "wait": { "units": 2 },
+      "audio": "sounds/notify.wav", "audioVolume": 0.5, "audioLoop": true, "wait": { "units": 2 }
     },
     { "stopAudio": true, "text": "stopped, right on cue", "wait": { "units": 1.5 } },
     { "borderColor": "#4DD0E1", "text": "that's the whole toolkit -- unpausing now", "wait": { "units": 2 } },
-    { "unpause": true },
-  ],
+    { "unpause": true }
+  ]
 });
