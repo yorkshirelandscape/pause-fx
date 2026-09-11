@@ -252,6 +252,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static async #onRun() {
     const steps = this.rows.map(stepFromRow);
+    // Out of the way of whatever's about to play -- not awaited, so the sequence starts
+    // immediately rather than waiting on minimize()'s own ~1s collapse animation.
+    this.setPosition({ top: 10, left: 10 });
+    this.minimize();
     await PauseFX.run(configFromGlobals(this.globals, steps));
   }
 
