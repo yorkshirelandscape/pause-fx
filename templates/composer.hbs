@@ -27,6 +27,14 @@
               {{#if (eq b.type "preAV")}}<span class="pfx-badge pfx-badge-wait pfx-badge-preav" title="Pre-AV">{{b.label}}</span>{{/if}}
               {{#if (eq b.type "wait")}}<span class="pfx-badge pfx-badge-wait" title="Wait">{{b.label}}</span>{{/if}}
               {{#if (eq b.type "postAV")}}<span class="pfx-badge pfx-badge-wait pfx-badge-postav" title="Post-AV">{{b.label}}</span>{{/if}}
+              {{#if (eq b.type "avType")}}
+                <span class="pfx-badge pfx-badge-wait pfx-badge-av-type" title="Duration">
+                  {{b.label}}
+                  {{#if (eq b.mediaType "video")}}<i class="fa-solid fa-video pfx-badge-av-type-icon"></i>{{/if}}
+                  {{#if (eq b.mediaType "image")}}<i class="fa-solid fa-image pfx-badge-av-type-icon"></i>{{/if}}
+                  {{#if (eq b.mediaType "audio")}}<i class="fa-solid fa-volume-high pfx-badge-av-type-icon"></i>{{/if}}
+                </span>
+              {{/if}}
               {{#if (eq b.type "audioBound")}}<i class="fa-solid fa-link pfx-badge" title="Audio bound to this step"></i>{{/if}}
               {{#if (eq b.type "border")}}<span class="pfx-badge pfx-badge-swatch" style="border-color:{{b.colour}}" title="Border: {{b.colour}}"></span>{{/if}}
               {{#if (eq b.type "icon")}}
@@ -42,9 +50,24 @@
               {{#if (eq b.type "audio")}}<i class="fa-solid fa-volume-high pfx-badge" title="Audio"></i>{{/if}}
               {{#if (eq b.type "loop")}}<i class="fa-solid fa-repeat pfx-badge" title="Loop"></i>{{/if}}
               {{#if (eq b.type "textPulse")}}<i class="fa-solid fa-heart-pulse pfx-badge" title="Text Pulse"></i>{{/if}}
-              {{#if (eq b.type "stopTextPulse")}}<i class="fa-solid fa-pause pfx-badge" title="Stop Text Pulse"></i>{{/if}}
-              {{#if (eq b.type "stopIconSpin")}}<i class="fa-solid fa-circle-pause pfx-badge" title="Stop Icon Spin"></i>{{/if}}
-              {{#if (eq b.type "stopBorderPulse")}}<i class="fa-solid fa-pause pfx-badge" title="Stop Border Pulse"></i>{{/if}}
+              {{#if (eq b.type "stopTextPulse")}}
+                <span class="pfx-badge pfx-badge-stop" title="Stop Text Pulse">
+                  <i class="fa-solid fa-font"></i>
+                  <i class="fa-solid fa-pause pfx-badge-stop-pause"></i>
+                </span>
+              {{/if}}
+              {{#if (eq b.type "stopIconSpin")}}
+                <span class="pfx-badge pfx-badge-stop" title="Stop Icon Spin">
+                  <img src="/ui/pause.svg" alt="">
+                  <i class="fa-solid fa-pause pfx-badge-stop-pause"></i>
+                </span>
+              {{/if}}
+              {{#if (eq b.type "stopBorderPulse")}}
+                <span class="pfx-badge pfx-badge-stop" title="Stop Border Pulse">
+                  <i class="fa-regular fa-square-full"></i>
+                  <i class="fa-solid fa-pause pfx-badge-stop-pause"></i>
+                </span>
+              {{/if}}
               {{#if (eq b.type "stopAudio")}}<i class="fa-solid fa-volume-xmark pfx-badge" title="Stop Audio"></i>{{/if}}
               {{#if (eq b.type "unpause")}}<i class="fa-solid fa-circle-play pfx-badge" title="Unpause"></i>{{/if}}
             {{/each}}

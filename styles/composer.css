@@ -390,6 +390,17 @@
   color: var(--pfx-red);
   background: color-mix(in srgb, var(--pfx-red) 12%, transparent);
 }
+#pause-fx-composer .pfx-badge-av-type { position: relative; } /* anchors the corner icon below */
+#pause-fx-composer .pfx-badge-av-type-icon {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  font-size: 0.6rem;
+  color: var(--pfx-text-bright);
+  background: var(--color-cool-5, #0b0a13);
+  border-radius: 50%;
+  padding: 0.1rem;
+}
 #pause-fx-composer .pfx-badge-swatch {
   display: inline-block;
   width: 0.9rem;
@@ -421,6 +432,20 @@
 }
 #pause-fx-composer .pfx-badge-icon-spin { bottom: -0.3rem; right: -0.3rem; }
 #pause-fx-composer .pfx-badge-icon-eye { top: -0.3rem; left: -0.3rem; } /* opposite corner from spin -- both can be set at once */
+/* Shows what's being paused (text/icon/border), not just a bare pause glyph indistinguishable
+   from its siblings -- same corner-badge trick as the icon badge's own eye/spin above. */
+#pause-fx-composer .pfx-badge-stop { position: relative; display: inline-flex; font-size: 1rem; }
+#pause-fx-composer .pfx-badge-stop img { width: 1em; height: 1em; object-fit: contain; }
+#pause-fx-composer .pfx-badge-stop-pause {
+  position: absolute;
+  bottom: -0.3rem;
+  right: -0.3rem;
+  font-size: 0.6rem;
+  color: var(--pfx-text-bright);
+  background: var(--color-cool-5, #0b0a13);
+  border-radius: 50%;
+  padding: 0.1rem;
+}
 #pause-fx-composer .pfx-step-text {
   flex: 1;
   min-width: 0;
@@ -545,17 +570,6 @@
 #pause-fx-step-editor label[for="postAvUnits"] { grid-column: 1; grid-row: 3; }
 #pause-fx-step-editor input#postAvUnits { grid-column: 2; grid-row: 3; }
 #pause-fx-step-editor input.pfx-field-av { width: 2.75rem; text-align: center; }
-/* Muted, not accent-colored like .pfx-badge-wait -- this is metadata about the field, not a
-   value in its own right (only appears for a hand-written macro's clock:"text" step). */
-#pause-fx-step-editor .pfx-tag {
-  font-size: var(--font-size-12, 0.75rem);
-  padding: 0.1rem 0.5rem;
-  border: 1px solid var(--pfx-surface-border);
-  border-radius: 999px;
-  color: var(--pfx-text-body);
-  align-self: flex-end;
-  margin-bottom: 0.35rem;
-}
 
 /* Stop's 6 checkboxes as a real 2x3 grid instead of two flex rows, now that Icon's own
    checkbox moved out to the Icon field (see that field's own comment). */

@@ -53,9 +53,7 @@ export function stepsFromConfig(config) {
 /**
  * One editable step-row's fields -> a clean PauseFX step object. Optional fields are OMITTED
  * (not set to "" / false) when left blank, matching PauseFX.run's own `step.text !== undefined`
- * style checks -- an omitted field means "don't touch," not "clear." `clock` only ever comes
- * from an imported step (the Composer's own UI has no selector for it, still just the one
- * "Pulse Cycles" clock) -- omitted unless it's "text", matching pause-fx.js's own default.
+ * style checks -- an omitted field means "don't touch," not "clear."
  * @param {object} row - see rowFromStep for the field shape.
  * @returns {object} a step object per pause-fx.js's `steps` schema.
  */
@@ -63,7 +61,6 @@ export function stepFromRow(row) {
   const step = {};
   if (row.waitUnits !== "" && row.waitUnits !== null && row.waitUnits !== undefined) {
     step.wait = { units: Number(row.waitUnits) };
-    if (row.waitClock === "text") step.wait.clock = "text";
   }
   // //+pre-av-duration-post-av-step-model preAV/postAV only mean anything on a step with
   // media (see pause-fx.js) -- harmless to always carry them through regardless.
@@ -131,7 +128,6 @@ export function stepFromRow(row) {
 export function rowFromStep(step) {
   return {
     waitUnits: step.wait?.units ?? "",
-    waitClock: step.wait?.clock ?? "border",
     preAvUnits: step.preAV?.units ?? "",
     postAvUnits: step.postAV?.units ?? "",
     text: step.text ?? "",
@@ -190,31 +186,35 @@ export function coerceStepField(field, rawValue) {
  * takes up the remaining width rather than sitting in the badge row.
  * @param {object} step
  * @param {number} [pulseLengthS] - to render the wait as real seconds, not just pulse units.
- *   The Composer's own UI only ever exposes the border clock, so this is that clock's length;
- *   a clock:"text" step (only reachable via a hand-written macro) uses double it, matching
- *   resolveTextCycleMs's own default multiplier -- see pause-fx.js.
  * @returns {Array<object>} badge descriptors, e.g. {type: "wait", label: "2.0s"}.
  */
-// Same "pulse units -> real seconds, given a clock" rendering as the wait badge itself --
-// preAV/postAV share its shape (units + optional clock) so they share this too.
+// preAV/postAV share wait's own {units} shape, so they share this rendering too.
 function pulseLabel(waitSpec, pulseLengthS) {
-  const cycleS = pulseLengthS ? Number(pulseLengthS) * (waitSpec.clock === "text" ? 2 : 1) : null;
+  const cycleS = pulseLengthS ? Number(pulseLengthS) : null;
   return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${waitSpec.units}x`;
 }
 
 export function stepBadges(step, pulseLengthS) {
   const badges = [];
-  if (step.preAV) badges.push({ type: "preAV", label: pulseLabel(step.preAV, pulseLengthS) });
-  if (step.wait) badges.push({ type: "wait", label: pulseLabel(step.wait, pulseLengthS) });
-  if (step.postAV) badges.push({ type: "postAV", label: pulseLabel(step.postAV, pulseLengthS) });
-  if (step.audio && step.waitForAudioEnd) badges.push({ type: "audioBound" });
+  // A media step's timing clusters around its type icon: preAV/postAV flank it, an explicit
+  // Duration override becomes the orange badge itself (icon in its corner) instead of a bare glyph.
+  const avType = step.video ? "video" : step.image ? "image" : (step.audio && step.waitForAudioEnd) ? "audio" : null;
+  if (avType) {
+    if (step.preAV) badges.push({ type: "preAV", label: pulseLabel(step.preAV, pulseLengthS) });
+    if (step.wait) badges.push({ type: "avType", mediaType: avType, label: pulseLabel(step.wait, pulseLengthS) });
+    else badges.push({ type: avType });
+    if (step.postAV) badges.push({ type: "postAV", label: pulseLabel(step.postAV, pulseLengthS) });
+  } else if (step.wait) {
+    badges.push({ type: "wait", label: pulseLabel(step.wait, pulseLengthS) });
+  }
+  // Bound audio alongside a video/image already reads via the cluster above; only needs its
+  // own indicator when nothing else claimed that cluster's icon.
+  if (step.audio && step.waitForAudioEnd && avType !== "audio") badges.push({ type: "audioBound" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
   if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible === false) {
     badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });
   }
-  if (step.video) badges.push({ type: "video" });
-  if (step.image) badges.push({ type: "image" });
-  if (step.audio) badges.push({ type: "audio" });
+  if (step.audio && avType !== "audio") badges.push({ type: "audio" });
   if (step.loop || step.audioLoop) badges.push({ type: "loop" });
   if (step.textPulse) badges.push({ type: "textPulse" });
   if (step.stopTextPulse) badges.push({ type: "stopTextPulse" });

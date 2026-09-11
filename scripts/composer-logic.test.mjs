@@ -10,7 +10,7 @@ import {
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
-  waitUnits: "", waitClock: "border", preAvUnits: "", postAvUnits: "",
+  waitUnits: "", preAvUnits: "", postAvUnits: "",
   text: "", textNone: false, textPulse: false,
   stopAudio: false, stopTextPulse: false,
   stopIconSpin: false, stopBorderPulse: false, unpause: false,
@@ -63,7 +63,7 @@ test("stepFromRow: blank optional fields are omitted, not set to '' / false", ()
   assert.deepEqual(stepFromRow(BLANK_ROW), { iconVisible: true });
 });
 
-test("stepFromRow: wait and text come through when set -- wait carries no clock", () => {
+test("stepFromRow: wait and text come through when set", () => {
   const row = { ...BLANK_ROW, waitUnits: "2.5", text: "Hello" };
   assert.deepEqual(stepFromRow(row), { wait: { units: 2.5 }, text: "Hello", iconVisible: true });
 });
@@ -89,11 +89,6 @@ test("stepFromRow: iconNone forces an explicit hide even if icon also has a valu
 
 test("stepFromRow: unchecked None keeps the icon path", () => {
   assert.deepEqual(stepFromRow({ ...BLANK_ROW, icon: "eye.gif" }), { iconVisible: true, icon: "eye.gif" });
-});
-
-test("stepFromRow: waitClock only emits a step-level clock when it's \"text\" (border is the default)", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, waitUnits: "2", waitClock: "text" }), { wait: { units: 2, clock: "text" }, iconVisible: true });
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, waitUnits: "2", waitClock: "border" }), { wait: { units: 2 }, iconVisible: true });
 });
 
 test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIconSpin/stopBorderPulse, not a shared freeze", () => {
@@ -171,7 +166,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
   // wouldn't actually round-trip (see rowFromStep's own JSDoc note on this).
   const steps = [
     { wait: { units: 1.45 }, text: "...AND SUDDENLY...", textPulse: true, iconVisible: true },
-    { wait: { units: 2, clock: "text" }, text: "A MANNEQUIN BEGINS TO TWITCH", iconVisible: true },
+    { wait: { units: 4 }, text: "A MANNEQUIN BEGINS TO TWITCH", iconVisible: true },
     { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false },
     { preAV: { units: 0.5 }, video: "reveal.webm", iconVisible: true, borderColor: "#FF0000" },
     { postAV: { units: 1.5 }, iconVisible: true },
@@ -226,11 +221,6 @@ test("stepBadges: wait renders in real seconds when pulseLengthS is given, else 
   assert.deepEqual(stepBadges({ wait: { units: 2 } }), [{ type: "wait", label: "2x" }]);
 });
 
-test("stepBadges: a clock:\"text\" wait uses double pulseLengthS, matching resolveTextCycleMs's own default", () => {
-  assert.deepEqual(stepBadges({ wait: { units: 2, clock: "text" } }, "3.64"), [{ type: "wait", label: "14.6s" }]);
-  assert.deepEqual(stepBadges({ wait: { units: 2, clock: "border" } }, "3.64"), [{ type: "wait", label: "7.3s" }]);
-});
-
 test("stepBadges: one badge per active field, in a stable order", () => {
   const step = {
     preAV: { units: 0.5 }, wait: { units: 2 }, postAV: { units: 1.5 },
@@ -241,12 +231,11 @@ test("stepBadges: one badge per active field, in a stable order", () => {
   };
   assert.deepEqual(stepBadges(step), [
     { type: "preAV", label: "0.5x" },
-    { type: "wait", label: "2x" },
+    { type: "avType", mediaType: "video", label: "2x" },
     { type: "postAV", label: "1.5x" },
     { type: "audioBound" },
     { type: "border", colour: "#FF0000" },
     { type: "icon", icon: "eye.gif", glow: undefined, spin: false, visible: undefined },
-    { type: "video" },
     { type: "audio" },
     { type: "loop" },
     { type: "textPulse" },
@@ -260,6 +249,29 @@ test("stepBadges: one badge per active field, in a stable order", () => {
 
 test("stepBadges: audio alone (not bound) still gets the plain audio badge, no audioBound", () => {
   assert.deepEqual(stepBadges({ audio: "sting.ogg" }), [{ type: "audio" }]);
+});
+
+test("stepBadges: a media step with no Duration override gets a bare type glyph, no orange badge", () => {
+  assert.deepEqual(
+    stepBadges({ preAV: { units: 0.5 }, video: "a.webm", postAV: { units: 1.5 } }),
+    [{ type: "preAV", label: "0.5x" }, { type: "video" }, { type: "postAV", label: "1.5x" }],
+  );
+});
+
+test("stepBadges: bound audio with no video/image claims the avType cluster itself", () => {
+  assert.deepEqual(
+    stepBadges({ audio: "sting.ogg", waitForAudioEnd: true, wait: { units: 2 } }),
+    [{ type: "avType", mediaType: "audio", label: "2x" }],
+  );
+  // No override -- bare glyph, same as video/image's own natural-end case.
+  assert.deepEqual(
+    stepBadges({ audio: "sting.ogg", waitForAudioEnd: true }),
+    [{ type: "audio" }],
+  );
+});
+
+test("stepBadges: a non-media step's Duration stays a plain wait badge", () => {
+  assert.deepEqual(stepBadges({ wait: { units: 1 } }), [{ type: "wait", label: "1x" }]);
 });
 
 test("stepBadges: loop badge fires off audioLoop too, not just the video/image loop", () => {

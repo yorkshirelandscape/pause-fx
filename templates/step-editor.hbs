@@ -16,9 +16,6 @@
       <label class="pfx-field pfx-field-narrow" title="No media on this step: plain wait before the next one. Media present: how long it plays.">Pulses
         <input type="number" step="0.05" min="0" name="waitUnits" value="{{row.waitUnits}}">
       </label>
-      {{#if (eq row.waitClock "text")}}
-        <span class="pfx-tag" title="Runs at half the border pulse's speed -- only reachable via a hand-written macro, not the Composer's own fields">text pulse</span>
-      {{/if}}
       <div class="pfx-av-pair">
         <span class="pfx-field-label pfx-av-header">AV</span>
         <label class="pfx-field-label" for="preAvUnits" title="Delay after media appears, before it starts playing">Pre</label>
