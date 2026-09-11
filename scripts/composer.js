@@ -1,6 +1,5 @@
 // Composer -- the GM-facing UI for building/running a PauseFX sequence, so authoring a
-// reveal doesn't require hand-writing a macro's worth of JS. Reachable via the "Pause FX"
-// scene-control buttons (registered below) or `game.modules.get("pause-fx").api.openComposer()`.
+// reveal skips hand-writing JS. Reachable via the scene-control buttons or api.openComposer().
 
 import { PauseFX } from "./pause-fx.js";
 import {
@@ -42,10 +41,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
    *  whichever row currently sits first loses/gains that protection, not a specific row). */
   rows = [rowFromStep(defaultStep())];
 
-  // Startup-only fields -- everything else (icon/glow/border/text/wait/media/audio/macro/...)
-  // lives on a step, including the first one, edited the same way as any other via the
-  // step-editor dialog. endCombat/closeWindows stay here rather than on a step -- see
-  // composer-logic.js's top comment for why.
+  // Startup-only fields -- everything else lives on a step (incl. the first one), edited like
+  // any other. endCombat/closeWindows stay here instead -- see composer-logic.js's top comment.
   globals = { pulseLengthS: "", macroName: "", endCombat: false, closeWindowsPlayers: false, closeWindowsGM: false };
 
   #dragDrop = new foundry.applications.ux.DragDrop({
@@ -84,9 +81,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
-  // Foundry's own header only ever renders the toggle-controls/close buttons directly --
-  // window.controls entries land in the dropdown behind the ellipsis, not the bar itself.
-  // Inserted once (idempotent) rather than in PARTS, since the header isn't a part at all.
+  // Foundry's own header only renders toggle-controls/close directly -- window.controls entries
+  // land in the dropdown, not the bar. Inserted once (idempotent), since the header isn't a PART.
   #ensureHeaderButtons() {
     const header = this.element.querySelector(".window-header");
     if (!header || header.querySelector('[data-action="run"]')) return;
@@ -141,9 +137,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     if (confirmed) this.#removeStepAt(index);
   }
 
-  // Quick click confirms; holding HOLD_MS bypasses the dialog (wedge = progress). `start`
-  // clears the instant a hold completes, so that hold's own pointerup won't double-remove.
-  // Row 0 has no remove button at all (see composer.hbs) -- nothing to wire here for it.
+  // Quick click confirms; holding HOLD_MS bypasses it (wedge = progress), clearing `start` so
+  // that hold's pointerup won't double-remove. Row 0 has no button here at all (see composer.hbs).
   #wireStepRemove(button) {
     const HOLD_MS = 1400;
     const index = () => Number(button.dataset.index);
@@ -243,9 +238,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     const command = commandForConfig(config);
 
     // Overwrites a same-named macro only if WE made it -- never clobbers an unrelated one.
+    // type: "script" forced too -- a hand-authored macro may have started life as "chat".
     const existing = game.macros.find((m) => m.name === name && isPauseFxMacro(m));
     if (existing) {
-      await existing.update({ command, flags: { [MODULE_ID]: { config } } });
+      await existing.update({ type: "script", command, flags: { [MODULE_ID]: { config } } });
     } else {
       await Macro.create({ name, type: "script", scope: "global", command, flags: { [MODULE_ID]: { config } } });
     }
