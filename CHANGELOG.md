@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `macros/demo.js` -- a feature-tour macro built entirely from assets Foundry itself ships,
+  doubling as a pasteable demo and a manual test pass.
+- This changelog.
+
 ### Changed
 - A media step's Pre/Post-AV timing badges now group around its own video/image/audio icon
   in the Composer's step list; an explicit Duration override shows as that icon's own badge
@@ -17,11 +22,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   happens to break.
 - Pressing **Run** in the Composer now collapses the window to its titlebar and moves it out
   of the way, instead of sitting on top of the reveal.
+- A step's icon/text now render above its own video/image instead of getting buried under
+  it; the pause band moves behind the video instead of disappearing or painting over it.
+- The pulsing text's color now follows whatever border color the run actually set, instead
+  of a fixed red-orange regardless of theme.
 
 ### Fixed
 - Wrapped pause text no longer crams its second line against the first, nudges the icon, or
   spills past the pause band uncontained -- caps at two lines (with an ellipsis) and the band
   grows/recenters to fit.
+- A step typed into a fresh row (one that never touched the Video/Image switch) no longer
+  silently drops its media on save.
+- Config-level Icon Glow/Spin on a hand-written macro (not folded into its first step) now
+  actually apply.
+- Detached audio from an earlier step no longer keeps looping past unpause once a later step
+  starts a second one.
+- A video that fails to load no longer hangs the sequence forever.
+- A failed sound or closeAllWindows broadcast no longer aborts the whole run silently.
+- The Composer and step editor no longer accumulate a duplicate change listener on every
+  re-render.
 
 ### Removed
 - Dropped the border/text "clock" distinction for a step's Duration -- it was always just two
