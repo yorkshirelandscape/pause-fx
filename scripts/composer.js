@@ -248,7 +248,12 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     if (existing) {
       await existing.update({ type: "script", command, flags: { [MODULE_ID]: { config } } });
     } else {
-      await Macro.create({ name, type: "script", scope: "global", command, flags: { [MODULE_ID]: { config } } });
+      // On-brand default thumbnail -- only on create, never forced onto an existing macro
+      // whose own img the author may have deliberately changed since.
+      await Macro.create({
+        name, type: "script", scope: "global", command, flags: { [MODULE_ID]: { config } },
+        img: `modules/${MODULE_ID}/ui/clapperboard.svg`,
+      });
     }
     this.globals.macroName = name;
     ui.notifications.info(`pause-fx: saved "${name}" as a macro.`);
