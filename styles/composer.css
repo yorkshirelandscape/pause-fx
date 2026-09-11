@@ -35,11 +35,10 @@
   padding: 0.5rem;
 }
 /* Deliberate irregular layout, hand-tuned against a mockup -- see the per-block grid-area
-   rules further down. Rows auto-size now, not the fixed list still commented out below. */
+   rules further down. Rows auto-size. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
   grid-template-columns: 3fr 1fr 1fr 2fr 1fr 1fr;
-  /* grid-template-rows: 4rem 0.5rem 5.5rem 1rem 9.5rem 5rem auto; */
   grid-template-areas:
     "stop     stop     stop     stop     stop   stop  "
     "wait     wait     text     text     text   text  "
@@ -133,7 +132,6 @@
 /* Text's "None"/"Pulse" checkboxes group as one unit at the row's far end, not spread out. */
 #pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
-#pause-fx-step-editor input[name="borderWidthPct"] { text-align: center; }
 /*+disabled-input-border-paradox Foundry's :disabled border reads as MORE defined than an
    enabled field here, since ours have no border at all. */
 #pause-fx-step-editor input:disabled {
@@ -155,19 +153,14 @@
   line-height: 1.05;
 }
 #pause-fx-composer .pfx-field-pulse-time span { text-align: center; }
-/* Sized narrow (a handful of characters -- pulse counts, the media-type select). */
+/* Sized narrow (a handful of characters -- pulse counts, volumes, percentages). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
 /* A hair narrower/shorter than the shared size -- must follow it (same specificity). */
-#pause-fx-step-editor input[name="borderWidthPct"] { width: 4rem; height: 1.6rem; }
-#pause-fx-step-editor .pfx-field-narrow select { width: 6rem; }
-/* Everything else (paths, free text, the macro picker) gets a real but bounded width --
-   not the dialog's full ~450px. */
-#pause-fx-composer .pfx-field input[type="text"],
-#pause-fx-composer .pfx-field input[type="search"],
+#pause-fx-step-editor input[name="borderWidthPct"] { width: 4rem; height: 1.6rem; text-align: center; }
+/* Everything else (paths, free text) gets a real but bounded width -- not the dialog's full ~450px. */
 #pause-fx-step-editor .pfx-field input[type="text"],
 #pause-fx-step-editor .pfx-field input[type="search"] { width: 12rem; }
-#pause-fx-step-editor .pfx-field:not(.pfx-field-narrow) select { width: auto; min-width: 10rem; }
 #pause-fx-step-editor .pfx-with-picker input[type="text"] { width: auto; }
 
 /*+media-io-spacer-column-layout Loop/Bound/Path stay left-anchored; volume slider +
@@ -587,10 +580,6 @@
 /*+media-toggle-accessible-switch A real checkbox underneath, restyled as a two-position
    switch -- teal (video) / accent orange (image), so both sides read as "on". */
 #pause-fx-step-editor .pfx-media-toggle { display: flex; align-items: center; gap: 0.5rem; }
-#pause-fx-step-editor .pfx-media-toggle-label {
-  font-size: var(--font-size-13, 0.8125rem);
-  color: var(--pfx-text-body);
-}
 #pause-fx-step-editor .pfx-switch {
   position: relative;
   display: inline-block;
@@ -626,8 +615,3 @@
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track { background: var(--pfx-accent); }
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track .pfx-switch-thumb { transform: translateX(1rem); }
 #pause-fx-step-editor .pfx-switch input:focus-visible + .pfx-switch-track { outline: 2px solid var(--pfx-accent); outline-offset: 2px; }
-
-
-
-
-

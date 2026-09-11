@@ -32,7 +32,7 @@ When it's ready, the window's own header has **Run** (play it live, right now) a
 
 ### A simple example
 
-Building tension before a reveal might look like: the pinned first step sets a red glow and an eye icon, with the pause screen reading "Something stirs." A few pulses later, a step changes the text to "...and suddenly--" A step after that plays a sting sound. The next step hides the icon and plays a video full-screen, holding on its last frame for a couple of pulses once it ends (Post-AV) before the final step brings the icon back and unpauses the game.
+Building tension before a reveal might look like: the pinned first step sets a red glow and an eye icon, with the pause screen reading "Something stirs." A few pulses later, a step changes the text to "...and suddenly--" A step after that plays a sting sound. The next step hides the icon and plays a video full-screen, holding on its last frame for a couple of pulses once it ends (Post-AV) before the final step brings the icon back then unpauses the game.
 
 ## Tips
 

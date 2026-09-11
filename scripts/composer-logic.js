@@ -30,6 +30,23 @@ export function effectiveIconVisible(precedingSteps) {
   return true;
 }
 
+/** Whether a row field carries a real value, as opposed to a blank/never-filled input.
+ *  0 counts -- a 0-pulse wait and a 0 volume both mean something. */
+function hasValue(value) {
+  return value !== "" && value !== null && value !== undefined;
+}
+
+/**
+ * The step-editor's media switch has two positions, not three -- a row that never touched it
+ * (mediaType "none") reads as the switch's own default position, so a path typed alongside it
+ * still saves rather than being silently dropped.
+ * @param {string} mediaType
+ * @returns {"video"|"image"}
+ */
+export function effectiveMediaType(mediaType) {
+  return mediaType === "video" ? "video" : "image";
+}
+
 const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text"];
 
 /**
@@ -59,17 +76,11 @@ export function stepsFromConfig(config) {
  */
 export function stepFromRow(row) {
   const step = {};
-  if (row.waitUnits !== "" && row.waitUnits !== null && row.waitUnits !== undefined) {
-    step.wait = { units: Number(row.waitUnits) };
-  }
+  if (hasValue(row.waitUnits)) step.wait = { units: Number(row.waitUnits) };
   // //+pre-av-duration-post-av-step-model preAV/postAV only mean anything on a step with
   // media (see pause-fx.js) -- harmless to always carry them through regardless.
-  if (row.preAvUnits !== "" && row.preAvUnits !== null && row.preAvUnits !== undefined) {
-    step.preAV = { units: Number(row.preAvUnits) };
-  }
-  if (row.postAvUnits !== "" && row.postAvUnits !== null && row.postAvUnits !== undefined) {
-    step.postAV = { units: Number(row.postAvUnits) };
-  }
+  if (hasValue(row.preAvUnits)) step.preAV = { units: Number(row.preAvUnits) };
+  if (hasValue(row.postAvUnits)) step.postAV = { units: Number(row.postAvUnits) };
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
   if (row.textPulse) step.textPulse = true;
@@ -82,22 +93,16 @@ export function stepFromRow(row) {
   if (row.waitForAudioEnd) step.waitForAudioEnd = true;
   if (row.audio) {
     step.audio = row.audio;
-    if (row.audioVolume !== "" && row.audioVolume !== null && row.audioVolume !== undefined) {
-      step.audioVolume = Number(row.audioVolume);
-    }
+    if (hasValue(row.audioVolume)) step.audioVolume = Number(row.audioVolume);
     if (row.audioLoop) step.audioLoop = true;
   }
-  if (row.mediaType === "video" && row.mediaPath) {
-    step.video = row.mediaPath;
-    if (row.videoVolume !== "" && row.videoVolume !== null && row.videoVolume !== undefined) {
-      step.videoVolume = Number(row.videoVolume);
-    }
-    if (row.loop) step.loop = true;
-  }
-  if (row.mediaType === "image" && row.mediaPath) {
-    step.image = row.mediaPath;
-    if (row.imagePulses !== "" && row.imagePulses !== null && row.imagePulses !== undefined) {
-      step.imagePulses = Number(row.imagePulses);
+  if (row.mediaPath) {
+    if (effectiveMediaType(row.mediaType) === "video") {
+      step.video = row.mediaPath;
+      if (hasValue(row.videoVolume)) step.videoVolume = Number(row.videoVolume);
+    } else {
+      step.image = row.mediaPath;
+      if (hasValue(row.imagePulses)) step.imagePulses = Number(row.imagePulses);
     }
     if (row.loop) step.loop = true;
   }
@@ -108,9 +113,7 @@ export function stepFromRow(row) {
   if (row.iconSpin) step.iconSpin = true;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
-  if (row.borderWidthPct !== "" && row.borderWidthPct !== null && row.borderWidthPct !== undefined) {
-    step.borderWidth = Number(row.borderWidthPct);
-  }
+  if (hasValue(row.borderWidthPct)) step.borderWidth = Number(row.borderWidthPct);
   return step;
 }
 
@@ -179,6 +182,21 @@ export function coerceStepField(field, rawValue) {
   return rawValue;
 }
 
+// preAV/postAV share wait's own {units} shape, so they share this rendering too.
+function pulseLabel(waitSpec, pulseLengthS) {
+  const cycleS = pulseLengthS ? Number(pulseLengthS) : null;
+  return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${waitSpec.units}x`;
+}
+
+/** Which channel owns a step's AV timing cluster, if any -- video and image outrank audio,
+ *  and unbound audio has no timing of its own to cluster around. */
+function avTypeFor(step) {
+  if (step.video) return "video";
+  if (step.image) return "image";
+  if (step.audio && step.waitForAudioEnd) return "audio";
+  return null;
+}
+
 /**
  * A step's summary, as a list of small typed badges for the always-visible row (no more
  * chevron/expand -- editing happens in a dialog now). The template renders each badge type
@@ -188,17 +206,11 @@ export function coerceStepField(field, rawValue) {
  * @param {number} [pulseLengthS] - to render the wait as real seconds, not just pulse units.
  * @returns {Array<object>} badge descriptors, e.g. {type: "wait", label: "2.0s"}.
  */
-// preAV/postAV share wait's own {units} shape, so they share this rendering too.
-function pulseLabel(waitSpec, pulseLengthS) {
-  const cycleS = pulseLengthS ? Number(pulseLengthS) : null;
-  return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${waitSpec.units}x`;
-}
-
 export function stepBadges(step, pulseLengthS) {
   const badges = [];
   // A media step's timing clusters around its type icon: preAV/postAV flank it, an explicit
   // Duration override becomes the orange badge itself (icon in its corner) instead of a bare glyph.
-  const avType = step.video ? "video" : step.image ? "image" : (step.audio && step.waitForAudioEnd) ? "audio" : null;
+  const avType = avTypeFor(step);
   if (avType) {
     if (step.preAV) badges.push({ type: "preAV", label: pulseLabel(step.preAV, pulseLengthS) });
     if (step.wait) badges.push({ type: "avType", mediaType: avType, label: pulseLabel(step.wait, pulseLengthS) });
@@ -251,9 +263,7 @@ export function msToSeconds(ms) {
  */
 export function configFromGlobals(globals, steps) {
   const config = { steps };
-  if (globals.pulseLengthS !== "" && globals.pulseLengthS !== null && globals.pulseLengthS !== undefined) {
-    config.borderCycleMs = secondsToMs(globals.pulseLengthS);
-  }
+  if (hasValue(globals.pulseLengthS)) config.borderCycleMs = secondsToMs(globals.pulseLengthS);
   if (globals.endCombat) config.endCombat = true;
   if (globals.closeWindowsPlayers || globals.closeWindowsGM) {
     config.closeAllWindows = { players: !!globals.closeWindowsPlayers, gm: !!globals.closeWindowsGM };
@@ -309,5 +319,3 @@ export function commandForConfig(config) {
     `await game.modules.get("pause-fx").api.run(${json});`,
   ].join("\n");
 }
-
-

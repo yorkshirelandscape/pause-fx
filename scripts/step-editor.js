@@ -1,7 +1,7 @@
 // Step editor -- one dialog, shared by every row (including the undeletable first one).
 // Every field is always visible (see composer.css) -- nothing here hides/resets on its own.
 
-import { coerceStepField } from "./composer-logic.js";
+import { coerceStepField, effectiveMediaType } from "./composer-logic.js";
 
 const MODULE_ID = "pause-fx";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -42,24 +42,31 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
   async _onFirstRender(context, options) {
     await super._onFirstRender(context, options);
     if (this.options.modal) this.element.showModal();
+    // Delegated off the dialog itself, which outlives every re-render -- wiring it in
+    // _onRender instead would stack up one duplicate listener per render.
+    this.element.addEventListener("change", (event) => this.#onFieldChange(event.target));
   }
 
   _onRender(context, options) {
     super._onRender(context, options);
     this.#syncMediaTypeFields(this.row.mediaType); // reflect the current type on every (re)render
     this.#setManualAdvancePlaceholder();
-    this.element.addEventListener("change", (event) => {
-      const field = event.target.name;
-      if (!field) return;
-      // The Video/Image switch is a real checkbox (see composer.css) driving the same
-      // "video"/"image" string the old radio pair set, not a bare boolean.
-      const raw = field === "mediaType" ? (event.target.checked ? "image" : "video")
-        : event.target.type === "checkbox" ? event.target.checked
-        : event.target.value;
-      this.row[field] = coerceStepField(field, raw);
-      this.#syncPairedField(event.target); // e.g. the "enable" checkbox next to a colour picker
-      if (field === "mediaType") this.#syncMediaTypeFields(this.row.mediaType);
-    });
+  }
+
+  #onFieldChange(target) {
+    const field = target.name;
+    if (!field) return;
+    this.row[field] = coerceStepField(field, this.#rawValue(target));
+    this.#syncPairedField(target); // e.g. the "enable" checkbox next to a colour picker
+    if (field === "mediaType") this.#syncMediaTypeFields(this.row.mediaType);
+  }
+
+  // The Video/Image switch is a real checkbox (see composer.css) driving the same
+  // "video"/"image" string the old radio pair set, not a bare boolean.
+  #rawValue(target) {
+    if (target.name === "mediaType") return target.checked ? "image" : "video";
+    if (target.type === "checkbox") return target.checked;
+    return target.value;
   }
 
   // Shows the actually-configured "Advance Pause FX" keybind (unbound by default -- see
@@ -74,10 +81,10 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     field.placeholder = `"${keys}"`; // quoted -- a bound digit key would read as a real value otherwise
   }
 
-  // Video and image show different field sets. A blank row's mediaType is "none" -- falls
-  // back to image (the switch's own default checked position), not video.
+  // Video and image show different field sets; a blank row's "none" reads as image (see
+  // effectiveMediaType -- the same rule stepFromRow saves by).
   #syncMediaTypeFields(type) {
-    const effective = type === "video" ? "video" : "image";
+    const effective = effectiveMediaType(type);
     this.element.querySelectorAll("[data-media-show]").forEach((el) => {
       el.hidden = el.dataset.mediaShow !== effective;
     });

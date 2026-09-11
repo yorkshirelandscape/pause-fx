@@ -59,19 +59,17 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext() {
     return {
       globals: this.globals,
-      rows: this.rows.map((row, index) => ({
-        index,
-        badges: stepBadges(stepFromRow(row), this.globals.pulseLengthS),
-        text: stepDisplayText(stepFromRow(row)),
-      })),
+      rows: this.rows.map((row, index) => {
+        const step = stepFromRow(row);
+        return { index, badges: stepBadges(step, this.globals.pulseLengthS), text: stepDisplayText(step) };
+      }),
     };
   }
 
-  _onRender(context, options) {
-    super._onRender(context, options);
-    this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
-    this.#ensureHeaderButtons();
-    this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
+  // Delegated off the window frame, which outlives every re-render -- wiring it in _onRender
+  // instead would stack up one duplicate listener per render.
+  async _onFirstRender(context, options) {
+    await super._onFirstRender(context, options);
     // Only Startup's own fields live here -- everything else is in the step editor.
     this.element.addEventListener("change", (event) => {
       if (event.target.name && event.target.name in this.globals) {
@@ -79,6 +77,13 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
           event.target.type === "checkbox" ? event.target.checked : event.target.value;
       }
     });
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+    this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
+    this.#ensureHeaderButtons();
+    this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
   }
 
   // Foundry's own header only renders toggle-controls/close directly -- window.controls entries
@@ -334,5 +339,6 @@ Hooks.on("getSceneControlButtons", (controls) => {
 
 Hooks.once("ready", () => {
   const mod = game.modules.get(MODULE_ID);
-  if (mod?.api) mod.api.openComposer = () => new PauseFXComposer().render(true);
+  // ??=, not a plain read -- doesn't depend on pause-fx.js's own ready hook having run first.
+  if (mod) (mod.api ??= {}).openComposer = () => new PauseFXComposer().render(true);
 });

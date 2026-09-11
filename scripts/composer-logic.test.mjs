@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig,
-  hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible,
+  hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible, effectiveMediaType,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
@@ -116,6 +116,36 @@ test("stepFromRow: mediaType picks video vs. image -- video carries volume/loop,
 
   const imageRow = { ...BLANK_ROW, mediaType: "image", mediaPath: "spooky/", imagePulses: "0", loop: true };
   assert.deepEqual(stepFromRow(imageRow), { image: "spooky/", imagePulses: 0, loop: true, iconVisible: true });
+});
+
+test("effectiveMediaType: the switch has two positions -- only an explicit 'video' isn't image", () => {
+  assert.equal(effectiveMediaType("video"), "video");
+  assert.equal(effectiveMediaType("image"), "image");
+  assert.equal(effectiveMediaType("none"), "image"); // a row that never touched the switch
+  assert.equal(effectiveMediaType(undefined), "image");
+});
+
+test("stepFromRow: a path on an untouched switch still saves, as the image it shows on screen", () => {
+  // Regression: the switch renders in its image position for a blank row, but the row's own
+  // mediaType stays "none" until it's actually toggled -- media typed in was silently dropped.
+  const row = { ...BLANK_ROW, mediaType: "none", mediaPath: "spooky.webp", imagePulses: "2" };
+  assert.deepEqual(stepFromRow(row), { image: "spooky.webp", imagePulses: 2, iconVisible: true });
+});
+
+test("stepFromRow: a blank path saves no media at all, whatever the switch says", () => {
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, mediaType: "video" }), { iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, mediaType: "image" }), { iconVisible: true });
+});
+
+test("stepFromRow: a real 0 is a value, not a blank -- pulses, volumes and widths all keep it", () => {
+  const row = {
+    ...BLANK_ROW, waitUnits: 0, preAvUnits: 0, postAvUnits: 0, borderWidthPct: 0,
+    audio: "sting.ogg", audioVolume: 0, mediaType: "video", mediaPath: "a.webm", videoVolume: 0,
+  };
+  assert.deepEqual(stepFromRow(row), {
+    wait: { units: 0 }, preAV: { units: 0 }, postAV: { units: 0 }, borderWidth: 0,
+    audio: "sting.ogg", audioVolume: 0, video: "a.webm", videoVolume: 0, iconVisible: true,
+  });
 });
 
 test("stepFromRow: audio carries its own volume and loop, independent of media fields", () => {
