@@ -13,9 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Macros" compendium as well.
 - Composer's **Save as Macro** now sets an on-brand clapperboard thumbnail and files new
   macros into a "Pause FX" folder.
-- `textGlow` -- the pause label's own glow, settable independent of the border color;
-  always on, and defaults to tracking whatever border color is active. Authored via a new
-  toggle on the Composer's Text block, alongside Pulse.
+- `textGlow` -- a two-ring outline around the pause label's own text (a tight inner ring, a
+  diffuse outer one, assigned by contrast so the text reads against any background), and the
+  text's own color; always on, and defaults to tracking whatever border color is active.
+  Authored via a new toggle on the Composer's Text block, alongside Pulse.
 - This changelog.
 
 ### Changed
@@ -51,10 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bound audio (`waitForAudioEnd`) never actually played, ever -- an undocumented early
   return in Foundry's own `AudioHelper.play()` silently swallowed it. Rebuilt directly on
   `foundry.audio.Sound`.
-- The default pause message's placeholder/docs said "Game Paused"; Foundry's own CSS
-  renders that string as "GAME PAUSED" -- now the docs say what actually shows up.
+- The default pause message rendered as "Game Paused" instead of Foundry's own uppercase
+  "GAME PAUSED" -- a fix meant only for custom text was silently applying unconditionally.
 - The Text block's glow toggle squeezed Duration's Pulses/AV pair onto two lines; widened
   the step editor to fit both comfortably.
+- A sequence with closeAllWindows enabled (like the demo) closed the Composer window Run
+  was just clicked from, along with everything else.
+- The step editor's modal dialog (v0.1.7) made Foundry's own file browser unusable when
+  picking an icon, media, or audio path -- dropped back to non-modal.
 
 ### Removed
 - Dropped the border/text "clock" distinction for a step's Duration -- it was always just two
