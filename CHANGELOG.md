@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bound audio (`waitForAudioEnd`) never actually played, ever -- an undocumented early
   return in Foundry's own `AudioHelper.play()` silently swallowed it. Rebuilt directly on
   `foundry.audio.Sound`.
+- The default pause message's placeholder/docs said "Game Paused"; Foundry's own CSS
+  renders that string as "GAME PAUSED" -- now the docs say what actually shows up.
+- The Text block's glow toggle squeezed Duration's Pulses/AV pair onto two lines; widened
+  the step editor to fit both comfortably.
 
 ### Removed
 - Dropped the border/text "clock" distinction for a step's Duration -- it was always just two
