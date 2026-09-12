@@ -9,8 +9,8 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "pause-fx-step-editor",
-    tag: "dialog", //+dialog-tag-default-padding real showModal() blocking, see _onFirstRender
-    modal: true, //+step-editor-modal-dialog read by _onFirstRender below, not the base class itself
+    tag: "dialog", //+dialog-tag-default-padding still a <dialog>, just non-modal -- see _onFirstRender
+    modal: false, //+step-editor-modal-dialog dropped -- blocked FilePicker, see that note
     window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: false, contentTag: "form" },
     position: { width: 540, height: "auto" },
     form: { handler: PauseFXStepEditor.#onSubmit, submitOnChange: false, closeOnSubmit: false },
@@ -37,11 +37,11 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     return { row: this.row };
   }
 
-  //+step-editor-modal-dialog showModal() actually blocks interaction with the Composer
-  // and adds ::backdrop -- the base class doesn't call it, so this does, after super().
+  //+step-editor-modal-dialog same trigger DialogV2 itself uses -- the base class calls
+  // neither automatically, so this does, after super(). See that note for why modal:false.
   async _onFirstRender(context, options) {
     await super._onFirstRender(context, options);
-    if (this.options.modal) this.element.showModal();
+    this.options.modal ? this.element.showModal() : this.element.show();
     // Delegated off the dialog itself, which outlives every re-render -- wiring it in
     // _onRender instead would stack up one duplicate listener per render.
     this.element.addEventListener("change", (event) => this.#onFieldChange(event.target));
