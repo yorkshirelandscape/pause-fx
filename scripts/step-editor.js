@@ -12,7 +12,7 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     tag: "dialog", //+dialog-tag-default-padding still a <dialog>, just non-modal -- see _onFirstRender
     modal: false, //+step-editor-modal-dialog dropped -- blocked FilePicker, see that note
     window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: false, contentTag: "form" },
-    position: { width: 540, height: "auto" },
+    position: { width: 600, height: "auto" },
     form: { handler: PauseFXStepEditor.#onSubmit, submitOnChange: false, closeOnSubmit: false },
     actions: {
       browseFile: PauseFXStepEditor.#onBrowseFile,
