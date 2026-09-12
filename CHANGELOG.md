@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `macros/demo.js` -- a feature-tour macro built entirely from assets Foundry itself ships,
-  doubling as a pasteable demo and a manual test pass.
+  doubling as a pasteable demo and a manual test pass; ships pre-seeded in a "Pause FX
+  Macros" compendium as well.
+- Composer's **Save as Macro** now sets an on-brand clapperboard thumbnail and files new
+  macros into a "Pause FX" folder.
+- `textGlow` -- the pause label's own glow, settable independent of the border color;
+  always on, and defaults to tracking whatever border color is active. Authored via a new
+  toggle on the Composer's Text block, alongside Pulse.
 - This changelog.
 
 ### Changed
@@ -26,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it; the pause band moves behind the video instead of disappearing or painting over it.
 - The pulsing text's color now follows whatever border color the run actually set, instead
   of a fixed red-orange regardless of theme.
+- The Unpause step badge uses the classic play-pause glyph instead of a plain circle-play icon.
 
 ### Fixed
 - Wrapped pause text no longer crams its second line against the first, nudges the icon, or
@@ -41,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A failed sound or closeAllWindows broadcast no longer aborts the whole run silently.
 - The Composer and step editor no longer accumulate a duplicate change listener on every
   re-render.
+- Bound audio (`waitForAudioEnd`) never actually played, ever -- an undocumented early
+  return in Foundry's own `AudioHelper.play()` silently swallowed it. Rebuilt directly on
+  `foundry.audio.Sound`.
 
 ### Removed
 - Dropped the border/text "clock" distinction for a step's Duration -- it was always just two
