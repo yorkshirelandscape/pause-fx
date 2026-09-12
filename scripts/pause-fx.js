@@ -10,6 +10,7 @@ const BORDER_FROZEN_CLASS = "pause-fx-border-frozen";
 const BAND_ID = "pause-fx-band"; // #pause's own background, recreated behind media -- see injectStyles
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const BORDER_SCALE_VAR = "--pause-fx-border-scale";
+const TEXT_COLOUR_VAR = "--pause-fx-text-color"; //+text-pulse-animation-beats-inline-color
 // No icon-GIF-timing auto-detection -- pass borderCycleMs explicitly to sync against a
 // specific asset's real loop length.
 const DEFAULT_BORDER_CYCLE_MS = 3640;
@@ -211,17 +212,17 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
     /* Always on -- an inline style from an explicit step.textGlow wins over this (see
        applyTextGlow), so this is only the zero-config default, not a toggle. */
     .pause-fx-label-glow {
-      text-shadow: 0 0 12px rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)), 0 0 8px black;
+      text-shadow: 0 0 12px var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))), 0 0 8px black;
     }
 
-    /* Rides on the same border colour the author actually picked (was hardcoded red-orange,
-       against the docs' own claim -- see the run()-level JSDoc this fixes). */
+    /* Rides on border colour by default, or an explicit textGlow via the var above --
+       //+text-pulse-animation-beats-inline-color the animation itself has to read the var. */
     @keyframes pause-fx-text-pulse {
-      0%, 100% { color: color-mix(in srgb, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)) 30%, black); transform: scale(1); }
-      50% { color: rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)); transform: scale(1.08); }
+      0%, 100% { color: color-mix(in srgb, var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))) 30%, black); transform: scale(1); }
+      50% { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))); transform: scale(1.08); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .pause-fx-label { color: rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)); }
+      .pause-fx-label { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))); }
     }
     @media (prefers-reduced-motion: no-preference) {
       .pause-fx-label { animation: pause-fx-text-pulse ${textCycleMs / 1000}s ease-in-out infinite; }
@@ -342,10 +343,19 @@ function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
   if (iconGlow !== undefined) iconEl.style.filter = iconGlow ? `drop-shadow(0 0 12px ${iconGlow})` : "";
 }
 
-/** An explicit override for the label's glow -- unset (falsy) drops back to just the
- *  plain contrast shadow; never called at all leaves the border-tracking CSS default alone. */
+/** An explicit override for the label's glow AND its own fill colour -- a glow alone left
+ *  the letters themselves still tracking border colour via .pause-fx-label's CSS, which
+ *  read as "still the border's colour" instead of genuinely independent. Both a plain
+ *  inline style.color AND the CSS var below are set: the var is what the always-on pulse
+ *  animation (see its own keyframes) actually reads, since a running animation overrides
+ *  a plain inline style every frame -- see //+text-pulse-animation-beats-inline-color.
+ *  Falsy drops both back to the plain contrast shadow and the CSS default (border-tracking
+ *  fill); never called at all leaves that same default alone. */
 function applyTextGlow(label, colour) {
   label.style.textShadow = colour ? `0 0 12px ${colour}, 0 0 8px black` : "0 0 8px black";
+  label.style.color = colour || "";
+  if (colour) label.style.setProperty(TEXT_COLOUR_VAR, colour);
+  else label.style.removeProperty(TEXT_COLOUR_VAR);
 }
 
 /** Idempotent -- injects the keyframes once, but setBorderColour always runs (may be a new colour). */
@@ -375,8 +385,9 @@ export class PauseFX {
    * @param {string} [config.borderColor] - CSS colour for pause-fx's border-glow overlay.
    *   Omitted, no overlay (the label's pulsing text-colour rides on this too).
    * @param {number} [config.borderWidth] - % difference from the border glow's default size.
-   * @param {string} [config.textGlow] - CSS colour for the label's own glow. Always on;
-   *   omitted, it tracks whatever borderColor is currently active instead of a fixed one.
+   * @param {string} [config.textGlow] - CSS colour for the label's own text AND its glow.
+   *   Always on; omitted, both track whatever borderColor is currently active instead of
+   *   a fixed one.
    * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's "GAME PAUSED" stays.
    * @param {number} [config.borderCycleMs=3640] - border/eye pulse period, in ms.
