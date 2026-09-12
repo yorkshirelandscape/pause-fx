@@ -1,0 +1,3 @@
+# Kept in the repo (tests run against them via `node --test`), dropped from
+# `git archive` -- the release zip ships the module, not its test suite.
+*.test.mjs export-ignore
