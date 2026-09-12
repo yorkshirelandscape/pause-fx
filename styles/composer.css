@@ -8,12 +8,13 @@
 
 /* ApplicationV2's .window-content is plain overflow:hidden by default -- a resizable dialog
    with variable content silently clips instead of scrolling unless a module opts in itself. */
-#pause-fx-composer .window-content,
+#pause-fx-composer .window-content, /*+unlayered-css-always-wins*/
 #pause-fx-step-editor .window-content {
   overflow-y: auto;
   overflow-x: hidden;
 }
-/* <dialog>'s UA stylesheet gives it a default padding no other Foundry window tag carries. */
+/*+dialog-tag-default-padding <dialog>'s UA stylesheet gives it a default padding no
+   other Foundry window tag carries. */
 #pause-fx-step-editor.application { margin: 0; padding: 0; }
 
 #pause-fx-composer .pfx-composer,
@@ -34,8 +35,8 @@
   gap: 0.75rem;
   padding: 0.5rem;
 }
-/* Deliberate irregular layout, hand-tuned against a mockup -- see the per-block grid-area
-   rules further down. Rows auto-size. */
+/*+step-editor-grid-hand-tuned-to-mockup deliberate irregular layout -- see the
+   per-block grid-area rules further down. Rows auto-size. */
 #pause-fx-step-editor .pfx-step-editor {
   display: grid;
   grid-template-columns: 3fr 1fr 1fr 2fr 1fr 1fr;
@@ -112,12 +113,13 @@
   color: var(--pfx-text-body);
   white-space: nowrap;
 }
-/* Without this, a tight column's checkbox takes the whole shrink deficit once its label
-   has already wrapped as far as it can -- renders visibly smaller than a real checkbox. */
+/*+checkbox-flex-shrink-distortion without this, a tight column's checkbox takes the
+   whole shrink deficit once its label wraps as far as it can -- renders too small. */
 #pause-fx-composer .pfx-checkbox input[type="checkbox"],
 #pause-fx-step-editor .pfx-checkbox input[type="checkbox"] { flex-shrink: 0; }
 
-/* align-self:stretch is explicit -- fieldsets don't reliably stretch flex children on their own. */
+/*+fieldset-align-stretch-quirk align-self:stretch is explicit -- fieldsets don't
+   reliably stretch flex children on their own. */
 #pause-fx-composer .pfx-row,
 #pause-fx-step-editor .pfx-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.4rem 0.75rem; align-self: stretch; }
 #pause-fx-composer .pfx-field,
@@ -134,7 +136,7 @@
 #pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
 /*+disabled-input-border-paradox Foundry's :disabled border reads as MORE defined than an
    enabled field here, since ours have no border at all. */
-#pause-fx-step-editor input:disabled {
+#pause-fx-step-editor input:disabled { /*+unlayered-css-always-wins*/
   opacity: 0.45 !important;
   border-color: transparent !important;
 }
@@ -309,8 +311,8 @@
   border-radius: 5px;
   transition: background 120ms ease;
 }
-/* !important: Foundry loads every module's CSS inside @layer modules, and foundry2.css's own
-   unlayered styles win over any layered rule regardless of specificity. */
+/*+unlayered-css-always-wins Foundry loads every module's CSS inside @layer modules,
+   and foundry2.css's own unlayered styles win regardless of specificity. */
 #pause-fx-composer .pfx-steps > .pfx-step:nth-child(even) {
   background: color-mix(in srgb, var(--pfx-surface) 40%, transparent) !important;
 }

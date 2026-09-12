@@ -9,8 +9,8 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "pause-fx-step-editor",
-    tag: "dialog", // for real showModal() blocking -- see _onFirstRender. Content area stays "form".
-    modal: true, // read by _onFirstRender below, not the base class itself
+    tag: "dialog", //+dialog-tag-default-padding real showModal() blocking, see _onFirstRender
+    modal: true, //+step-editor-modal-dialog read by _onFirstRender below, not the base class itself
     window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: false, contentTag: "form" },
     position: { width: 480, height: "auto" },
     form: { handler: PauseFXStepEditor.#onSubmit, submitOnChange: false, closeOnSubmit: false },
@@ -37,8 +37,8 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     return { row: this.row };
   }
 
-  // showModal() is what actually blocks interaction with the Composer behind this and adds
-  // the ::backdrop -- the base class doesn't call it itself, so this does, after super().
+  //+step-editor-modal-dialog showModal() actually blocks interaction with the Composer
+  // and adds ::backdrop -- the base class doesn't call it, so this does, after super().
   async _onFirstRender(context, options) {
     await super._onFirstRender(context, options);
     if (this.options.modal) this.element.showModal();

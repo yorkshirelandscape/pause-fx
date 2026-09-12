@@ -203,7 +203,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     }
     // Steps missing iconVisible (hand-written, or saved before this field existed) get one
     // seeded from where the sequence's state already is, so the loaded row isn't ambiguous.
-    const steps = stepsFromConfig(config);
+    const steps = stepsFromConfig(config); //+composer-loadmacro-drops-config-level-startup-fields
     this.rows = steps.map((step, i) => rowFromStep(
       step.iconVisible !== undefined ? step : { ...step, iconVisible: effectiveIconVisible(steps.slice(0, i)) },
     ));

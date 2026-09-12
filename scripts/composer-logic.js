@@ -49,6 +49,8 @@ export function effectiveMediaType(mediaType) {
 
 const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text"];
 
+// //+composer-loadmacro-drops-config-level-startup-fields synthesizes row 0 from
+// top-level fields a hand-written macro used instead of steps[0].
 /**
  * PauseFX.run() also accepts icon/iconGlow/borderColor/text at config's own top level (as
  * initial state), not just folded into steps[0] the way Composer rows always save them --

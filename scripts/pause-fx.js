@@ -5,7 +5,7 @@
 // for the config shape.
 
 const MODULE_ID = "pause-fx";
-const BORDER_CLASS = "pause-fx-bordered";
+const BORDER_CLASS = "pause-fx-bordered"; //+border-glow-owns-mld own body class, not MLD's
 const BORDER_FROZEN_CLASS = "pause-fx-border-frozen";
 const BAND_ID = "pause-fx-band"; // #pause's own background, recreated behind media -- see injectStyles
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
@@ -16,8 +16,8 @@ const DEFAULT_BORDER_CYCLE_MS = 3640;
 
 let socket;
 
-// Registers pause-fx's socketlib socket -- immediately if socketlib is already loaded,
-// otherwise once its "ready" hook fires.
+//+socketlib-ready-race Registers pause-fx's socket immediately if socketlib is already
+// loaded, otherwise once its "ready" hook fires -- load order isn't guaranteed.
 function registerSocket() {
   socket = socketlib.registerModule(MODULE_ID);
   socket.register("closeAllWindows", closeAllWindowsHandler);
@@ -78,7 +78,7 @@ Hooks.once("init", () => {
  * @returns {boolean}
  */
 export function isRealWindow(app) {
-  return !!app.hasFrame;
+  return !!app.hasFrame; //+hasframe-regression closeAllWindows' own real-window signal
 }
 
 /**
@@ -177,6 +177,7 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       pointer-events: none;
     }
 
+    /*+border-glow-owns-mld own pseudo-element, works with or without MLD installed */
     body.${BORDER_CLASS}:before {
       content: "";
       position: fixed;
@@ -323,7 +324,8 @@ async function playSound(spec) {
  */
 function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
   if (!iconEl) return;
-  // Foundry's own icon spins by default -- stop once we're managing it at all.
+  //+foundry-icon-fa-spin-default Foundry's own icon spins by default -- stop once
+  // we're managing it at all.
   iconEl.classList.remove("fa-spin");
   if (icon !== undefined) iconEl.src = icon;
   if (iconSpin !== undefined) {
@@ -429,7 +431,8 @@ export class PauseFX {
     // called until the pauseGame hook fires, well after that declaration runs.
     const resetOnUnpause = (paused) => {
       if (paused) return; // ignore the pause-on event this run itself triggers below
-      runController.abort(); // stop every pending wait/gate/background loop this run owns
+      runController.abort(); //+abort-controller-unpause-cleanup stops every pending
+      // wait/gate/background loop this run owns
       overlay?.remove();
       overlay = null;
       stopAllSounds();
@@ -477,7 +480,8 @@ export class PauseFX {
       //+pause-text-transform-override Foundry forces text-transform:uppercase on #pause's
       // caption; a custom message should render as typed.
       label.style.textTransform = "none";
-      // Fixed, not content-based -- avoids moving scale()'s own anchor point mid-pulse.
+      //+label-transform-origin-epicycle fixed, not content-based -- avoids moving
+      // scale()'s own anchor point mid-pulse.
       label.style.width = "min(90vw, 32rem)";
       label.style.textAlign = "center";
       label.style.textWrap = "balance"; // spreads a wrap across the min line count evenly
@@ -501,7 +505,8 @@ export class PauseFX {
       Hooks.off("renderPause", skin);
       Hooks.off("renderGamePause", skin);
     };
-    // Both a hook listener and a synchronous capture are needed -- either can land last.
+    //+render-pause-can-refire-mid-session both a hook listener and a synchronous
+    // capture are needed -- either can land last.
     Hooks.once("renderPause", skin); // pre-V13 class name
     Hooks.once("renderGamePause", skin); // V13+ (GamePause)
     if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element);
@@ -525,7 +530,8 @@ export class PauseFX {
       // An unpause (this run's own step.unpause included) cuts the sequence off here.
       if (signal.aborted) break;
 
-      // Apply this step's own effects first, then hold for its own duration (below).
+      //+apply-then-wait-step-model apply this step's own effects first, then hold
+      // for its own duration (below).
       if (step.text !== undefined) label.textContent = step.text;
       if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
       if (step.stopTextPulse) label.style.animationPlayState = "paused";
@@ -606,8 +612,8 @@ export class PauseFX {
               const showSlideshow = async () => {
                 let i = 0;
                 while (true) {
-                  // isConnected: the step already ended and took the element with it -- a
-                  // looping slideshow would otherwise keep cycling for the rest of the run.
+                  //+slideshow-closes-over-element-not-overlay isConnected: the step already
+                  // ended and took the element with it -- else this loops past the run.
                   if (signal.aborted || !visualEl.isConnected) { resolveSlideshowDone(); return; }
                   if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
                   if (step.imagePulses === 0) await waitForManualAdvance(signal);
