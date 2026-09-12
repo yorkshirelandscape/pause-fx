@@ -10,6 +10,7 @@ await game.modules.get("pause-fx").api.run({
   "endCombat": true,
   "closeAllWindows": { "players": true, "gm": true },
   "steps": [
+    { "wait": { "units": 1.5 } },
     {
       "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "borderColor": "#4DD0E1",
       "text": "PAUSE FX", "wait": { "units": 2 }
@@ -18,6 +19,7 @@ await game.modules.get("pause-fx").api.run({
     { "textPulse": true, "text": "text can pulse in time with the border", "wait": { "units": 3 } },
     { "stopTextPulse": true, "text": "...and freeze in place, mid-pulse", "wait": { "units": 2 } },
     { "borderColor": "#4ADE80", "borderWidth": 40, "text": "the border can change color and size", "wait": { "units": 2 } },
+    { "textGlow": "#FF2478", "text": "...and the text glow can pick its own color, independent of the border", "wait": { "units": 2.5 } },
     { "stopBorderPulse": true, "text": "...or stop pulsing entirely", "wait": { "units": 2 } },
     { "icon": "icons/svg/light.svg", "iconGlow": "#FFD700", "iconSpin": true, "borderColor": "#4d94ff", "text": "icons can swap, glow, and spin (the border pulse is back too)", "wait": { "units": 3 } },
     { "stopIconSpin": true, "text": "...and stop spinning on cue", "wait": { "units": 2 } },
