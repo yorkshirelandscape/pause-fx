@@ -378,7 +378,7 @@ export class PauseFX {
    * @param {string} [config.textGlow] - CSS colour for the label's own glow. Always on;
    *   omitted, it tracks whatever borderColor is currently active instead of a fixed one.
    * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
-   * @param {string} [config.text] - initial label text. Omitted, Foundry's "Game Paused" stays.
+   * @param {string} [config.text] - initial label text. Omitted, Foundry's "GAME PAUSED" stays.
    * @param {number} [config.borderCycleMs=3640] - border/eye pulse period, in ms.
    * @param {number} [config.textCycleMs] - text pulse period. Defaults to
    *   borderCycleMs * textCycleMultiplier.
@@ -514,7 +514,7 @@ export class PauseFX {
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
       label.classList.add("pause-fx-label-glow"); // always on -- see injectStyles' own rule
       if (textGlow !== undefined) applyTextGlow(label, textGlow);
-      if (initialText !== undefined) label.textContent = initialText; // else leave "Game Paused"
+      if (initialText !== undefined) label.textContent = initialText; // else leave "GAME PAUSED"
     };
     const skin = (app, html) => {
       applySkin(app, html);

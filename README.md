@@ -1,6 +1,6 @@
 # Pause FX
 
-Pause FX turns Foundry's plain "Game Paused" screen into a scripted reveal: a glowing border, a custom icon, message text that changes over time, a video or image, a sound cue -- built visually in a window, no scripting required. Trigger it from the scene controls, run it live, or save it as a macro to reuse.
+Pause FX turns Foundry's plain "GAME PAUSED" screen into a scripted reveal: a glowing border, a custom icon, message text that changes over time, a video or image, a sound cue -- built visually in a window, no scripting required. Trigger it from the scene controls, run it live, or save it as a macro to reuse.
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 
