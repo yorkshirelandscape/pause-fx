@@ -15,8 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   macros into a "Pause FX" folder.
 - `textGlow` -- a two-ring outline around the pause label's own text (a tight inner ring, a
   diffuse outer one, assigned by contrast so the text reads against any background), and the
-  text's own color; always on, and defaults to tracking whatever border color is active.
-  Authored via a new toggle on the Composer's Text block, alongside Pulse.
+  text's own color; defaults to tracking whatever border color is active, and its rings track
+  a running Fade in real time. Authored via a new toggle on the Composer's Text block.
+- `textFade` -- darkens and brightens the pause text, split out of what used to be one
+  combined "text pulse" (which is now Dilate-only: scale, no color). Each is independently
+  stoppable (Stop's own Text Pulse / Text Fade).
 - This changelog.
 
 ### Changed
@@ -31,8 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of the way, instead of sitting on top of the reveal.
 - A step's icon/text now render above its own video/image instead of getting buried under
   it; the pause band moves behind the video instead of disappearing or painting over it.
-- The pulsing text's color now follows whatever border color the run actually set, instead
-  of a fixed red-orange regardless of theme.
+- Fade's text color now follows whatever border color the run actually set, instead of a
+  fixed red-orange regardless of theme.
 - The Unpause step badge uses the classic play-pause glyph instead of a plain circle-play icon.
 
 ### Fixed
@@ -60,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was just clicked from, along with everything else.
 - The step editor's modal dialog (v0.1.7) made Foundry's own file browser unusable when
   picking an icon, media, or audio path -- dropped back to non-modal.
+- The pause text's glow/color defaulted to pause-fx's own red the moment anything (even
+  Pulse alone) touched styling at all, with no border or text color ever set.
+- The Text block's new Fade checkbox squeezed Duration onto two lines again -- widened the
+  step editor further.
 
 ### Removed
 - Dropped the border/text "clock" distinction for a step's Duration -- it was always just two
