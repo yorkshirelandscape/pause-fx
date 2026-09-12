@@ -47,7 +47,7 @@ export function effectiveMediaType(mediaType) {
   return mediaType === "video" ? "video" : "image";
 }
 
-const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text"];
+const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text", "textGlow"];
 
 // //+composer-loadmacro-drops-config-level-startup-fields synthesizes row 0 from
 // top-level fields a hand-written macro used instead of steps[0].
@@ -86,6 +86,7 @@ export function stepFromRow(row) {
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
   if (row.textPulse) step.textPulse = true;
+  if (row.textGlowEnabled && row.textGlow) step.textGlow = row.textGlow;
   if (row.stopAudio) step.stopAudio = true;
   if (row.stopTextPulse) step.stopTextPulse = true;
   if (row.stopIconSpin) step.stopIconSpin = true;
@@ -138,6 +139,8 @@ export function rowFromStep(step) {
     text: step.text ?? "",
     textNone: step.text === "",
     textPulse: !!step.textPulse,
+    textGlowEnabled: step.textGlow !== undefined,
+    textGlow: step.textGlow ?? "#4DD0E1", // same deliberate teal default as iconGlow/borderColor
     stopAudio: !!step.stopAudio,
     stopTextPulse: !!step.stopTextPulse,
     stopIconSpin: !!step.stopIconSpin,
@@ -169,7 +172,7 @@ const NUMBER_FIELDS = new Set([
 const BOOL_FIELDS = new Set([
   "textNone", "textPulse", "stopAudio", "stopTextPulse",
   "stopIconSpin", "stopBorderPulse", "unpause", "waitForAudioEnd",
-  "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "audioLoop", "loop",
+  "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "textGlowEnabled", "audioLoop", "loop",
 ]);
 
 /**
@@ -225,6 +228,7 @@ export function stepBadges(step, pulseLengthS) {
   // own indicator when nothing else claimed that cluster's icon.
   if (step.audio && step.waitForAudioEnd && avType !== "audio") badges.push({ type: "audioBound" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
+  if (step.textGlow !== undefined) badges.push({ type: "textGlow", colour: step.textGlow });
   if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible === false) {
     badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });
   }

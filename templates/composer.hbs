@@ -37,6 +37,7 @@
               {{/if}}
               {{#if (eq b.type "audioBound")}}<i class="fa-solid fa-link pfx-badge" title="Audio bound to this step"></i>{{/if}}
               {{#if (eq b.type "border")}}<span class="pfx-badge pfx-badge-swatch" style="border-color:{{b.colour}}" title="Border: {{b.colour}}"></span>{{/if}}
+              {{#if (eq b.type "textGlow")}}<span class="pfx-badge pfx-badge-icon" style="border-color:{{b.colour}}" title="Text Glow: {{b.colour}}"><i class="fa-solid fa-font"></i></span>{{/if}}
               {{#if (eq b.type "icon")}}
                 <span class="pfx-badge pfx-badge-icon" style="border-color:{{b.glow}}" title="Icon">
                   {{#if b.icon}}<img src="{{b.icon}}" alt="">{{/if}}

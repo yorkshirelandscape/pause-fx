@@ -35,6 +35,10 @@
           <span class="pfx-checkbox-group">
             <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
             <label class="pfx-checkbox"><input type="checkbox" name="textPulse" {{checked row.textPulse}}> Pulse</label>
+            <span class="pfx-with-toggle" title="Text Glow -- unset, tracks the border color">
+              <input type="checkbox" name="textGlowEnabled" data-enables="textGlow" {{checked row.textGlowEnabled}}>
+              <input type="color" name="textGlow" value="{{row.textGlow}}" {{#unless row.textGlowEnabled}}disabled{{/unless}}>
+            </span>
           </span>
         </span>
         <input type="search" name="text" value="{{row.text}}" placeholder="Game Paused" {{#if row.textNone}}disabled{{/if}}>
