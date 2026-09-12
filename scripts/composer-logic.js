@@ -47,7 +47,10 @@ export function effectiveMediaType(mediaType) {
   return mediaType === "video" ? "video" : "image";
 }
 
-const STARTUP_FIELDS = ["icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text", "textGlow"];
+const STARTUP_FIELDS = [
+  "icon", "iconGlow", "borderColor", "iconSpin", "borderWidth", "text", "textGlow",
+  "iconBeatsPerCycle", "textBeatsPerCycle", "borderBeatsPerCycle",
+];
 
 // //+composer-loadmacro-drops-config-level-startup-fields synthesizes row 0 from
 // top-level fields a hand-written macro used instead of steps[0].
@@ -119,6 +122,11 @@ export function stepFromRow(row) {
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
   if (hasValue(row.borderWidthPct)) step.borderWidth = Number(row.borderWidthPct);
+  // //+cycle-time-beats-per-cycle a step-level override, persisting forward like borderColor --
+  // blank means "leave whatever's already running alone," not "reset to 1."
+  if (hasValue(row.iconBeatsPerCycle)) step.iconBeatsPerCycle = Number(row.iconBeatsPerCycle);
+  if (hasValue(row.textBeatsPerCycle)) step.textBeatsPerCycle = Number(row.textBeatsPerCycle);
+  if (hasValue(row.borderBeatsPerCycle)) step.borderBeatsPerCycle = Number(row.borderBeatsPerCycle);
   return step;
 }
 
@@ -167,11 +175,15 @@ export function rowFromStep(step) {
     borderColorEnabled: step.borderColor !== undefined,
     borderColor: step.borderColor ?? "#4DD0E1",
     borderWidthPct: step.borderWidth ?? "",
+    iconBeatsPerCycle: step.iconBeatsPerCycle ?? "",
+    textBeatsPerCycle: step.textBeatsPerCycle ?? "",
+    borderBeatsPerCycle: step.borderBeatsPerCycle ?? "",
   };
 }
 
 const NUMBER_FIELDS = new Set([
   "waitUnits", "preAvUnits", "postAvUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses",
+  "iconBeatsPerCycle", "textBeatsPerCycle", "borderBeatsPerCycle",
 ]);
 const BOOL_FIELDS = new Set([
   "textNone", "textPulse", "textFade", "stopAudio", "stopTextPulse", "stopTextFade",
@@ -195,6 +207,19 @@ export function coerceStepField(field, rawValue) {
 function pulseLabel(waitSpec, pulseLengthS) {
   const cycleS = pulseLengthS ? Number(pulseLengthS) : null;
   return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${waitSpec.units}x`;
+}
+
+// //+cycle-time-beats-per-cycle a beats-per-cycle badge reads as a speed, not a duration --
+// the common slower-than-base ratios get their own glyph, everything else a plain multiplier.
+const BEAT_FRACTION_GLYPHS = [[1 / 4, "¼"], [1 / 3, "⅓"], [1 / 2, "½"], [2 / 3, "⅔"], [3 / 4, "¾"]];
+
+/** Renders a beats-per-cycle value as a compact "×N" speed label for step badges.
+ * @param {number} beatsPerCycle
+ * @returns {string} e.g. "2×", "½×", "1.5×".
+ */
+export function formatBeatsPerCycle(beatsPerCycle) {
+  const glyph = BEAT_FRACTION_GLYPHS.find(([value]) => Math.abs(beatsPerCycle - value) < 0.01);
+  return `${glyph ? glyph[1] : Math.round(beatsPerCycle * 100) / 100}×`;
 }
 
 /** Which channel owns a step's AV timing cluster, if any -- video and image outrank audio,
@@ -236,6 +261,9 @@ export function stepBadges(step, pulseLengthS) {
   if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible === false) {
     badges.push({ type: "icon", icon: step.icon, glow: step.iconGlow, spin: !!step.iconSpin, visible: step.iconVisible });
   }
+  if (step.iconBeatsPerCycle !== undefined) badges.push({ type: "iconBpc", label: formatBeatsPerCycle(step.iconBeatsPerCycle) });
+  if (step.textBeatsPerCycle !== undefined) badges.push({ type: "textBpc", label: formatBeatsPerCycle(step.textBeatsPerCycle) });
+  if (step.borderBeatsPerCycle !== undefined) badges.push({ type: "borderBpc", label: formatBeatsPerCycle(step.borderBeatsPerCycle) });
   if (step.audio && avType !== "audio") badges.push({ type: "audio" });
   if (step.loop || step.audioLoop) badges.push({ type: "loop" });
   if (step.textPulse) badges.push({ type: "textPulse" });

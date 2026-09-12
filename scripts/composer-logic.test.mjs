@@ -5,19 +5,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
-  secondsToMs, msToSeconds, configFromGlobals, commandForConfig,
+  secondsToMs, msToSeconds, configFromGlobals, commandForConfig, formatBeatsPerCycle,
   hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible, effectiveMediaType,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
   waitUnits: "", preAvUnits: "", postAvUnits: "",
-  text: "", textNone: false, textPulse: false,
-  stopAudio: false, stopTextPulse: false,
+  text: "", textNone: false, textPulse: false, textFade: false,
+  stopAudio: false, stopTextPulse: false, stopTextFade: false,
   stopIconSpin: false, stopBorderPulse: false, unpause: false,
   waitForAudioEnd: false, audio: "", audioVolume: "", audioLoop: false,
   mediaType: "none", mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "",
   iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#4DD0E1",
   borderColorEnabled: false, borderColor: "#4DD0E1", borderWidthPct: "",
+  iconBeatsPerCycle: "", textBeatsPerCycle: "", borderBeatsPerCycle: "",
 };
 
 test("defaultStep: a sensible seed for a freshly-added row", () => {
@@ -184,6 +185,13 @@ test("stepFromRow: a colour set but not enabled is left out, same as blank", () 
   assert.deepEqual(stepFromRow(row), { iconVisible: true });
 });
 
+test("stepFromRow: icon/text/border beats-per-cycle are independent per-step overrides", () => {
+  const row = { ...BLANK_ROW, iconBeatsPerCycle: "2", textBeatsPerCycle: "0.5", borderBeatsPerCycle: "1.5" };
+  assert.deepEqual(stepFromRow(row), {
+    iconVisible: true, iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1.5,
+  });
+});
+
 test("rowFromStep: fills every field with a defined default, never undefined", () => {
   const row = rowFromStep({});
   for (const value of Object.values(row)) assert.notEqual(value, undefined);
@@ -209,6 +217,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     },
     { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150, iconVisible: true },
     { text: "", iconVisible: true }, // explicit blank
+    { iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1, iconVisible: true },
   ];
   for (const step of steps) assert.deepEqual(stepFromRow(rowFromStep(step)), step);
 });
@@ -316,6 +325,25 @@ test("stepBadges: an icon badge appears even with only glow/spin/visibility set,
   assert.deepEqual(
     stepBadges({ iconVisible: false }),
     [{ type: "icon", icon: undefined, glow: undefined, spin: false, visible: false }],
+  );
+});
+
+test("formatBeatsPerCycle: common fractions get their own glyph, everything else a decimal multiplier", () => {
+  assert.equal(formatBeatsPerCycle(1), "1×");
+  assert.equal(formatBeatsPerCycle(2), "2×");
+  assert.equal(formatBeatsPerCycle(0.5), "½×");
+  assert.equal(formatBeatsPerCycle(1 / 3), "⅓×");
+  assert.equal(formatBeatsPerCycle(1.5), "1.5×");
+});
+
+test("stepBadges: icon/text/border beats-per-cycle each get their own badge", () => {
+  assert.deepEqual(
+    stepBadges({ iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1 }),
+    [
+      { type: "iconBpc", label: "2×" },
+      { type: "textBpc", label: "½×" },
+      { type: "borderBpc", label: "1×" },
+    ],
   );
 });
 

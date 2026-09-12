@@ -20,9 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `textFade` -- darkens and brightens the pause text, split out of what used to be one
   combined "text pulse" (which is now Dilate-only: scale, no color). Each is independently
   stoppable (Stop's own Text Pulse / Text Fade).
+- **Beats/Cycle** -- Icon, Text, and Border each pulse at their own speed now, as a multiple
+  of Cycle Time (default 1), settable at Startup and overridable per step in the Composer;
+  the step list's badges show it as an approximate ×N. A 500ms photosensitive-safety floor
+  clamps an extreme value rather than applying it, with a warning naming what got capped.
 - This changelog.
 
 ### Changed
+- "Pulse Time" is now **Cycle Time** -- the one shared base every element's own Beats/Cycle
+  measures against, rather than the animation speed itself. A step's own Duration stays in
+  raw cycle units regardless of any element's Beats/Cycle.
 - A media step's Pre/Post-AV timing badges now group around its own video/image/audio icon
   in the Composer's step list; an explicit Duration override shows as that icon's own badge
   instead of a separate one.

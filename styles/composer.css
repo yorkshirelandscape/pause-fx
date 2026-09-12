@@ -29,6 +29,7 @@
   --pfx-teal: #4dd0e1; /* matches iconGlow/borderColor's own JS-side default */
   --pfx-blue: #4d94ff; /* pre/post-AV badge pair -- bright, temperature-graph style */
   --pfx-red: #ff5c5c;
+  --pfx-purple: #b18cff; /* beats-per-cycle badges -- a speed, distinct from wait's orange duration */
 
   display: flex;
   flex-direction: column;
@@ -396,6 +397,22 @@
   border-radius: 50%;
   padding: 0.1rem;
 }
+/* Same pill shape as .pfx-badge-wait -- it's the other badge carrying a value -- but
+   purple, not orange: a speed (relative to Cycle Time), not a duration. */
+#pause-fx-composer .pfx-badge-bpc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: var(--font-size-11, 0.6875rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--pfx-purple);
+  border-radius: 999px;
+  color: var(--pfx-purple);
+  background: color-mix(in srgb, var(--pfx-purple) 12%, transparent);
+}
+#pause-fx-composer .pfx-badge-bpc i { font-size: 0.75em; }
 #pause-fx-composer .pfx-badge-swatch {
   display: inline-block;
   width: 0.9rem;

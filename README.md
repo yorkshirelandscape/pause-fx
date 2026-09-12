@@ -21,9 +21,9 @@ Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the
 Clicking a step opens its editor, with one block per kind of change:
 
 - **Duration** -- how many pulses this step's state holds before the next step's changes apply. A video/image/bound-audio step also gets **Pre-AV** (delay after it loads, before playback starts) and **Post-AV** (hold on the last frame after it ends, before the next step).
-- **Text** -- the message on the pause screen. **None** clears it; **Pulse** dilates and contracts it in time with Duration's pulses; **Fade** darkens and brightens it the same way; the glow swatch sets its own color (and its two-ring outline), independent of the border -- left off, it just tracks whatever border color is active.
-- **Icon** -- swap the icon image, its glow color, spin it, or hide it (**None**).
-- **Border** -- change the glowing border's color and/or thickness.
+- **Text** -- the message on the pause screen. **None** clears it; **Pulse** dilates and contracts it in time with Duration's pulses; **Fade** darkens and brightens it the same way; the glow swatch sets its own color (and its two-ring outline), independent of the border -- left off, it just tracks whatever border color is active. **Beats/Cycle** sets its own pulse/fade speed, as a multiple of Cycle Time.
+- **Icon** -- swap the icon image, its glow color, spin it, or hide it (**None**); **Beats/Cycle** sets its own spin speed, as a multiple of Cycle Time.
+- **Border** -- change the glowing border's color and/or thickness; **Beats/Cycle** sets its own pulse speed, as a multiple of Cycle Time.
 - **Media** -- show a video, a single image, or a folder of images as a slideshow (toggle between Video and Image), with an option to loop it. Once set, it always plays out in full: Pre-AV, then Duration (if set) or its own natural end, then Post-AV.
 - **Audio** -- play a sound cue. **Bound** ties it to this step's own Pre-AV/Duration/Post-AV timing, the same as Media; unbound, it starts now and keeps playing until a later step's Stop Audio.
 - **Stop** -- turn off something already running: a sound, the icon's spin, the text's pulse or fade, the border's pulse, or actually unpause the game, ending the sequence right there.

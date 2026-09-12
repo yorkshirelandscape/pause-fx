@@ -46,6 +46,9 @@
                   {{#if (eq b.visible false)}}<i class="fa-solid fa-eye-slash pfx-badge-icon-eye"></i>{{/if}}
                 </span>
               {{/if}}
+              {{#if (eq b.type "iconBpc")}}<span class="pfx-badge pfx-badge-bpc" title="Icon Beats/Cycle: {{b.label}}"><i class="fa-solid fa-star"></i>{{b.label}}</span>{{/if}}
+              {{#if (eq b.type "textBpc")}}<span class="pfx-badge pfx-badge-bpc" title="Text Beats/Cycle: {{b.label}}"><i class="fa-solid fa-font"></i>{{b.label}}</span>{{/if}}
+              {{#if (eq b.type "borderBpc")}}<span class="pfx-badge pfx-badge-bpc" title="Border Beats/Cycle: {{b.label}}"><i class="fa-regular fa-square-full"></i>{{b.label}}</span>{{/if}}
               {{#if (eq b.type "video")}}<i class="fa-solid fa-video pfx-badge" title="Video"></i>{{/if}}
               {{#if (eq b.type "image")}}<i class="fa-solid fa-image pfx-badge" title="Image"></i>{{/if}}
               {{#if (eq b.type "audio")}}<i class="fa-solid fa-volume-high pfx-badge" title="Audio"></i>{{/if}}
