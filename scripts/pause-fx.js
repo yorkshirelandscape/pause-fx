@@ -11,9 +11,10 @@ const BAND_ID = "pause-fx-band"; // #pause's own background, recreated behind me
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const BORDER_SCALE_VAR = "--pause-fx-border-scale";
 const TEXT_COLOUR_VAR = "--pause-fx-text-color"; //+text-pulse-animation-beats-inline-color
-const TEXT_GLOW_INNER_VAR = "--pause-fx-text-glow-inner";
-const TEXT_GLOW_OUTER_VAR = "--pause-fx-text-glow-outer";
-const DEFAULT_GLOW_COLOUR = "rgb(255, 36, 0)"; // matches every other var's own hardcoded fallback
+const TEXT_GLOW_CLASS = "pause-fx-label-glow";
+const TEXT_GLOW_DARK_CLASS = "pause-fx-text-glow-dark"; // which ring mixes toward white vs black
+const DILATE_PLAY_VAR = "--pause-fx-dilate-play";
+const FADE_PLAY_VAR = "--pause-fx-fade-play";
 // No icon-GIF-timing auto-detection -- pass borderCycleMs explicitly to sync against a
 // specific asset's real loop length.
 const DEFAULT_BORDER_CYCLE_MS = 3640;
@@ -216,25 +217,36 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       }
     }
 
-    /* Always on -- see setTextGlowRings. //+text-glow-double-ring-outline */
-    .pause-fx-label-glow {
+    /* Only present once real customization happens; currentColor tracks Fade live.
+       //+text-glow-double-ring-outline */
+    .${TEXT_GLOW_CLASS} {
       text-shadow:
-        0 0 1.5px var(${TEXT_GLOW_INNER_VAR}, black),
-        0 0 1.5px var(${TEXT_GLOW_INNER_VAR}, black),
-        0 0 10px var(${TEXT_GLOW_OUTER_VAR}, black);
+        0 0 1.5px color-mix(in srgb, currentColor 55%, black),
+        0 0 1.5px color-mix(in srgb, currentColor 55%, black),
+        0 0 10px color-mix(in srgb, currentColor 55%, white);
+    }
+    .${TEXT_GLOW_CLASS}.${TEXT_GLOW_DARK_CLASS} {
+      text-shadow:
+        0 0 1.5px color-mix(in srgb, currentColor 55%, white),
+        0 0 1.5px color-mix(in srgb, currentColor 55%, white),
+        0 0 10px color-mix(in srgb, currentColor 55%, black);
     }
 
-    /* Rides on border colour by default, or an explicit textGlow via the var above --
+    /* No hardcoded fallback -- inherits Foundry's own colour, not red. //+text-glow-double-ring-outline
        //+text-pulse-animation-beats-inline-color the animation itself has to read the var. */
-    @keyframes pause-fx-text-pulse {
-      0%, 100% { color: color-mix(in srgb, var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))) 30%, black); transform: scale(1); }
-      50% { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))); transform: scale(1.08); }
+    .pause-fx-label { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))); }
+    @keyframes pause-fx-text-fade {
+      0%, 100% { color: color-mix(in srgb, var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))) 30%, black); }
+      50% { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))); }
     }
-    @media (prefers-reduced-motion: reduce) {
-      .pause-fx-label { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0))); }
+    .pause-fx-text-fade { animation: pause-fx-text-fade ${textCycleMs / 1000}s ease-in-out infinite; animation-play-state: var(${FADE_PLAY_VAR}, running); }
+
+    @keyframes pause-fx-text-dilate {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
     }
     @media (prefers-reduced-motion: no-preference) {
-      .pause-fx-label { animation: pause-fx-text-pulse ${textCycleMs / 1000}s ease-in-out infinite; }
+      .pause-fx-text-dilate { animation: pause-fx-text-dilate ${textCycleMs / 1000}s ease-in-out infinite; animation-play-state: var(${DILATE_PLAY_VAR}, running); }
     }
 
     /* The icon's own spin, on the border's pulse clock rather than Foundry's fixed duration. */
@@ -275,25 +287,29 @@ function relativeLuminance(rgbTriplet) {
 }
 
 /** The two-ring text glow: a tight inner ring and a diffuse outer one, lighter/darker tints
- *  of `colour` (via color-mix, same technique the pulse keyframes use), assigned so whichever
- *  ring touches the letters always contrasts with them -- dark text gets a light inner ring
- *  and a dark outer one, light text the reverse. A classic subtitle-outline trick, and one
- *  CSS can't do reactively on its own (no way to branch on a var's own lightness), so this
- *  runs in JS at every point the label's effective colour changes instead. */
+ *  assigned so whichever ring touches the letters always contrasts with them -- dark text
+ *  gets a light inner ring and a dark outer one, light text the reverse. `colour` only
+ *  decides that light/dark assignment (CSS can't branch on a var's own lightness, so this
+ *  runs in JS); the tints themselves are computed live in CSS via currentColor, not baked
+ *  in here, so the rings track the label's actual rendered colour -- including a running
+ *  Fade animation -- automatically. */
 function setTextGlowRings(label, colour) {
-  const triplet = resolveRgbTriplet(colour);
-  const lighter = `color-mix(in srgb, rgb(${triplet}) 55%, white)`;
-  const darker = `color-mix(in srgb, rgb(${triplet}) 55%, black)`;
-  const isDark = relativeLuminance(triplet) < 0.5;
-  label.style.setProperty(TEXT_GLOW_INNER_VAR, isDark ? lighter : darker);
-  label.style.setProperty(TEXT_GLOW_OUTER_VAR, isDark ? darker : lighter);
+  const isDark = relativeLuminance(resolveRgbTriplet(colour)) < 0.5;
+  label.classList.add(TEXT_GLOW_CLASS);
+  label.classList.toggle(TEXT_GLOW_DARK_CLASS, isDark);
 }
 
-// The run's current border colour, read back off <body> -- used to recompute the glow rings'
-// default (border-tracking) state without threading borderColor through every call site.
+// The "no glow at all" counterpart -- an explicit textGlow cleared with nothing to fall
+// back on (no border ever set either) should read as fully un-customized, not just un-tinted.
+function clearTextGlowRings(label) {
+  label.classList.remove(TEXT_GLOW_CLASS, TEXT_GLOW_DARK_CLASS);
+}
+
+// Border colour read back off <body>, or null if unset (not pause-fx's own red) --
+// //+text-glow-double-ring-outline
 function currentBorderColourCss() {
   const triplet = getComputedStyle(document.body).getPropertyValue(BORDER_COLOUR_VAR).trim();
-  return triplet ? `rgb(${triplet})` : DEFAULT_GLOW_COLOUR;
+  return triplet ? `rgb(${triplet})` : null;
 }
 
 function setBorderColour(colour) {
@@ -384,19 +400,22 @@ function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
 /** An explicit override for the label's ring glow AND its own fill colour -- a glow alone
  *  left the letters themselves still tracking border colour via .pause-fx-label's CSS,
  *  which read as "still the border's colour" instead of genuinely independent. Both a
- *  plain inline style.color AND the CSS var below are set: the var is what the always-on
- *  pulse animation (see its own keyframes) actually reads, since a running animation
- *  overrides a plain inline style every frame -- see //+text-pulse-animation-beats-inline-color.
+ *  plain inline style.color AND the CSS var below are set: the var is what Fade's own
+ *  keyframes (see injectStyles) actually read, since a running animation overrides a plain
+ *  inline style every frame -- see //+text-pulse-animation-beats-inline-color.
  *  `label.dataset.textGlowSticky` marks the override active so a later step's own borderColor
  *  (activateBorder) doesn't reset the rings back to border-tracking out from under it. Falsy
- *  drops all three back to border-tracking (fill, rings, and the sticky flag itself); never
- *  called at all leaves that same default alone. */
+ *  drops all three back to border-tracking (fill, rings, and the sticky flag itself) -- or,
+ *  with no border ever set either, to fully un-customized; never called at all leaves that
+ *  same default alone. */
 function applyTextGlow(label, colour) {
   label.style.color = colour || "";
   if (colour) label.style.setProperty(TEXT_COLOUR_VAR, colour);
   else label.style.removeProperty(TEXT_COLOUR_VAR);
   label.dataset.textGlowSticky = colour ? "1" : "";
-  setTextGlowRings(label, colour || currentBorderColourCss());
+  const ringColour = colour || currentBorderColourCss();
+  if (ringColour) setTextGlowRings(label, ringColour);
+  else clearTextGlowRings(label);
 }
 
 /** Idempotent -- injects the keyframes once, but setBorderColour always runs (may be a new colour). */
@@ -410,12 +429,20 @@ function activateBorder(colour, { borderCycleMs, textCycleMs, label }) {
   document.body.classList.remove(BORDER_FROZEN_CLASS); // clears any earlier stopBorderPulse freeze
 }
 
-/** Starts the label's own pulse independently of border activation (activateBorder does this
- * too, as a side effect -- this is for wanting the text to pulse without a border glow). */
-function activateTextPulse(label, { borderCycleMs, textCycleMs }) {
+/** Starts the label's own dilate (scale only, no colour) independently of border activation. */
+function activateTextDilate(label, { borderCycleMs, textCycleMs }) {
   if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
-  label.classList.add("pause-fx-label");
-  label.style.animationPlayState = ""; // clears any earlier stopTextPulse freeze
+  label.classList.add("pause-fx-text-dilate");
+  label.style.removeProperty(DILATE_PLAY_VAR); // clears any earlier stopTextPulse freeze
+}
+
+/** Starts the label's own fade (colour only, no scale) independently of border activation --
+ *  needs .pause-fx-label too, for the resting fill colour its own keyframes read between
+ *  pulses (see injectStyles' fade keyframes). */
+function activateTextFade(label, { borderCycleMs, textCycleMs }) {
+  if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
+  label.classList.add("pause-fx-label", "pause-fx-text-fade");
+  label.style.removeProperty(FADE_PLAY_VAR); // clears any earlier stopTextFade freeze
 }
 
 // ---- the sequencer itself ----
@@ -427,12 +454,14 @@ export class PauseFX {
    *   default icon stays untouched.
    * @param {string} [config.iconGlow] - CSS colour for the icon's drop-shadow.
    * @param {string} [config.borderColor] - CSS colour for pause-fx's border-glow overlay.
-   *   Omitted, no overlay (the label's pulsing text-colour rides on this too).
+   *   Omitted, no overlay (the label's own text colour rides on this too, unless textGlow
+   *   overrides it).
    * @param {number} [config.borderWidth] - % difference from the border glow's default size.
    * @param {string} [config.textGlow] - CSS colour for the label's own text, and the base
    *   for its two-ring outline (a tight inner ring, a diffuse outer one, each a lighter/
-   *   darker tint assigned by contrast against the text). Always on; omitted, all three
-   *   track whatever borderColor is currently active instead of a fixed one.
+   *   darker tint assigned by contrast against the text). Omitted, both track whatever
+   *   borderColor is active instead of a fixed one; with neither ever set, the label stays
+   *   fully un-customized -- no ring, no tint, matching Foundry's own plain caption.
    * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's "GAME PAUSED" stays.
    * @param {number} [config.borderCycleMs=3640] - border/eye pulse period, in ms.
@@ -564,9 +593,10 @@ export class PauseFX {
       label.style.webkitLineClamp = "2";
       label.style.overflow = "hidden";
       label.style.textOverflow = "ellipsis";
-      if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
-      label.classList.add("pause-fx-label-glow"); // always on -- see injectStyles' own rule
-      setTextGlowRings(label, borderColor || DEFAULT_GLOW_COLOUR); // default; textGlow below wins if set
+      if (borderColor) {
+        label.classList.add("pause-fx-label"); // see the run()-level comment above
+        setTextGlowRings(label, borderColor); // default; textGlow below wins if also set
+      }
       if (textGlow !== undefined) applyTextGlow(label, textGlow);
       //+pause-text-transform-override only when actually setting custom text -- else the
       // untouched default should still read Foundry's own uppercase "GAME PAUSED".
@@ -612,8 +642,10 @@ export class PauseFX {
         label.style.textTransform = "none"; //+pause-text-transform-override
       }
       if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
-      if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
-      if (step.stopTextPulse) label.style.animationPlayState = "paused";
+      if (step.textPulse) activateTextDilate(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
+      if (step.stopTextPulse) label.style.setProperty(DILATE_PLAY_VAR, "paused");
+      if (step.textFade) activateTextFade(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
+      if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
       if (step.iconVisible !== undefined && iconEl) {
         iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
       }

@@ -5,6 +5,7 @@
       <label class="pfx-checkbox"><input type="checkbox" name="stopAudio" {{checked row.stopAudio}}> Audio</label>
       <label class="pfx-checkbox"><input type="checkbox" name="stopIconSpin" {{checked row.stopIconSpin}}> Icon Spin</label>
       <label class="pfx-checkbox"><input type="checkbox" name="stopTextPulse" {{checked row.stopTextPulse}}> Text Pulse</label>
+      <label class="pfx-checkbox"><input type="checkbox" name="stopTextFade" {{checked row.stopTextFade}}> Text Fade</label>
       <label class="pfx-checkbox"><input type="checkbox" name="stopBorderPulse" {{checked row.stopBorderPulse}}> Border Pulse</label>
       <label class="pfx-checkbox pfx-stop-unpause"><input type="checkbox" name="unpause" {{checked row.unpause}}> Unpause</label>
     </div>
@@ -34,7 +35,8 @@
           <span>Message</span>
           <span class="pfx-checkbox-group">
             <label class="pfx-checkbox"><input type="checkbox" name="textNone" data-disables="text" {{checked row.textNone}}> None</label>
-            <label class="pfx-checkbox"><input type="checkbox" name="textPulse" {{checked row.textPulse}}> Pulse</label>
+            <label class="pfx-checkbox" title="Dilate/contract"><input type="checkbox" name="textPulse" {{checked row.textPulse}}> Pulse</label>
+            <label class="pfx-checkbox" title="Darken/brighten"><input type="checkbox" name="textFade" {{checked row.textFade}}> Fade</label>
             <span class="pfx-with-toggle" title="Text Glow -- unset, tracks the border color">
               <input type="checkbox" name="textGlowEnabled" data-enables="textGlow" {{checked row.textGlowEnabled}}>
               <input type="color" name="textGlow" value="{{row.textGlow}}" {{#unless row.textGlowEnabled}}disabled{{/unless}}>

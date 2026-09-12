@@ -86,9 +86,11 @@ export function stepFromRow(row) {
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
   if (row.textPulse) step.textPulse = true;
+  if (row.textFade) step.textFade = true;
   if (row.textGlowEnabled && row.textGlow) step.textGlow = row.textGlow;
   if (row.stopAudio) step.stopAudio = true;
   if (row.stopTextPulse) step.stopTextPulse = true;
+  if (row.stopTextFade) step.stopTextFade = true;
   if (row.stopIconSpin) step.stopIconSpin = true;
   if (row.stopBorderPulse) step.stopBorderPulse = true;
   if (row.unpause) step.unpause = true;
@@ -139,10 +141,12 @@ export function rowFromStep(step) {
     text: step.text ?? "",
     textNone: step.text === "",
     textPulse: !!step.textPulse,
+    textFade: !!step.textFade,
     textGlowEnabled: step.textGlow !== undefined,
     textGlow: step.textGlow ?? "#4DD0E1", // same deliberate teal default as iconGlow/borderColor
     stopAudio: !!step.stopAudio,
     stopTextPulse: !!step.stopTextPulse,
+    stopTextFade: !!step.stopTextFade,
     stopIconSpin: !!step.stopIconSpin,
     stopBorderPulse: !!step.stopBorderPulse,
     unpause: !!step.unpause,
@@ -170,7 +174,7 @@ const NUMBER_FIELDS = new Set([
   "waitUnits", "preAvUnits", "postAvUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses",
 ]);
 const BOOL_FIELDS = new Set([
-  "textNone", "textPulse", "stopAudio", "stopTextPulse",
+  "textNone", "textPulse", "textFade", "stopAudio", "stopTextPulse", "stopTextFade",
   "stopIconSpin", "stopBorderPulse", "unpause", "waitForAudioEnd",
   "iconNone", "iconSpin", "iconGlowEnabled", "borderColorEnabled", "textGlowEnabled", "audioLoop", "loop",
 ]);
@@ -235,7 +239,9 @@ export function stepBadges(step, pulseLengthS) {
   if (step.audio && avType !== "audio") badges.push({ type: "audio" });
   if (step.loop || step.audioLoop) badges.push({ type: "loop" });
   if (step.textPulse) badges.push({ type: "textPulse" });
+  if (step.textFade) badges.push({ type: "textFade" });
   if (step.stopTextPulse) badges.push({ type: "stopTextPulse" });
+  if (step.stopTextFade) badges.push({ type: "stopTextFade" });
   if (step.stopIconSpin) badges.push({ type: "stopIconSpin" });
   if (step.stopBorderPulse) badges.push({ type: "stopBorderPulse" });
   if (step.stopAudio) badges.push({ type: "stopAudio" });
