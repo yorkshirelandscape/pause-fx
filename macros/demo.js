@@ -13,7 +13,8 @@ await game.modules.get("pause-fx").api.run({
     { "wait": { "units": 1.5 } },
     {
       "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "borderColor": "#4DD0E1",
-      "text": "PAUSE FX", "wait": { "units": 2 }
+      "text": "PAUSE FX", "audio": "sounds/combat/epic-turn-1hit.ogg", "audioVolume": 0.7,
+      "wait": { "units": 2 }
     },
     { "text": "a quick tour of what it can do", "wait": { "units": 2 } },
     { "textPulse": true, "text": "text can pulse in time with the border", "wait": { "units": 3 } },
@@ -27,7 +28,7 @@ await game.modules.get("pause-fx").api.run({
     { "iconVisible": true, "icon": "icons/svg/light.svg", "text": "...and come back exactly as it was", "wait": { "units": 1.5 } },
     {
       "iconVisible": false, "text": "here's a short video, full-screen",
-      "video": "toolclips/tools/token-target.webm", "videoVolume": 0,
+      "video": "toolclips/tools/light-reset.webm", "videoVolume": 0,
       "preAV": { "units": 0.5 }, "postAV": { "units": 1 }
     },
     { "iconVisible": true, "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "text": "pre/post-AV timed that hold automatically", "wait": { "units": 2 } },
@@ -46,7 +47,12 @@ await game.modules.get("pause-fx").api.run({
     },
     { "icon": "icons/svg/sound.svg", "iconGlow": "#FFD700", "iconSpin": true, "text": "...and it's still looping", "wait": { "units": 2 } },
     { "stopAudio": true, "text": "stopped, right on cue", "wait": { "units": 1.5 } },
-    { "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "stopIconSpin": true, "borderColor": "#4DD0E1", "text": "that's the whole toolkit -- unpausing now", "wait": { "units": 2 } },
+    {
+      "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "stopIconSpin": true, "borderColor": "#4DD0E1",
+      "text": "that's the whole toolkit -- unpausing now",
+      "audio": "sounds/combat/mc-turn-itsyour.ogg", "audioVolume": 0.7, "waitForAudioEnd": true,
+      "preAV": { "units": 0.3 }, "postAV": { "units": 0.3 }
+    },
     { "unpause": true }
   ]
 });
