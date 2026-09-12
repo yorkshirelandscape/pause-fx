@@ -21,7 +21,7 @@ Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the
 Clicking a step opens its editor, with one block per kind of change:
 
 - **Duration** -- how many pulses this step's state holds before the next step's changes apply. A video/image/bound-audio step also gets **Pre-AV** (delay after it loads, before playback starts) and **Post-AV** (hold on the last frame after it ends, before the next step).
-- **Text** -- the message on the pause screen. **None** clears it; **Pulse** makes it throb in time with Duration's pulses.
+- **Text** -- the message on the pause screen. **None** clears it; **Pulse** makes it throb in time with Duration's pulses; the glow swatch sets its own color, independent of the border -- left off, it just tracks whatever border color is active.
 - **Icon** -- swap the icon image, its glow color, spin it, or hide it (**None**).
 - **Border** -- change the glowing border's color and/or thickness.
 - **Media** -- show a video, a single image, or a folder of images as a slideshow (toggle between Video and Image), with an option to loop it. Once set, it always plays out in full: Pre-AV, then Duration (if set) or its own natural end, then Post-AV.
