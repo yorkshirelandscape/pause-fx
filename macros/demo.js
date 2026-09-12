@@ -6,7 +6,7 @@ if (!game.modules.get("pause-fx")?.active) {
   return;
 }
 await game.modules.get("pause-fx").api.run({
-  "borderCycleMs": 3000,
+  "cycleMs": 3000,
   "endCombat": true,
   "closeAllWindows": { "players": true, "gm": true },
   "steps": [

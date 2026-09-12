@@ -238,7 +238,7 @@ test("coerceStepField: everything else passes through untouched", () => {
 
 test("secondsToMs / msToSeconds round-trip and secondsToMs rounds to whole ms", () => {
   assert.equal(secondsToMs("3.64"), 3640);
-  assert.equal(secondsToMs(3.6401), 3640); // rounds -- borderCycleMs is always a whole ms count
+  assert.equal(secondsToMs(3.6401), 3640); // rounds -- cycleMs is always a whole ms count
   assert.equal(msToSeconds(3640), 3.64);
 });
 
@@ -329,8 +329,8 @@ test("configFromGlobals: blank pulseLengthS is omitted", () => {
   assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, []), { steps: [] });
 });
 
-test("configFromGlobals: pulseLengthS converts to borderCycleMs in whole ms", () => {
-  assert.deepEqual(configFromGlobals({ pulseLengthS: "3.64" }, []), { steps: [], borderCycleMs: 3640 });
+test("configFromGlobals: pulseLengthS converts to cycleMs in whole ms", () => {
+  assert.deepEqual(configFromGlobals({ pulseLengthS: "3.64" }, []), { steps: [], cycleMs: 3640 });
 });
 
 test("configFromGlobals: passes steps through untouched", () => {
@@ -356,7 +356,7 @@ test("configFromGlobals: endCombat and closeAllWindows are Startup-only, not per
 });
 
 test("commandForConfig: guards on the module being active, then calls the real API with the config", () => {
-  const config = { borderCycleMs: 3640, steps: [{ text: "hi" }] };
+  const config = { cycleMs: 3640, steps: [{ text: "hi" }] };
   const command = commandForConfig(config);
   assert.match(command, /game\.modules\.get\("pause-fx"\)\?\.active/);
   assert.match(command, /ui\.notifications\.error/);
@@ -375,7 +375,7 @@ test("hasMacroMarker: true only for a command that opens with the marker", () =>
 });
 
 test("configFromCommand: round-trips commandForConfig's own output", () => {
-  const config = { borderCycleMs: 3640, endCombat: true, steps: [{ text: "hi", wait: { units: 2 } }] };
+  const config = { cycleMs: 3640, endCombat: true, steps: [{ text: "hi", wait: { units: 2 } }] };
   assert.deepEqual(configFromCommand(commandForConfig(config)), config);
 });
 

@@ -1,8 +1,8 @@
 // pause-fx -- declarative Foundry pause-screen effects engine. [CC+: whole-file preamble]
 //
-// Two named clocks (`border`, `text`, independently timeable) drive a declarative `steps`
-// array instead of a hand-written imperative sequence. See PauseFX.run's own JSDoc below
-// for the config shape.
+// One base clock (Cycle Time) plus a per-element, per-step "beats per cycle" multiplier for
+// each of icon/text/border drives a declarative `steps` array instead of a hand-written
+// imperative sequence. See PauseFX.run's own JSDoc below for the config shape.
 
 const MODULE_ID = "pause-fx";
 const BORDER_CLASS = "pause-fx-bordered"; //+border-glow-owns-mld own body class, not MLD's
@@ -10,14 +10,19 @@ const BORDER_FROZEN_CLASS = "pause-fx-border-frozen";
 const BAND_ID = "pause-fx-band"; // #pause's own background, recreated behind media -- see injectStyles
 const BORDER_COLOUR_VAR = "--pause-fx-border-color";
 const BORDER_SCALE_VAR = "--pause-fx-border-scale";
+const BORDER_DURATION_VAR = "--pause-fx-border-duration";
 const TEXT_COLOUR_VAR = "--pause-fx-text-color"; //+text-pulse-animation-beats-inline-color
+const TEXT_DURATION_VAR = "--pause-fx-text-duration"; // shared by dilate and fade
 const TEXT_GLOW_CLASS = "pause-fx-label-glow";
 const TEXT_GLOW_DARK_CLASS = "pause-fx-text-glow-dark"; // which ring mixes toward white vs black
 const DILATE_PLAY_VAR = "--pause-fx-dilate-play";
 const FADE_PLAY_VAR = "--pause-fx-fade-play";
-// No icon-GIF-timing auto-detection -- pass borderCycleMs explicitly to sync against a
-// specific asset's real loop length. Matches Foundry's own native icon fa-spin (5s).
-export const DEFAULT_BORDER_CYCLE_MS = 5000;
+const ICON_DURATION_VAR = "--pause-fx-icon-duration";
+// //+cycle-time-beats-per-cycle no per-element default chases Foundry's own (mismatched)
+// timings -- one beat per cycle for everything is the simpler zero-config baseline.
+export const DEFAULT_CYCLE_MS = 3000;
+// Seizure-safety floor -- //+cycle-time-beats-per-cycle for the guidance this follows.
+const MIN_BEAT_MS = 500;
 
 let socket;
 
@@ -131,33 +136,44 @@ export function waitForEvent(target, events, signal) {
 }
 
 /**
- * @param {object} opts
- * @param {number} [opts.textCycleMs] - explicit override; wins if given.
- * @param {number} opts.borderCycleMs
- * @param {number} [opts.textCycleMultiplier=2]
- * @returns {number} the text pulse period, in ms.
+ * @param {object} waitSpec
+ * @param {number} waitSpec.units - always in Cycle Time units; beats-per-cycle (below) only
+ *   affects how fast icon/text/border visually animate, never a step's own Duration.
+ * @param {object} clocks
+ * @param {number} clocks.cycleMs
+ * @returns {number} the wait, in ms.
  */
-export function resolveTextCycleMs({ textCycleMs, borderCycleMs, textCycleMultiplier = 2 }) {
-  return textCycleMs ?? borderCycleMs * textCycleMultiplier;
+export function clockMsFor(waitSpec, { cycleMs }) {
+  return waitSpec.units * cycleMs;
 }
 
 /**
- * @param {object} waitSpec
- * @param {number} waitSpec.units - always in border-pulses; there's no other clock any more.
- * @param {object} clocks
- * @param {number} clocks.borderCycleMs
- * @returns {number} the wait, in ms.
+ * cycleMs / beatsPerCycle, clamped to MIN_BEAT_MS (and warning when that clamp actually
+ * bites) so a GM dialing beats-per-cycle up can't silently produce a seizure-risk flicker --
+ * see MIN_BEAT_MS's own comment for the guidance this follows.
+ * @param {number} cycleMs
+ * @param {number} beatsPerCycle - 0/falsy treated as 1 (one beat per cycle, the baseline).
+ * @param {string} label - which element this is for for ("icon"/"text"/"border"), for the
+ *   warning message only.
+ * @returns {number} the beat's own period, in seconds (ready for a CSS animation-duration).
  */
-export function clockMsFor(waitSpec, { borderCycleMs }) {
-  return waitSpec.units * borderCycleMs;
+export function beatDurationS(cycleMs, beatsPerCycle, label) {
+  const rawMs = cycleMs / (beatsPerCycle || 1);
+  if (rawMs >= MIN_BEAT_MS) return rawMs / 1000;
+  ui.notifications.warn(
+    `pause-fx: ${label}'s beats-per-cycle would pulse faster than ${MIN_BEAT_MS}ms -- capped for photosensitivity safety.`,
+  );
+  return MIN_BEAT_MS / 1000;
 }
 
 // ---- style injection (border + text pulse keyframes, scoped to this run) ----
 
 let styleEl = null;
 
-function injectStyles({ borderCycleMs, textCycleMs }) {
-  styleEl?.remove(); // never orphan an earlier run's sheet under the same id
+// Fully static -- every duration is a CSS var, set on its own element (setBeatDuration),
+// not interpolated here. //+cycle-time-beats-per-cycle why, and why that's an improvement.
+function injectStyles() {
+  if (styleEl) return;
   styleEl = document.createElement("style");
   styleEl.id = "pause-fx-styles";
   styleEl.textContent = `
@@ -208,7 +224,7 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
     }
     @media (prefers-reduced-motion: no-preference) {
       body.${BORDER_CLASS}:before {
-        animation: pause-fx-border-pulse ${borderCycleMs / 1000}s ease-in-out infinite;
+        animation: pause-fx-border-pulse var(${BORDER_DURATION_VAR}, 3s) ease-in-out infinite;
       }
       /* Toggled via a class, not inline style like the icon/label below -- a pseudo-element
          has no DOM node for that. */
@@ -239,20 +255,21 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       0%, 100% { color: color-mix(in srgb, var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))) 30%, black); }
       50% { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))); }
     }
-    .pause-fx-text-fade { animation: pause-fx-text-fade ${textCycleMs / 1000}s ease-in-out infinite; animation-play-state: var(${FADE_PLAY_VAR}, running); }
+    .pause-fx-text-fade { animation: pause-fx-text-fade var(${TEXT_DURATION_VAR}, 3s) ease-in-out infinite; animation-play-state: var(${FADE_PLAY_VAR}, running); }
 
     @keyframes pause-fx-text-dilate {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.08); }
     }
     @media (prefers-reduced-motion: no-preference) {
-      .pause-fx-text-dilate { animation: pause-fx-text-dilate ${textCycleMs / 1000}s ease-in-out infinite; animation-play-state: var(${DILATE_PLAY_VAR}, running); }
+      .pause-fx-text-dilate { animation: pause-fx-text-dilate var(${TEXT_DURATION_VAR}, 3s) ease-in-out infinite; animation-play-state: var(${DILATE_PLAY_VAR}, running); }
     }
 
-    /* The icon's own spin, on the border's pulse clock rather than Foundry's fixed duration. */
+    /* Foundry's own fixed-duration spin -- see foundry-icon-fa-spin-default -- is stopped
+       and replaced with this once pause-fx manages the icon at all. */
     @keyframes pause-fx-icon-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: no-preference) {
-      .pause-fx-icon-spin { animation: pause-fx-icon-spin ${borderCycleMs / 1000}s linear infinite; }
+      .pause-fx-icon-spin { animation: pause-fx-icon-spin var(${ICON_DURATION_VAR}, 3s) linear infinite; }
     }
   `;
   document.head.appendChild(styleEl);
@@ -261,6 +278,11 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
 function removeStyles() {
   styleEl?.remove();
   styleEl = null;
+}
+
+// Sets one element's own beat-duration var -- see beatDurationS for the actual math/clamp.
+function setBeatDuration(el, varName, cycleMs, beatsPerCycle, label) {
+  el.style.setProperty(varName, `${beatDurationS(cycleMs, beatsPerCycle, label)}s`);
 }
 
 // ---- border colour: an inline custom property + class on <body>, local to this client ----
@@ -378,19 +400,16 @@ async function playSound(spec) {
 
 // ---- shared by initial setup AND any step that touches icon/border, not just the first ----
 
-/**
- * Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps.
- * `cycles` (borderCycleMs/textCycleMs) is only actually needed when turning spin on, to
- * inject the keyframes if nothing else has yet -- harmless to pass always.
- */
-function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
+// Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps.
+// Its own beat duration is set wherever iconBeatsPerCycle is known, not here (see setBeatDuration).
+function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }) {
   if (!iconEl) return;
   //+foundry-icon-fa-spin-default Foundry's own icon spins by default -- stop once
   // we're managing it at all.
   iconEl.classList.remove("fa-spin");
   if (icon !== undefined) iconEl.src = icon;
   if (iconSpin !== undefined) {
-    if (iconSpin && !styleEl) injectStyles(cycles);
+    if (iconSpin) injectStyles();
     iconEl.classList.toggle("pause-fx-icon-spin", iconSpin);
     iconEl.style.animationPlayState = ""; // clears any earlier stopIconSpin freeze
   }
@@ -419,9 +438,9 @@ function applyTextGlow(label, colour) {
 }
 
 /** Idempotent -- injects the keyframes once, but setBorderColour always runs (may be a new colour). */
-function activateBorder(colour, { borderCycleMs, textCycleMs, label }) {
+function activateBorder(colour, { label }) {
   setBorderColour(colour);
-  if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
+  injectStyles();
   label?.classList.add("pause-fx-label");
   // An explicit step.textGlow owns the rings until its own falsy step -- don't let a later
   // border change silently override it (see applyTextGlow's own comment on the flag).
@@ -430,8 +449,8 @@ function activateBorder(colour, { borderCycleMs, textCycleMs, label }) {
 }
 
 /** Starts the label's own dilate (scale only, no colour) independently of border activation. */
-function activateTextDilate(label, { borderCycleMs, textCycleMs }) {
-  if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
+function activateTextDilate(label) {
+  injectStyles();
   label.classList.add("pause-fx-text-dilate");
   label.style.removeProperty(DILATE_PLAY_VAR); // clears any earlier stopTextPulse freeze
 }
@@ -439,8 +458,8 @@ function activateTextDilate(label, { borderCycleMs, textCycleMs }) {
 /** Starts the label's own fade (colour only, no scale) independently of border activation --
  *  needs .pause-fx-label too, for the resting fill colour its own keyframes read between
  *  pulses (see injectStyles' fade keyframes). */
-function activateTextFade(label, { borderCycleMs, textCycleMs }) {
-  if (!styleEl) injectStyles({ borderCycleMs, textCycleMs });
+function activateTextFade(label) {
+  injectStyles();
   label.classList.add("pause-fx-label", "pause-fx-text-fade");
   label.style.removeProperty(FADE_PLAY_VAR); // clears any earlier stopTextFade freeze
 }
@@ -462,12 +481,18 @@ export class PauseFX {
    *   darker tint assigned by contrast against the text). Omitted, both track whatever
    *   borderColor is active instead of a fixed one; with neither ever set, the label stays
    *   fully un-customized -- no ring, no tint, matching Foundry's own plain caption.
-   * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
+   * @param {boolean} [config.iconSpin=false] - spin the icon.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's "GAME PAUSED" stays.
-   * @param {number} [config.borderCycleMs=5000] - border/eye pulse period, in ms.
-   * @param {number} [config.textCycleMs] - text pulse period. Defaults to
-   *   borderCycleMs * textCycleMultiplier.
-   * @param {number} [config.textCycleMultiplier=2] - only used if textCycleMs is omitted.
+   * @param {number} [config.cycleMs=3000] - the one base Cycle Time every beats-per-cycle
+   *   below is measured against, in ms. A step's own Duration is always in cycles, regardless
+   *   of any element's own beats-per-cycle -- that only ever affects visual pulse speed.
+   * @param {number} [config.iconBeatsPerCycle=1] - the icon's own spin speed, as a multiple
+   *   of cycleMs (2 = twice as fast as one cycle). Also settable per step; clamped (with a
+   *   warning) to never pulse faster than photosensitive-safety guidance allows.
+   * @param {number} [config.textBeatsPerCycle=1] - the text's own dilate/fade speed, same
+   *   idea and same clamp. Also settable per step.
+   * @param {number} [config.borderBeatsPerCycle=1] - the border glow's own pulse speed, same
+   *   idea and same clamp. Also settable per step.
    * @param {object} [config.closeAllWindows] - broadcast closeAllWindows before the sequence
    *   starts. Omitted, skipped entirely.
    * @param {boolean} [config.closeAllWindows.players=true]
@@ -494,14 +519,14 @@ export class PauseFX {
       textGlow,
       iconSpin,
       text: initialText,
-      borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
-      textCycleMs,
-      textCycleMultiplier = 2,
+      cycleMs = DEFAULT_CYCLE_MS,
+      iconBeatsPerCycle = 1,
+      textBeatsPerCycle = 1,
+      borderBeatsPerCycle = 1,
       closeAllWindows,
       endCombat: shouldEndCombat = false,
       steps = [],
     } = config;
-    const resolvedTextCycle = resolveTextCycleMs({ textCycleMs, borderCycleMs, textCycleMultiplier });
 
     if (shouldEndCombat) await game.combat?.endCombat();
     if (closeAllWindows) {
@@ -515,9 +540,12 @@ export class PauseFX {
     // Opt-in -- an un-customized run looks like Foundry's own pause screen, not a themed one.
     if (borderColor) {
       setBorderColour(borderColor);
-      injectStyles({ borderCycleMs, textCycleMs: resolvedTextCycle });
+      injectStyles();
     }
     if (borderWidth !== undefined) setBorderWidth(borderWidth);
+    // Harmless to set even when border's never activated -- read only once the CSS rule
+    // that uses it actually applies.
+    setBeatDuration(document.body, BORDER_DURATION_VAR, cycleMs, borderBeatsPerCycle, "border");
 
     // Every sound this run started and hasn't stopped yet -- a set, not a single slot, so an
     // earlier detached track can't be orphaned (and left looping past unpause) by a later one.
@@ -562,9 +590,10 @@ export class PauseFX {
         iconEl.replaceWith(img);
         iconEl = img;
       }
+      setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, iconBeatsPerCycle, "icon");
       // Any of the three on its own is enough -- glow or spin without a new icon path still applies.
       if (icon !== undefined || iconSpin !== undefined || iconGlow !== undefined) {
-        applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, { borderCycleMs, textCycleMs: resolvedTextCycle });
+        applyIconChanges(iconEl, { icon, iconSpin, iconGlow });
       }
 
       label = [...root.children].find((el) => el !== iconEl);
@@ -593,6 +622,7 @@ export class PauseFX {
       label.style.webkitLineClamp = "2";
       label.style.overflow = "hidden";
       label.style.textOverflow = "ellipsis";
+      setBeatDuration(label, TEXT_DURATION_VAR, cycleMs, textBeatsPerCycle, "text");
       if (borderColor) {
         label.classList.add("pause-fx-label"); // see the run()-level comment above
         setTextGlowRings(label, borderColor); // default; textGlow below wins if also set
@@ -642,33 +672,36 @@ export class PauseFX {
         label.style.textTransform = "none"; //+pause-text-transform-override
       }
       if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
-      if (step.textPulse) activateTextDilate(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
+      if (step.textPulse) activateTextDilate(label);
       if (step.stopTextPulse) label.style.setProperty(DILATE_PLAY_VAR, "paused");
-      if (step.textFade) activateTextFade(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
+      if (step.textFade) activateTextFade(label);
       if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
+      if (step.textBeatsPerCycle !== undefined) {
+        setBeatDuration(label, TEXT_DURATION_VAR, cycleMs, step.textBeatsPerCycle, "text");
+      }
       if (step.iconVisible !== undefined && iconEl) {
         iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
       }
 
       if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
-        applyIconChanges(
-          iconEl,
-          { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow },
-          { borderCycleMs, textCycleMs: resolvedTextCycle },
-        );
+        applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow });
       }
       if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
-      if (step.borderColor) {
-        activateBorder(step.borderColor, { borderCycleMs, textCycleMs: resolvedTextCycle, label });
+      if (step.iconBeatsPerCycle !== undefined && iconEl) {
+        setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, step.iconBeatsPerCycle, "icon");
       }
+      if (step.borderColor) activateBorder(step.borderColor, { label });
       if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
       if (step.stopBorderPulse) document.body.classList.add(BORDER_FROZEN_CLASS);
+      if (step.borderBeatsPerCycle !== undefined) {
+        setBeatDuration(document.body, BORDER_DURATION_VAR, cycleMs, step.borderBeatsPerCycle, "border");
+      }
 
       // //+pre-av-duration-post-av-step-model AV phase: video/image self-contained per step;
       // audio joins it only when waitForAudioEnd binds it, else detached (starts now, stoppable later).
       const hasVisual = !!(step.video || step.image);
       const audioBound = !!step.audio && !!step.waitForAudioEnd;
-      const cycles = { borderCycleMs, textCycleMs: resolvedTextCycle };
+      const cycles = { cycleMs };
 
       if (step.audio && !audioBound) {
         const detached = await playSound(

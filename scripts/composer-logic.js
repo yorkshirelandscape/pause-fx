@@ -256,7 +256,7 @@ export function stepDisplayText(step) {
 }
 
 /**
- * Pulse Length is shown to the user in decimal seconds; PauseFX.run() wants borderCycleMs.
+ * Pulse Length is shown to the user in decimal seconds; PauseFX.run() wants cycleMs.
  * Kept as real functions (not inlined) so the rounding is unit-tested, not just eyeballed.
  */
 export function secondsToMs(seconds) {
@@ -275,7 +275,7 @@ export function msToSeconds(ms) {
  */
 export function configFromGlobals(globals, steps) {
   const config = { steps };
-  if (hasValue(globals.pulseLengthS)) config.borderCycleMs = secondsToMs(globals.pulseLengthS);
+  if (hasValue(globals.pulseLengthS)) config.cycleMs = secondsToMs(globals.pulseLengthS);
   if (globals.endCombat) config.endCombat = true;
   if (globals.closeWindowsPlayers || globals.closeWindowsGM) {
     config.closeAllWindows = { players: !!globals.closeWindowsPlayers, gm: !!globals.closeWindowsGM };

@@ -9,7 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-globalThis.ui = { windows: {} };
+globalThis.ui = { windows: {}, notifications: { warn() {} } };
 globalThis.foundry = { applications: { instances: new Map() } };
 globalThis.game = { user: { isGM: false } };
 // socketlib isn't present in this test env, so the module's top-level code falls back to
@@ -17,7 +17,7 @@ globalThis.game = { user: { isGM: false } };
 globalThis.Hooks = { once() {} };
 
 const {
-  isRealWindow, closeAllWindowsHandler, resolveTextCycleMs, clockMsFor, wait, waitForEvent,
+  isRealWindow, closeAllWindowsHandler, clockMsFor, beatDurationS, wait, waitForEvent,
 } = await import("./pause-fx.js");
 
 test("isRealWindow: true only for apps with a real frame (a titled window with a close control)", () => {
@@ -81,30 +81,43 @@ test("closeAllWindowsHandler: no target argument defaults to acting on every rol
   globalThis.game.user.isGM = false;
 });
 
-test("resolveTextCycleMs: explicit textCycleMs always wins over the multiplier", () => {
-  assert.equal(resolveTextCycleMs({ textCycleMs: 5000, borderCycleMs: 3640, textCycleMultiplier: 2 }), 5000);
-});
-
-test("resolveTextCycleMs: defaults to borderCycleMs * 2 when nothing else is given", () => {
-  assert.equal(resolveTextCycleMs({ borderCycleMs: 3640 }), 7280);
-});
-
-test("resolveTextCycleMs: a custom multiplier is honored when textCycleMs is omitted", () => {
-  assert.equal(resolveTextCycleMs({ borderCycleMs: 1000, textCycleMultiplier: 3 }), 3000);
-});
-
 // Table-driven -- one test() per row, not a loop of asserts inside one, so each row still
 // reports individually and `--test-name-pattern` can target just one.
 const CLOCK_MS_CASES = [
   ["whole units", { units: 1.5 }, 5460],
   ["fractional units", { units: 0.5 }, 1820],
 ];
-const clocks = { borderCycleMs: 3640 };
+const clocks = { cycleMs: 3640 };
 for (const [label, waitSpec, expected] of CLOCK_MS_CASES) {
   test(`clockMsFor: ${label}`, () => {
     assert.equal(clockMsFor(waitSpec, clocks), expected);
   });
 }
+
+test("beatDurationS: cycleMs / beatsPerCycle, in seconds", () => {
+  assert.equal(beatDurationS(3000, 1, "text"), 3);
+  assert.equal(beatDurationS(3000, 2, "icon"), 1.5);
+});
+
+test("beatDurationS: falsy beatsPerCycle (0/undefined) treated as 1", () => {
+  assert.equal(beatDurationS(3000, 0, "text"), 3);
+  assert.equal(beatDurationS(3000, undefined, "text"), 3);
+});
+
+test("beatDurationS: clamps to the photosensitive-safety floor and warns when it bites", () => {
+  const warnings = [];
+  globalThis.ui.notifications.warn = (msg) => warnings.push(msg);
+
+  assert.equal(beatDurationS(3000, 100, "border"), 0.5); // 30ms/beat -> clamped to 500ms
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /border/);
+
+  warnings.length = 0;
+  assert.equal(beatDurationS(3000, 6, "icon"), 0.5); // exactly the floor -- still clamps
+  assert.equal(warnings.length, 0); // >= floor, not below it -- no warning
+
+  globalThis.ui.notifications.warn = () => {}; // restore the no-op for later tests
+});
 
 // A real AbortSignal that also counts its own live listeners -- a sequence runs dozens of
 // waits against one signal, so each has to detach itself however it finishes.
