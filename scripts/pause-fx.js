@@ -543,9 +543,6 @@ export class PauseFX {
         });
         root.appendChild(label);
       }
-      //+pause-text-transform-override Foundry forces text-transform:uppercase on #pause's
-      // caption; a custom message should render as typed.
-      label.style.textTransform = "none";
       //+label-transform-origin-epicycle fixed, not content-based -- avoids moving
       // scale()'s own anchor point mid-pulse.
       label.style.width = "min(90vw, 32rem)";
@@ -567,7 +564,12 @@ export class PauseFX {
       label.classList.add("pause-fx-label-glow"); // always on -- see injectStyles' own rule
       setTextGlowRings(label, borderColor || DEFAULT_GLOW_COLOUR); // default; textGlow below wins if set
       if (textGlow !== undefined) applyTextGlow(label, textGlow);
-      if (initialText !== undefined) label.textContent = initialText; // else leave "GAME PAUSED"
+      //+pause-text-transform-override only when actually setting custom text -- else the
+      // untouched default should still read Foundry's own uppercase "GAME PAUSED".
+      if (initialText !== undefined) {
+        label.textContent = initialText;
+        label.style.textTransform = "none";
+      }
     };
     const skin = (app, html) => {
       applySkin(app, html);
@@ -601,7 +603,10 @@ export class PauseFX {
 
       //+apply-then-wait-step-model apply this step's own effects first, then hold
       // for its own duration (below).
-      if (step.text !== undefined) label.textContent = step.text;
+      if (step.text !== undefined) {
+        label.textContent = step.text;
+        label.style.textTransform = "none"; //+pause-text-transform-override
+      }
       if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
       if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
       if (step.stopTextPulse) label.style.animationPlayState = "paused";
