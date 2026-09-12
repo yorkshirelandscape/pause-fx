@@ -208,6 +208,12 @@ function injectStyles({ borderCycleMs, textCycleMs }) {
       }
     }
 
+    /* Always on -- an inline style from an explicit step.textGlow wins over this (see
+       applyTextGlow), so this is only the zero-config default, not a toggle. */
+    .pause-fx-label-glow {
+      text-shadow: 0 0 12px rgb(var(${BORDER_COLOUR_VAR}, 255, 36, 0)), 0 0 8px black;
+    }
+
     /* Rides on the same border colour the author actually picked (was hardcoded red-orange,
        against the docs' own claim -- see the run()-level JSDoc this fixes). */
     @keyframes pause-fx-text-pulse {
@@ -336,6 +342,12 @@ function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, cycles) {
   if (iconGlow !== undefined) iconEl.style.filter = iconGlow ? `drop-shadow(0 0 12px ${iconGlow})` : "";
 }
 
+/** An explicit override for the label's glow -- unset (falsy) drops back to just the
+ *  plain contrast shadow; never called at all leaves the border-tracking CSS default alone. */
+function applyTextGlow(label, colour) {
+  label.style.textShadow = colour ? `0 0 12px ${colour}, 0 0 8px black` : "0 0 8px black";
+}
+
 /** Idempotent -- injects the keyframes once, but setBorderColour always runs (may be a new colour). */
 function activateBorder(colour, { borderCycleMs, textCycleMs, label }) {
   setBorderColour(colour);
@@ -363,6 +375,8 @@ export class PauseFX {
    * @param {string} [config.borderColor] - CSS colour for pause-fx's border-glow overlay.
    *   Omitted, no overlay (the label's pulsing text-colour rides on this too).
    * @param {number} [config.borderWidth] - % difference from the border glow's default size.
+   * @param {string} [config.textGlow] - CSS colour for the label's own glow. Always on;
+   *   omitted, it tracks whatever borderColor is currently active instead of a fixed one.
    * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's "Game Paused" stays.
    * @param {number} [config.borderCycleMs=3640] - border/eye pulse period, in ms.
@@ -392,6 +406,7 @@ export class PauseFX {
       iconGlow,
       borderColor,
       borderWidth,
+      textGlow,
       iconSpin,
       text: initialText,
       borderCycleMs = DEFAULT_BORDER_CYCLE_MS,
@@ -473,7 +488,6 @@ export class PauseFX {
         Object.assign(label.style, {
           marginTop: "0.5em",
           fontSize: "2rem",
-          textShadow: "0 0 8px black",
         });
         root.appendChild(label);
       }
@@ -498,6 +512,8 @@ export class PauseFX {
       label.style.overflow = "hidden";
       label.style.textOverflow = "ellipsis";
       if (borderColor) label.classList.add("pause-fx-label"); // see the run()-level comment above
+      label.classList.add("pause-fx-label-glow"); // always on -- see injectStyles' own rule
+      if (textGlow !== undefined) applyTextGlow(label, textGlow);
       if (initialText !== undefined) label.textContent = initialText; // else leave "Game Paused"
     };
     const skin = (app, html) => {
@@ -533,6 +549,7 @@ export class PauseFX {
       //+apply-then-wait-step-model apply this step's own effects first, then hold
       // for its own duration (below).
       if (step.text !== undefined) label.textContent = step.text;
+      if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
       if (step.textPulse) activateTextPulse(label, { borderCycleMs, textCycleMs: resolvedTextCycle });
       if (step.stopTextPulse) label.style.animationPlayState = "paused";
       if (step.iconVisible !== undefined && iconEl) {
