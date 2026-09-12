@@ -12,7 +12,7 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     tag: "dialog", //+dialog-tag-default-padding real showModal() blocking, see _onFirstRender
     modal: true, //+step-editor-modal-dialog read by _onFirstRender below, not the base class itself
     window: { title: "Edit Step", icon: "fa-solid fa-list-check", resizable: false, contentTag: "form" },
-    position: { width: 480, height: "auto" },
+    position: { width: 540, height: "auto" },
     form: { handler: PauseFXStepEditor.#onSubmit, submitOnChange: false, closeOnSubmit: false },
     actions: {
       browseFile: PauseFXStepEditor.#onBrowseFile,
