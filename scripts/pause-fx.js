@@ -294,12 +294,19 @@ async function resolveImageFiles(path) {
 }
 
 /**
- * A missing or unplayable sound shouldn't take the whole sequence down with it.
+ * AudioHelper.play(data) with autoplay:false is a documented no-op returning undefined --
+ * "backwards compatibility" in Foundry's own source, not a loaded-but-paused Sound the way
+ * pre-AV's own delayed start needs. Sound itself loads and starts independently instead.
  * @returns {Promise<object|null>} the Sound, or null if it couldn't be played.
  */
 async function playSound(spec) {
   try {
-    return await foundry.audio.AudioHelper.play(spec, false);
+    const sound = new foundry.audio.Sound(spec.src, { context: game.audio.interface });
+    await sound.load();
+    sound.volume = spec.volume ?? 1;
+    sound.loop = !!spec.loop;
+    if (spec.autoplay !== false) sound.play();
+    return sound;
   } catch (error) {
     console.error("pause-fx | audio playback failed", error);
     ui.notifications.warn(`pause-fx: couldn't play "${spec.src}" -- carrying on without it.`);
