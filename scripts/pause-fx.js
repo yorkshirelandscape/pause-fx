@@ -16,8 +16,8 @@ const TEXT_GLOW_DARK_CLASS = "pause-fx-text-glow-dark"; // which ring mixes towa
 const DILATE_PLAY_VAR = "--pause-fx-dilate-play";
 const FADE_PLAY_VAR = "--pause-fx-fade-play";
 // No icon-GIF-timing auto-detection -- pass borderCycleMs explicitly to sync against a
-// specific asset's real loop length.
-const DEFAULT_BORDER_CYCLE_MS = 3640;
+// specific asset's real loop length. Matches Foundry's own native icon fa-spin (5s).
+export const DEFAULT_BORDER_CYCLE_MS = 5000;
 
 let socket;
 
@@ -464,7 +464,7 @@ export class PauseFX {
    *   fully un-customized -- no ring, no tint, matching Foundry's own plain caption.
    * @param {boolean} [config.iconSpin=false] - spin the icon, on the border pulse clock.
    * @param {string} [config.text] - initial label text. Omitted, Foundry's "GAME PAUSED" stays.
-   * @param {number} [config.borderCycleMs=3640] - border/eye pulse period, in ms.
+   * @param {number} [config.borderCycleMs=5000] - border/eye pulse period, in ms.
    * @param {number} [config.textCycleMs] - text pulse period. Defaults to
    *   borderCycleMs * textCycleMultiplier.
    * @param {number} [config.textCycleMultiplier=2] - only used if textCycleMs is omitted.

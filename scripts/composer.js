@@ -1,7 +1,7 @@
 // Composer -- the GM-facing UI for building/running a PauseFX sequence, so authoring a
 // reveal skips hand-writing JS. Reachable via the scene-control buttons or api.openComposer().
 
-import { PauseFX } from "./pause-fx.js";
+import { PauseFX, DEFAULT_BORDER_CYCLE_MS } from "./pause-fx.js";
 import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
@@ -66,6 +66,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext() {
     return {
       globals: this.globals,
+      defaultPulseLengthLabel: `${msToSeconds(DEFAULT_BORDER_CYCLE_MS)} sec`, // the placeholder's own value
       rows: this.rows.map((row, index) => {
         const step = stepFromRow(row);
         return { index, badges: stepBadges(step, this.globals.pulseLengthS), text: stepDisplayText(step) };
