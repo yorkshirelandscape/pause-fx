@@ -85,11 +85,15 @@ export function isRealWindow(app) {
   return !!app.hasFrame; //+hasframe-regression closeAllWindows' own real-window signal
 }
 
+// Pause FX's own authoring tools -- closing these as a side effect of a sequence's own
+// closeAllWindows would take out the very Composer a GM just clicked Run from to preview it.
+const OWN_WINDOW_IDS = new Set(["pause-fx-composer", "pause-fx-step-editor"]);
+
 /**
  * Closes every real floating window (legacy and ApplicationV2) on whichever client runs
  * this -- called via socket.executeForEveryone so every connected client closes its own,
  * each deciding for itself whether to act based on its own role vs. `target`. Leaves
- * Foundry's own docked UI chrome untouched.
+ * Foundry's own docked UI chrome, and Pause FX's own Composer/step editor, untouched.
  * @param {object} [target]
  * @param {boolean} [target.players=true] - act on this client if its user is not a GM.
  * @param {boolean} [target.gm=true] - act on this client if its user is a GM.
@@ -98,7 +102,7 @@ export function closeAllWindowsHandler({ players = true, gm = true } = {}) {
   if (game.user.isGM ? !gm : !players) return;
   Object.values(ui.windows).forEach((app) => app.close());
   for (const app of foundry.applications.instances.values()) {
-    if (isRealWindow(app)) app.close();
+    if (isRealWindow(app) && !OWN_WINDOW_IDS.has(app.id)) app.close();
   }
 }
 

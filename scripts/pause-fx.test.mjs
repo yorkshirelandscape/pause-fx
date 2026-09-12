@@ -27,8 +27,8 @@ test("isRealWindow: true only for apps with a real frame (a titled window with a
 });
 
 test("closeAllWindowsHandler: closes real floating windows, leaves docked UI chrome alone", () => {
-  // Regression: closing every foundry.applications.instances entry also takes out persistent
-  // chrome (sidebar, hotbar, ...), blanking a client's whole UI, not just its open dialogs.
+  // Regression: closing every instance also took out persistent chrome, and (separately)
+  // Pause FX's own Composer -- which Run's own closeAllWindows would close on itself.
   const closed = [];
   const mkApp = (id, hasFrame) => ({ id, hasFrame, close: () => closed.push(id) });
 
@@ -38,6 +38,8 @@ test("closeAllWindowsHandler: closes real floating windows, leaves docked UI chr
     ["hotbar", mkApp("hotbar", false)], // docked chrome -- must NOT close
     ["pause", mkApp("pause", false)], // the pause overlay itself -- must NOT close
     ["UserConfig-abc123", mkApp("user-config", true)], // a real floating dialog -- must close
+    ["pause-fx-composer", mkApp("pause-fx-composer", true)], // Run's own Composer -- must NOT close
+    ["pause-fx-step-editor", mkApp("pause-fx-step-editor", true)], // ditto -- must NOT close
   ]);
 
   closeAllWindowsHandler();
