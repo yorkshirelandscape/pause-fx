@@ -372,10 +372,10 @@
 #pause-fx-composer .pfx-step-badges { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
 #pause-fx-composer .pfx-badge { font-size: 0.85rem; color: var(--pfx-text-body); }
 #pause-fx-composer .pfx-badge-wait {
-  font-size: var(--font-size-11, 0.6875rem);
+  font-size: var(--font-size-12, 0.75rem);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  padding: 0.1rem 0.45rem;
+  padding: 0.1rem 0.3rem;
   border: 1px solid var(--pfx-accent);
   border-radius: 999px; /* a pill -- it's the one badge carrying a value, not just on/off */
   color: var(--pfx-accent);
@@ -409,10 +409,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  font-size: var(--font-size-11, 0.6875rem);
+  font-size: var(--font-size-12, 0.75rem);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem 0.3rem;
   border: 1px solid var(--pfx-purple);
   border-radius: 999px;
   color: var(--pfx-purple);
