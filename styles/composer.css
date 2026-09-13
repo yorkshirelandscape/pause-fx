@@ -346,7 +346,7 @@
    label names the OTHER mode -- a plain toggle here left which state was current ambiguous. */
 /* Claims the rest of row 1 past End Encounter and centers Beats/Seconds within it -- the
    pill itself stays sized to its content, End Encounter stays left-anchored. */
-#pause-fx-composer .pfx-startup-row-fill { display: flex; flex: 1; justify-content: center; }
+#pause-fx-composer .pfx-startup-row-fill { display: flex; flex: 1; justify-content: flex-end; margin-right: 0.9rem; }
 #pause-fx-composer .pfx-segmented {
   display: flex;
   border: 1px solid var(--pfx-surface-border);
