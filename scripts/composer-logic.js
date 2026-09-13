@@ -30,6 +30,22 @@ export function effectiveIconVisible(precedingSteps) {
   return true;
 }
 
+/** Same walk-backward-default-true pattern as effectiveIconVisible, for the two fields that
+ *  now default to spinning/pulsing on their own (pause-fx.js's foundry-default-continuity) --
+ *  without this, a fresh/loaded row's Spin or Pulse checkbox reads as off when it's actually on. */
+export function effectiveIconSpin(precedingSteps) {
+  for (let i = precedingSteps.length - 1; i >= 0; i--) {
+    if (precedingSteps[i].iconSpin !== undefined) return precedingSteps[i].iconSpin;
+  }
+  return true;
+}
+export function effectiveTextPulse(precedingSteps) {
+  for (let i = precedingSteps.length - 1; i >= 0; i--) {
+    if (precedingSteps[i].textPulse !== undefined) return precedingSteps[i].textPulse;
+  }
+  return true;
+}
+
 /** Whether a row field carries a real value, as opposed to a blank/never-filled input.
  *  0 counts -- a 0-pulse wait and a 0 volume both mean something. */
 function hasValue(value) {
@@ -88,7 +104,9 @@ export function stepFromRow(row) {
   if (hasValue(row.postAvUnits)) step.postAV = { units: Number(row.postAvUnits) };
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
-  if (row.textPulse) step.textPulse = true;
+  // Always a concrete true/false -- same reasoning as iconVisible below, now that pause-fx.js's
+  // own default is pulsing, not silent: an unchecked box has to say "off," not "untouched."
+  step.textPulse = !!row.textPulse;
   if (row.textFade) step.textFade = true;
   if (row.textGlowEnabled && row.textGlow) step.textGlow = row.textGlow;
   if (row.stopAudio) step.stopAudio = true;
@@ -118,7 +136,8 @@ export function stepFromRow(row) {
   // so every Composer-authored step now says its own piece rather than inheriting silently.
   step.iconVisible = !row.iconNone;
   if (!row.iconNone && row.icon) step.icon = row.icon;
-  if (row.iconSpin) step.iconSpin = true;
+  // Same reasoning, now that Spin's own default is on, not off -- see textPulse above.
+  step.iconSpin = !!row.iconSpin;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
   if (hasValue(row.borderWidthPct)) step.borderWidth = Number(row.borderWidthPct);

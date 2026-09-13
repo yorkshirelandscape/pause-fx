@@ -7,6 +7,7 @@ import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig, formatBeatsPerCycle,
   hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible, effectiveMediaType,
+  effectiveIconSpin, effectiveTextPulse,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
@@ -59,64 +60,78 @@ test("effectiveIconVisible: carries forward the nearest earlier explicit value",
   assert.equal(effectiveIconVisible([{ iconVisible: false }, { iconVisible: true }, { text: "hi" }]), true);
 });
 
+test("effectiveIconSpin/effectiveTextPulse: on by default, carry forward the nearest explicit value", () => {
+  assert.equal(effectiveIconSpin([]), true);
+  assert.equal(effectiveIconSpin([{ iconSpin: false }, { text: "hi" }]), false);
+  assert.equal(effectiveIconSpin([{ iconSpin: false }, { iconSpin: true }, { text: "hi" }]), true);
+  assert.equal(effectiveTextPulse([]), true);
+  assert.equal(effectiveTextPulse([{ textPulse: false }, { text: "hi" }]), false);
+  assert.equal(effectiveTextPulse([{ textPulse: false }, { textPulse: true }, { text: "hi" }]), true);
+});
+
+// iconSpin/textPulse are always concrete now too (see stepFromRow itself) -- shorthand for
+// the pair every expected object below carries alongside iconVisible.
+const ON = { iconSpin: true, textPulse: true };
+const OFF = { iconSpin: false, textPulse: false };
+
 test("stepFromRow: blank optional fields are omitted, not set to '' / false", () => {
-  // Icon visibility is the one exception -- see the iconNone tests below for why.
-  assert.deepEqual(stepFromRow(BLANK_ROW), { iconVisible: true });
+  // Icon visibility, spin and pulse are the exceptions -- see the iconNone tests below for why.
+  assert.deepEqual(stepFromRow(BLANK_ROW), { iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: wait and text come through when set", () => {
   const row = { ...BLANK_ROW, waitUnits: "2.5", text: "Hello" };
-  assert.deepEqual(stepFromRow(row), { wait: { units: 2.5 }, text: "Hello", iconVisible: true });
+  assert.deepEqual(stepFromRow(row), { wait: { units: 2.5 }, text: "Hello", iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: textNone forces an explicit blank, even if text also has a value", () => {
   const row = { ...BLANK_ROW, textNone: true, text: "ignored" };
-  assert.deepEqual(stepFromRow(row), { text: "", iconVisible: true });
+  assert.deepEqual(stepFromRow(row), { text: "", iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: textPulse starts the label's pulse independently of border activation", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, textPulse: true }), { textPulse: true, iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, textPulse: true }), { iconVisible: true, iconSpin: false, textPulse: true });
 });
 
 test("stepFromRow: iconNone (Icon field's own None, not Stop -- hiding isn't time-sensitive) is always a concrete iconVisible, never omitted", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: true }), { iconVisible: false });
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: false }), { iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: true }), { iconVisible: false, ...OFF });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, iconNone: false }), { iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: iconNone forces an explicit hide even if icon also has a value", () => {
   const row = { ...BLANK_ROW, iconNone: true, icon: "ignored.gif" };
-  assert.deepEqual(stepFromRow(row), { iconVisible: false });
+  assert.deepEqual(stepFromRow(row), { iconVisible: false, ...OFF });
 });
 
 test("stepFromRow: unchecked None keeps the icon path", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, icon: "eye.gif" }), { iconVisible: true, icon: "eye.gif" });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, icon: "eye.gif" }), { iconVisible: true, icon: "eye.gif", ...OFF });
 });
 
 test("stepFromRow: Stop's freeze checks are per-target -- stopTextPulse/stopIconSpin/stopBorderPulse, not a shared freeze", () => {
   assert.deepEqual(
     stepFromRow({ ...BLANK_ROW, stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true }),
-    { stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true, iconVisible: true },
+    { stopTextPulse: true, stopIconSpin: true, stopBorderPulse: true, iconVisible: true, ...OFF },
   );
 });
 
 test("stepFromRow: preAV/postAV carry through independently of wait itself", () => {
   const row = { ...BLANK_ROW, waitUnits: "1", preAvUnits: "0.5", postAvUnits: "1.5" };
   assert.deepEqual(stepFromRow(row), {
-    wait: { units: 1 }, preAV: { units: 0.5 }, postAV: { units: 1.5 }, iconVisible: true,
+    wait: { units: 1 }, preAV: { units: 0.5 }, postAV: { units: 1.5 }, iconVisible: true, ...OFF,
   });
 });
 
 test("stepFromRow: waitForAudioEnd binds audio to this step's AV lifecycle -- same field, new meaning", () => {
   const row = { ...BLANK_ROW, audio: "sting.ogg", waitForAudioEnd: true };
-  assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", waitForAudioEnd: true, iconVisible: true });
+  assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", waitForAudioEnd: true, iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: mediaType picks video vs. image -- video carries volume/loop, image carries imagePulses/loop", () => {
   const videoRow = { ...BLANK_ROW, mediaType: "video", mediaPath: "a.webm", videoVolume: "0.3", loop: true };
-  assert.deepEqual(stepFromRow(videoRow), { video: "a.webm", videoVolume: 0.3, loop: true, iconVisible: true });
+  assert.deepEqual(stepFromRow(videoRow), { video: "a.webm", videoVolume: 0.3, loop: true, iconVisible: true, ...OFF });
 
   const imageRow = { ...BLANK_ROW, mediaType: "image", mediaPath: "spooky/", imagePulses: "0", loop: true };
-  assert.deepEqual(stepFromRow(imageRow), { image: "spooky/", imagePulses: 0, loop: true, iconVisible: true });
+  assert.deepEqual(stepFromRow(imageRow), { image: "spooky/", imagePulses: 0, loop: true, iconVisible: true, ...OFF });
 });
 
 test("effectiveMediaType: the switch has two positions -- only an explicit 'video' isn't image", () => {
@@ -130,12 +145,12 @@ test("stepFromRow: a path on an untouched switch still saves, as the image it sh
   // Regression: the switch renders in its image position for a blank row, but the row's own
   // mediaType stays "none" until it's actually toggled -- media typed in was silently dropped.
   const row = { ...BLANK_ROW, mediaType: "none", mediaPath: "spooky.webp", imagePulses: "2" };
-  assert.deepEqual(stepFromRow(row), { image: "spooky.webp", imagePulses: 2, iconVisible: true });
+  assert.deepEqual(stepFromRow(row), { image: "spooky.webp", imagePulses: 2, iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: a blank path saves no media at all, whatever the switch says", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, mediaType: "video" }), { iconVisible: true });
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, mediaType: "image" }), { iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, mediaType: "video" }), { iconVisible: true, ...OFF });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, mediaType: "image" }), { iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: a real 0 is a value, not a blank -- pulses, volumes and widths all keep it", () => {
@@ -145,24 +160,24 @@ test("stepFromRow: a real 0 is a value, not a blank -- pulses, volumes and width
   };
   assert.deepEqual(stepFromRow(row), {
     wait: { units: 0 }, preAV: { units: 0 }, postAV: { units: 0 }, borderWidth: 0,
-    audio: "sting.ogg", audioVolume: 0, video: "a.webm", videoVolume: 0, iconVisible: true,
+    audio: "sting.ogg", audioVolume: 0, video: "a.webm", videoVolume: 0, iconVisible: true, ...OFF,
   });
 });
 
 test("stepFromRow: audio carries its own volume and loop, independent of media fields", () => {
   const row = { ...BLANK_ROW, audio: "sting.ogg", audioVolume: "0.5", audioLoop: true };
-  assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5, audioLoop: true, iconVisible: true });
+  assert.deepEqual(stepFromRow(row), { audio: "sting.ogg", audioVolume: 0.5, audioLoop: true, iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: stopAudio is its own field -- explicitly stops detached audio a later step started", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, stopAudio: true }), { stopAudio: true, iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, stopAudio: true }), { stopAudio: true, iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: unpause is its own field, same 'Stop' block as stopAudio", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, unpause: true }), { unpause: true, iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, unpause: true }), { unpause: true, iconVisible: true, ...OFF });
   assert.deepEqual(
     stepFromRow({ ...BLANK_ROW, stopAudio: true, unpause: true }),
-    { stopAudio: true, unpause: true, iconVisible: true },
+    { stopAudio: true, unpause: true, iconVisible: true, ...OFF },
   );
 });
 
@@ -172,23 +187,24 @@ test("stepFromRow: icon/glow/border/spin/width -- same rules as the old startup 
     borderColorEnabled: true, borderColor: "#0000ff", borderWidthPct: "150",
   };
   assert.deepEqual(stepFromRow(row), {
-    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff", borderWidth: 150, iconVisible: true,
+    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff", borderWidth: 150,
+    iconVisible: true, textPulse: false,
   });
 });
 
 test("stepFromRow: borderWidth works even without borderColorEnabled -- resizing a glow set earlier", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, borderWidthPct: "-50" }), { borderWidth: -50, iconVisible: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, borderWidthPct: "-50" }), { borderWidth: -50, iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: a colour set but not enabled is left out, same as blank", () => {
   const row = { ...BLANK_ROW, iconGlow: "#123456", borderColor: "#654321" };
-  assert.deepEqual(stepFromRow(row), { iconVisible: true });
+  assert.deepEqual(stepFromRow(row), { iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: icon/text/border beats-per-cycle are independent per-step overrides", () => {
   const row = { ...BLANK_ROW, iconBeatsPerCycle: "2", textBeatsPerCycle: "0.5", borderBeatsPerCycle: "1.5" };
   assert.deepEqual(stepFromRow(row), {
-    iconVisible: true, iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1.5,
+    iconVisible: true, iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1.5, ...OFF,
   });
 });
 
@@ -200,24 +216,27 @@ test("rowFromStep: fills every field with a defined default, never undefined", (
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
-  // iconVisible is included on every entry now -- it's always concrete, so a step missing it
-  // wouldn't actually round-trip (see rowFromStep's own JSDoc note on this).
+  // iconVisible/iconSpin/textPulse are included on every entry now -- all three are always
+  // concrete, so a step missing one wouldn't actually round-trip (see rowFromStep's own JSDoc).
   const steps = [
-    { wait: { units: 1.45 }, text: "...AND SUDDENLY...", textPulse: true, iconVisible: true },
-    { wait: { units: 4 }, text: "A MANNEQUIN BEGINS TO TWITCH", iconVisible: true },
-    { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false },
-    { preAV: { units: 0.5 }, video: "reveal.webm", iconVisible: true, borderColor: "#FF0000" },
-    { postAV: { units: 1.5 }, iconVisible: true },
-    { image: "spooky/", imagePulses: 0, loop: true, iconVisible: true },
-    { image: "spooky.webp", iconVisible: true },
-    { audio: "sting.ogg", audioVolume: 0.8, audioLoop: true, waitForAudioEnd: true, iconVisible: true },
+    { wait: { units: 1.45 }, text: "...AND SUDDENLY...", iconVisible: true, iconSpin: false, textPulse: true },
+    { wait: { units: 4 }, text: "A MANNEQUIN BEGINS TO TWITCH", iconVisible: true, ...OFF },
+    { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false, ...OFF },
+    { preAV: { units: 0.5 }, video: "reveal.webm", iconVisible: true, borderColor: "#FF0000", ...OFF },
+    { postAV: { units: 1.5 }, iconVisible: true, ...OFF },
+    { image: "spooky/", imagePulses: 0, loop: true, iconVisible: true, ...OFF },
+    { image: "spooky.webp", iconVisible: true, ...OFF },
+    { audio: "sting.ogg", audioVolume: 0.8, audioLoop: true, waitForAudioEnd: true, iconVisible: true, ...OFF },
     {
       stopAudio: true, unpause: true, stopTextPulse: true,
-      stopIconSpin: true, stopBorderPulse: true, iconVisible: true,
+      stopIconSpin: true, stopBorderPulse: true, iconVisible: true, ...OFF,
     },
-    { icon: "eye.gif", iconSpin: true, iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150, iconVisible: true },
-    { text: "", iconVisible: true }, // explicit blank
-    { iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1, iconVisible: true },
+    {
+      icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150,
+      iconVisible: true, iconSpin: true, textPulse: false,
+    },
+    { text: "", iconVisible: true, ...OFF }, // explicit blank
+    { iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1, iconVisible: true, ...OFF },
   ];
   for (const step of steps) assert.deepEqual(stepFromRow(rowFromStep(step)), step);
 });

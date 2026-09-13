@@ -5,7 +5,7 @@ import { PauseFX, DEFAULT_CYCLE_MS } from "./pause-fx.js";
 import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
-  stepsFromConfig, effectiveIconVisible,
+  stepsFromConfig, effectiveIconVisible, effectiveIconSpin, effectiveTextPulse,
 } from "./composer-logic.js";
 import { PauseFXStepEditor } from "./step-editor.js";
 
@@ -46,7 +46,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {Array<object>} in-progress step rows -- see composer-logic.js's rowFromStep.
    *  rows[0] is always present and can't be deleted (it can still be dragged elsewhere --
    *  whichever row currently sits first loses/gains that protection, not a specific row). */
-  rows = [rowFromStep(defaultStep())];
+  rows = [rowFromStep({ ...defaultStep(), iconSpin: effectiveIconSpin([]), textPulse: effectiveTextPulse([]) })];
 
   // Startup-only fields -- everything else lives on a step (incl. the first one), edited like
   // any other. endCombat/closeWindows stay here instead -- see composer-logic.js's top comment.
@@ -202,12 +202,15 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       ui.notifications.warn(`pause-fx: recognized "${macro.name}" as a sequence but couldn't read its config back out -- open it in a text editor instead.`);
       return;
     }
-    // Steps missing iconVisible (hand-written, or saved before this field existed) get one
-    // seeded from where the sequence's state already is, so the loaded row isn't ambiguous.
+    // Steps missing iconVisible/iconSpin/textPulse get seeded from the sequence's own state --
+    // //+foundry-default-continuity why a checkbox shouldn't just read as off.
     const steps = stepsFromConfig(config); //+composer-loadmacro-drops-config-level-startup-fields
-    this.rows = steps.map((step, i) => rowFromStep(
-      step.iconVisible !== undefined ? step : { ...step, iconVisible: effectiveIconVisible(steps.slice(0, i)) },
-    ));
+    this.rows = steps.map((step, i) => rowFromStep({
+      ...step,
+      iconVisible: step.iconVisible ?? effectiveIconVisible(steps.slice(0, i)),
+      iconSpin: step.iconSpin ?? effectiveIconSpin(steps.slice(0, i)),
+      textPulse: step.textPulse ?? effectiveTextPulse(steps.slice(0, i)),
+    }));
     this.globals.pulseLengthS = config.cycleMs !== undefined ? String(msToSeconds(config.cycleMs)) : "";
     this.globals.endCombat = !!config.endCombat;
     this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
@@ -217,8 +220,13 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static #onAddStep() {
-    const iconVisible = effectiveIconVisible(this.rows.map(stepFromRow));
-    this.rows.push(rowFromStep({ ...defaultStep(), iconVisible }));
+    const precedingSteps = this.rows.map(stepFromRow);
+    this.rows.push(rowFromStep({
+      ...defaultStep(),
+      iconVisible: effectiveIconVisible(precedingSteps),
+      iconSpin: effectiveIconSpin(precedingSteps),
+      textPulse: effectiveTextPulse(precedingSteps),
+    }));
     this.render({ parts: ["body"] });
   }
 
