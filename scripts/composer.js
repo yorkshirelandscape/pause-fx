@@ -84,7 +84,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
   // Startup-only fields -- everything else lives on a step (incl. the first one), edited like
   // any other. endCombat/closeWindows stay here instead -- see composer-logic.js's top comment.
-  globals = { pulseLengthS: "", macroName: "", endCombat: false, closeWindowsPlayers: false, closeWindowsGM: false };
+  globals = {
+    pulseLengthS: "", macroName: "", endCombat: false, closeWindowsPlayers: false, closeWindowsGM: false,
+    freezeAudio: false,
+  };
 
   #dragDrop = new foundry.applications.ux.DragDrop({
     dragSelector: ".pfx-step-handle",
@@ -234,6 +237,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     this.globals.endCombat = !!config.endCombat;
     this.globals.closeWindowsPlayers = !!config.closeAllWindows?.players;
     this.globals.closeWindowsGM = !!config.closeAllWindows?.gm;
+    this.globals.freezeAudio = !!config.freezeAudio;
     this.globals.macroName = macro.name; // re-saving under this same name overwrites this macro
     this.render({ parts: ["body"] });
   }

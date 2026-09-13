@@ -8,6 +8,7 @@
       <div class="pfx-startup-row">
         <label class="pfx-checkbox">End Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
         <span class="pfx-startup-row-fill">
+          <label class="pfx-checkbox" title="Pause whatever's already playing when the sequence starts, and resume it where it left off when the game unpauses">Freeze Audio <input type="checkbox" name="freezeAudio" {{checked globals.freezeAudio}}></label>
           <span class="pfx-segmented" role="group" aria-label="Duration display">
             <button type="button" class="pfx-segmented-option{{#unless showSeconds}} pfx-segmented-option-active{{/unless}}"
                     data-action="setDurationUnit" data-unit="beats" title="Show Duration in Beats">Beats</button>

@@ -385,7 +385,7 @@ export function msToSeconds(ms) {
 /**
  * The Composer's Startup-only (non-step) fields -> the top-level PauseFX.run() config.
  * Everything else lives in `steps`.
- * @param {object} globals - `{ pulseLengthS, endCombat, closeWindowsPlayers, closeWindowsGM }`.
+ * @param {object} globals - `{ pulseLengthS, endCombat, closeWindowsPlayers, closeWindowsGM, freezeAudio }`.
  * @param {Array<object>} steps - already-built step objects (see stepFromRow).
  * @returns {object} a full config object, ready for PauseFX.run().
  */
@@ -396,6 +396,7 @@ export function configFromGlobals(globals, steps) {
   if (globals.closeWindowsPlayers || globals.closeWindowsGM) {
     config.closeAllWindows = { players: !!globals.closeWindowsPlayers, gm: !!globals.closeWindowsGM };
   }
+  if (globals.freezeAudio) config.freezeAudio = true;
   return config;
 }
 

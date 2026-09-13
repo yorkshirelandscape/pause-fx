@@ -466,6 +466,14 @@ test("configFromGlobals: endCombat and closeAllWindows are Startup-only, not per
   assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, []), { steps: [] });
 });
 
+test("configFromGlobals: freezeAudio is Startup-only too, omitted when unset", () => {
+  assert.deepEqual(
+    configFromGlobals({ pulseLengthS: "", freezeAudio: true }, []),
+    { steps: [], freezeAudio: true },
+  );
+  assert.deepEqual(configFromGlobals({ pulseLengthS: "" }, []), { steps: [] });
+});
+
 test("commandForConfig: guards on the module being active, then calls the real API with the config", () => {
   const config = { cycleMs: 3640, steps: [{ text: "hi" }] };
   const command = commandForConfig(config);

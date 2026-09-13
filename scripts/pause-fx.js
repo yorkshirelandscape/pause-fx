@@ -426,6 +426,33 @@ async function playSound(spec) {
   }
 }
 
+/**
+ * Pauses every currently-playing PlaylistSound in the world (any channel), the same way
+ * Foundry's own Playlists sidebar pause button does -- a plain document update, so it syncs
+ * to every connected client on its own, no socketlib needed. //+freeze-audio-resumable-pause
+ * records pausedTime (not stopSound's reset-to-null) so resumeFrozenAudio can pick each one
+ * back up where it left off, not restart it.
+ * @returns {Promise<Array<{playlist: object, sound: object}>>} what this call actually paused.
+ */
+async function freezeWorldAudio() {
+  const playing = [];
+  for (const playlist of game.playlists) {
+    for (const sound of playlist.sounds) {
+      if (sound.playing) playing.push({ playlist, sound });
+    }
+  }
+  await Promise.all(playing.map(({ sound }) =>
+    // //+freeze-audio-no-local-sound-instance null when unknown -- still pauses it.
+    sound.update({ playing: false, pausedTime: sound.sound?.currentTime ?? null }),
+  ));
+  return playing;
+}
+
+/** Resumes exactly what freezeWorldAudio paused -- playSound honors each one's own pausedTime. */
+async function resumeFrozenAudio(frozen) {
+  await Promise.all(frozen.map(({ playlist, sound }) => playlist.playSound(sound)));
+}
+
 // ---- shared by initial setup AND any step that touches icon/border, not just the first ----
 
 /**
@@ -543,6 +570,9 @@ export class PauseFX {
    * @param {boolean} [config.closeAllWindows.players=true]
    * @param {boolean} [config.closeAllWindows.gm=true]
    * @param {boolean} [config.endCombat=false] - end the active encounter before the sequence starts.
+   * @param {boolean} [config.freezeAudio=false] - pause every currently-playing playlist sound
+   *   (any channel) before the sequence starts, and resume each one where it left off once
+   *   the reveal ends. Scene ambient sounds are untouched.
    * @param {Array<object>} config.steps - each step may set `wait` plus any of the fields
    *   handled in the loop below, applicable at any point in the sequence, not just the start.
    */
@@ -570,8 +600,13 @@ export class PauseFX {
       borderBeatsPerCycle = 1,
       closeAllWindows,
       endCombat: shouldEndCombat = false,
+      freezeAudio,
       steps = [],
     } = config;
+
+    // Resumed in resetOnUnpause below -- whatever this paused, and only that, picks back up
+    // where it left off once the reveal ends, however it ends.
+    const frozenAudio = freezeAudio ? await freezeWorldAudio() : [];
 
     if (shouldEndCombat) await game.combat?.endCombat();
     if (closeAllWindows) {
@@ -609,6 +644,7 @@ export class PauseFX {
       overlay?.remove();
       overlay = null;
       stopAllSounds();
+      if (frozenAudio.length) resumeFrozenAudio(frozenAudio);
       clearBorderColour();
       clearBorderWidth();
       document.body.classList.remove(BORDER_FROZEN_CLASS);
