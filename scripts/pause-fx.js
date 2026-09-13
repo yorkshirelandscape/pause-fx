@@ -245,11 +245,13 @@ function injectStyles() {
     }
 
     /* No hardcoded fallback -- inherits Foundry's own colour, not red. //+text-glow-double-ring-outline
-       //+text-pulse-animation-beats-inline-color the animation itself has to read the var. */
+       //+text-pulse-animation-beats-inline-color -- fade no longer reads this; see that note. */
     .pause-fx-label { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))); }
+    /* //+text-fade-self-contained-opacity opacity, not color -- fades itself in and out,
+       independent of whatever color (if any) border/glow happen to have set. */
     @keyframes pause-fx-text-fade {
-      0%, 100% { color: color-mix(in srgb, var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))) 30%, black); }
-      50% { color: var(${TEXT_COLOUR_VAR}, rgb(var(${BORDER_COLOUR_VAR}))); }
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
     }
     .pause-fx-text-fade { animation: pause-fx-text-fade var(${TEXT_DURATION_VAR}, 3s) ease-in-out infinite; animation-play-state: var(${FADE_PLAY_VAR}, running); }
 
