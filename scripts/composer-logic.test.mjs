@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
-  secondsToMs, msToSeconds, configFromGlobals, commandForConfig, formatBeatsPerCycle,
+  secondsToMs, msToSeconds, configFromGlobals, commandForConfig, formatBeatsPerCycle, formatMixedFraction,
   hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible, effectiveMediaType,
   effectiveIconSpin, effectiveTextPulse, effectiveIcon, effectiveText,
 } from "./composer-logic.js";
@@ -285,7 +285,7 @@ test("stepBadges: empty step has no badges", () => {
 
 test("stepBadges: wait renders in real seconds when pulseLengthS is given, else raw pulse units", () => {
   assert.deepEqual(stepBadges({ wait: { units: 2 } }, "3.64"), [{ type: "wait", label: "7.3s" }]);
-  assert.deepEqual(stepBadges({ wait: { units: 2 } }), [{ type: "wait", label: "2x" }]);
+  assert.deepEqual(stepBadges({ wait: { units: 2 } }), [{ type: "wait", label: "2×" }]);
 });
 
 test("stepBadges: one badge per active field, in a stable order", () => {
@@ -297,9 +297,9 @@ test("stepBadges: one badge per active field, in a stable order", () => {
     stopAudio: true, unpause: true,
   };
   assert.deepEqual(stepBadges(step), [
-    { type: "preAV", label: "0.5x" },
-    { type: "avType", mediaType: "video", label: "2x" },
-    { type: "postAV", label: "1.5x" },
+    { type: "preAV", label: "½×" },
+    { type: "avType", mediaType: "video", label: "2×" },
+    { type: "postAV", label: "1½×" },
     { type: "audioBound" },
     { type: "border", colour: "#FF0000" },
     { type: "icon", icon: "eye.gif", glow: undefined, spin: false, visible: undefined },
@@ -321,14 +321,14 @@ test("stepBadges: audio alone (not bound) still gets the plain audio badge, no a
 test("stepBadges: a media step with no Duration override gets a bare type glyph, no orange badge", () => {
   assert.deepEqual(
     stepBadges({ preAV: { units: 0.5 }, video: "a.webm", postAV: { units: 1.5 } }),
-    [{ type: "preAV", label: "0.5x" }, { type: "video" }, { type: "postAV", label: "1.5x" }],
+    [{ type: "preAV", label: "½×" }, { type: "video" }, { type: "postAV", label: "1½×" }],
   );
 });
 
 test("stepBadges: bound audio with no video/image claims the avType cluster itself", () => {
   assert.deepEqual(
     stepBadges({ audio: "sting.ogg", waitForAudioEnd: true, wait: { units: 2 } }),
-    [{ type: "avType", mediaType: "audio", label: "2x" }],
+    [{ type: "avType", mediaType: "audio", label: "2×" }],
   );
   // No override -- bare glyph, same as video/image's own natural-end case.
   assert.deepEqual(
@@ -338,7 +338,7 @@ test("stepBadges: bound audio with no video/image claims the avType cluster itse
 });
 
 test("stepBadges: a non-media step's Duration stays a plain wait badge", () => {
-  assert.deepEqual(stepBadges({ wait: { units: 1 } }), [{ type: "wait", label: "1x" }]);
+  assert.deepEqual(stepBadges({ wait: { units: 1 } }), [{ type: "wait", label: "1×" }]);
 });
 
 test("stepBadges: loop badge fires off audioLoop too, not just the video/image loop", () => {
@@ -371,7 +371,15 @@ test("formatBeatsPerCycle: common fractions get their own glyph, everything else
   assert.equal(formatBeatsPerCycle(2), "2×");
   assert.equal(formatBeatsPerCycle(0.5), "½×");
   assert.equal(formatBeatsPerCycle(1 / 3), "⅓×");
-  assert.equal(formatBeatsPerCycle(1.5), "1.5×");
+  assert.equal(formatBeatsPerCycle(1.5), "1½×"); // whole + fraction, not a raw decimal
+  assert.equal(formatBeatsPerCycle(2.2), "2.2×"); // no glyph for .2 -- falls back to decimal
+});
+
+test("formatMixedFraction: whole and fraction combine with no separator, no glyph falls back to decimal", () => {
+  assert.equal(formatMixedFraction(0.5), "½");
+  assert.equal(formatMixedFraction(1.5), "1½");
+  assert.equal(formatMixedFraction(2), "2");
+  assert.equal(formatMixedFraction(2.2), "2.2");
 });
 
 test("stepBadges: icon/text/border beats-per-cycle each get their own badge", () => {

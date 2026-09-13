@@ -239,23 +239,34 @@ export function coerceStepField(field, rawValue) {
   return rawValue;
 }
 
+// //+cycle-time-beats-per-cycle a badge reads as a speed/count, not a raw decimal -- the
+// common non-whole ratios get their own glyph, everything else rounds to two decimals.
+const FRACTION_GLYPHS = [[1 / 4, "¼"], [1 / 3, "⅓"], [1 / 2, "½"], [2 / 3, "⅔"], [3 / 4, "¾"]];
+
+/** Renders a number as an approximate mixed fraction -- e.g. "1½", "⅔", "3" -- for compact
+ *  step badges (beats-per-cycle, pulse counts). Whole part and glyph sit side by side with
+ *  no separator, matching how a mixed number is normally written.
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatMixedFraction(value) {
+  const whole = Math.floor(value);
+  const remainder = value - whole;
+  const glyph = FRACTION_GLYPHS.find(([f]) => Math.abs(remainder - f) < 0.01);
+  if (glyph) return whole ? `${whole}${glyph[1]}` : glyph[1];
+  return String(Math.round(value * 100) / 100);
+}
+
+/** @param {number} beatsPerCycle
+ * @returns {string} e.g. "2×", "½×", "1½×". */
+export function formatBeatsPerCycle(beatsPerCycle) {
+  return `${formatMixedFraction(beatsPerCycle)}×`;
+}
+
 // preAV/postAV share wait's own {units} shape, so they share this rendering too.
 function pulseLabel(waitSpec, pulseLengthS) {
   const cycleS = pulseLengthS ? Number(pulseLengthS) : null;
-  return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${waitSpec.units}x`;
-}
-
-// //+cycle-time-beats-per-cycle a beats-per-cycle badge reads as a speed, not a duration --
-// the common slower-than-base ratios get their own glyph, everything else a plain multiplier.
-const BEAT_FRACTION_GLYPHS = [[1 / 4, "¼"], [1 / 3, "⅓"], [1 / 2, "½"], [2 / 3, "⅔"], [3 / 4, "¾"]];
-
-/** Renders a beats-per-cycle value as a compact "×N" speed label for step badges.
- * @param {number} beatsPerCycle
- * @returns {string} e.g. "2×", "½×", "1.5×".
- */
-export function formatBeatsPerCycle(beatsPerCycle) {
-  const glyph = BEAT_FRACTION_GLYPHS.find(([value]) => Math.abs(beatsPerCycle - value) < 0.01);
-  return `${glyph ? glyph[1] : Math.round(beatsPerCycle * 100) / 100}×`;
+  return cycleS ? (waitSpec.units * cycleS).toFixed(1) + "s" : `${formatMixedFraction(waitSpec.units)}×`;
 }
 
 /** Which channel owns a step's AV timing cluster, if any -- video and image outrank audio,
