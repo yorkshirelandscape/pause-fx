@@ -46,6 +46,23 @@ export function effectiveTextPulse(precedingSteps) {
   return true;
 }
 
+/** Same pattern again, but walking INCLUSIVE of the step itself (its own icon, if any, wins
+ *  outright) and defaulting to Foundry's own real icon/text instead of a fixed boolean --
+ *  the step list's own badge/text preview should show what's actually on screen at that
+ *  point, not just what this one step happens to touch. */
+export function effectiveIcon(stepsUpToAndIncluding) {
+  for (let i = stepsUpToAndIncluding.length - 1; i >= 0; i--) {
+    if (stepsUpToAndIncluding[i].icon !== undefined) return stepsUpToAndIncluding[i].icon;
+  }
+  return "ui/pause.svg";
+}
+export function effectiveText(stepsUpToAndIncluding) {
+  for (let i = stepsUpToAndIncluding.length - 1; i >= 0; i--) {
+    if (stepsUpToAndIncluding[i].text !== undefined) return stepsUpToAndIncluding[i].text;
+  }
+  return "GAME PAUSED"; //+pause-text-transform-override Foundry's own real default
+}
+
 /** Whether a row field carries a real value, as opposed to a blank/never-filled input.
  *  0 counts -- a 0-pulse wait and a 0 volume both mean something. */
 function hasValue(value) {

@@ -7,7 +7,7 @@ import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig, formatBeatsPerCycle,
   hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible, effectiveMediaType,
-  effectiveIconSpin, effectiveTextPulse,
+  effectiveIconSpin, effectiveTextPulse, effectiveIcon, effectiveText,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
@@ -67,6 +67,15 @@ test("effectiveIconSpin/effectiveTextPulse: on by default, carry forward the nea
   assert.equal(effectiveTextPulse([]), true);
   assert.equal(effectiveTextPulse([{ textPulse: false }, { text: "hi" }]), false);
   assert.equal(effectiveTextPulse([{ textPulse: false }, { textPulse: true }, { text: "hi" }]), true);
+});
+
+test("effectiveIcon/effectiveText: default to Foundry's own real ones, inclusive of the step itself", () => {
+  assert.equal(effectiveIcon([{}]), "ui/pause.svg");
+  assert.equal(effectiveIcon([{ icon: "custom.svg" }, {}]), "custom.svg"); // carries forward
+  assert.equal(effectiveIcon([{ icon: "custom.svg" }, { icon: "newer.svg" }]), "newer.svg"); // wins outright
+  assert.equal(effectiveText([{}]), "GAME PAUSED");
+  assert.equal(effectiveText([{ text: "hi" }, {}]), "hi");
+  assert.equal(effectiveText([{ text: "hi" }, { text: "" }]), ""); // explicit blank carries forward too
 });
 
 // iconSpin/textPulse are always concrete now too (see stepFromRow itself) -- shorthand for

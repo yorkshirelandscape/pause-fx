@@ -6,6 +6,7 @@ import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
   stepsFromConfig, effectiveIconVisible, effectiveIconSpin, effectiveTextPulse,
+  effectiveIcon, effectiveText,
 } from "./composer-logic.js";
 import { PauseFXStepEditor } from "./step-editor.js";
 
@@ -64,12 +65,15 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   });
 
   async _prepareContext() {
+    const steps = this.rows.map(stepFromRow);
     return {
       globals: this.globals,
       defaultPulseLengthLabel: `${msToSeconds(DEFAULT_CYCLE_MS)} sec`, // the placeholder's own value
-      rows: this.rows.map((row, index) => {
-        const step = stepFromRow(row);
-        return { index, badges: stepBadges(step, this.globals.pulseLengthS), text: stepDisplayText(step) };
+      rows: steps.map((step, index) => {
+        // Badges/text preview what's really on screen here -- //+foundry-default-continuity why.
+        const stepsSoFar = steps.slice(0, index + 1);
+        const resolved = { ...step, icon: effectiveIcon(stepsSoFar), text: effectiveText(stepsSoFar) };
+        return { index, badges: stepBadges(resolved, this.globals.pulseLengthS), text: stepDisplayText(resolved) };
       }),
     };
   }
