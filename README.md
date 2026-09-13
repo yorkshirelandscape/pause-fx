@@ -10,7 +10,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Building a reveal
 
-Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the scene controls on the left (GMs only). It offers three buttons: open a new, blank sequence in the Composer; load a previously saved one into the Composer; or run a saved one right away without opening it.
+Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the scene controls on the left (GMs only). It offers three buttons: open a new, blank sequence in the Composer; load a previously saved one into the Composer; or run a saved one right away without opening it. The first time you Load or Run, a demo macro -- a feature tour built entirely from stock Foundry assets -- is copied into the world's own "Pause FX" macro folder, so there's always something to see and pick apart even in a brand-new world.
 
 ### The Composer window
 

@@ -27,6 +27,28 @@ async function ensurePauseFxFolder() {
     ?? Folder.create({ name: "Pause FX", type: "Macro" });
 }
 
+// Registered at init so it exists before ensureDemoMacroImported's first read/write --
+// world-scoped, not exposed in Settings config (a plain "did this run yet" flag, not a preference).
+Hooks.once("init", () => {
+  game.settings.register(MODULE_ID, "demoImported", { scope: "world", config: false, type: Boolean, default: false });
+});
+
+/** Imports the bundled demo macro from this module's own compendium into the world's "Pause
+ *  FX" folder the first time a GM opens either macro picker -- so a world that's never
+ *  touched Pause FX before still has something to Run or Load. Idempotent via a setting,
+ *  not by checking whether the macro is still there, so deleting the imported copy later
+ *  doesn't cause it to silently come back. */
+async function ensureDemoMacroImported() {
+  if (game.settings.get(MODULE_ID, "demoImported")) return;
+  await game.settings.set(MODULE_ID, "demoImported", true);
+  const pack = game.packs.get(`${MODULE_ID}.macros`);
+  const index = pack ? [...(await pack.getIndex())][0] : null;
+  if (!index) return;
+  const demo = await pack.getDocument(index._id);
+  const folder = await ensurePauseFxFolder();
+  await Macro.create({ ...demo.toObject(), folder: folder.id }, { keepId: false });
+}
+
 export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "pause-fx-composer",
@@ -335,6 +357,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
 // Shared by the two "pick a saved macro" toolbar buttons below.
 async function pickSavedMacro(title, ok) {
+  await ensureDemoMacroImported();
   const macros = game.macros.filter(isPauseFxMacro).sort((a, b) => a.name.localeCompare(b.name));
   if (!macros.length) {
     ui.notifications.warn("pause-fx: no saved macros yet -- build one in the Composer and save it first.");
