@@ -26,7 +26,7 @@ Clicking a step opens its editor, with one block per kind of change:
 - **Border** -- change the glowing border's color and/or thickness; **Beats/Cycle** sets its own pulse speed, as a multiple of Cycle Time.
 - **Media** -- show a video, a single image, or a folder of images as a slideshow (toggle between Video and Image), with an option to loop it. Once set, it always plays out in full: Pre-AV, then Duration (if set) or its own natural end, then Post-AV.
 - **Audio** -- play a sound cue. **Bound** ties it to this step's own Pre-AV/Duration/Post-AV timing, the same as Media; unbound, it starts now and keeps playing until a later step's Stop Audio.
-- **Stop** -- turn off something already running: a sound, the icon's spin, the text's pulse or fade, the border's pulse, or actually unpause the game, ending the sequence right there.
+- **Freeze** -- turn off something already running: a sound, the icon's spin, the text's pulse or fade, the border's pulse, or actually unpause the game, ending the sequence right there.
 
 When it's ready, the window's own header has **Run** (play it live, right now) and **Save** (store it as a real, reusable macro -- draggable to a hotbar, or loaded back into the Composer later to edit).
 
