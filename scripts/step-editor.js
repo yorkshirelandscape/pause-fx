@@ -26,15 +26,18 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
    *   its own summary off this same object once we're done (see `onClose`).
    * @param {object} [opts]
    * @param {Function} [opts.onClose]
+   * @param {object} [opts.placeholders] - what each carry-forward field would resolve to if
+   *   left blank on this step, per composer-logic.js's effectiveStateAt -- see composer.js.
    */
-  constructor(row, { onClose } = {}) {
+  constructor(row, { onClose, placeholders = {} } = {}) {
     super();
     this.row = row;
     this.onClose = onClose;
+    this.placeholders = placeholders;
   }
 
   async _prepareContext() {
-    return { row: this.row };
+    return { row: this.row, placeholders: this.placeholders };
   }
 
   //+step-editor-modal-dialog same trigger DialogV2 itself uses -- the base class calls

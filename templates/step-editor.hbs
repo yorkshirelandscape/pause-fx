@@ -31,10 +31,10 @@
     <legend><i class="fa-solid fa-font"></i> Text</legend>
     <div class="pfx-row">
       <label class="pfx-field pfx-field-grow">Message
-        <input type="search" name="text" value="{{row.text}}" placeholder="GAME PAUSED" {{#if row.textNone}}disabled{{/if}}>
+        <input type="search" name="text" value="{{row.text}}" placeholder="{{placeholders.text}}" {{#if row.textNone}}disabled{{/if}}>
       </label>
       <label class="pfx-field pfx-field-narrow" title="Pulse/fade speed, as a multiple of Cycle Time">Beats/Cycle
-        <input type="number" step="0.1" min="0.1" name="textBeatsPerCycle" placeholder="1" value="{{row.textBeatsPerCycle}}">
+        <input type="number" step="0.1" min="0.1" name="textBeatsPerCycle" placeholder="{{placeholders.textBeatsPerCycle}}" value="{{row.textBeatsPerCycle}}">
       </label>
     </div>
     <div class="pfx-checkbox-group">
@@ -53,14 +53,14 @@
     <div class="pfx-row">
       <label class="pfx-field pfx-field-grow">Path
         <span class="pfx-with-picker">
-          <input type="text" name="icon" placeholder="ui/pause.svg" value="{{row.icon}}" {{#if row.iconNone}}disabled{{/if}}>
+          <input type="text" name="icon" placeholder="{{placeholders.icon}}" value="{{row.icon}}" {{#if row.iconNone}}disabled{{/if}}>
           <button type="button" data-action="browseFile" data-for="icon" data-picker-type="imagevideo">
             <i class="fa-solid fa-folder-open"></i>
           </button>
         </span>
       </label>
       <label class="pfx-field pfx-field-narrow" title="Spin speed, as a multiple of Cycle Time">Beats/Cycle
-        <input type="number" step="0.1" min="0.1" name="iconBeatsPerCycle" placeholder="1" value="{{row.iconBeatsPerCycle}}">
+        <input type="number" step="0.1" min="0.1" name="iconBeatsPerCycle" placeholder="{{placeholders.iconBeatsPerCycle}}" value="{{row.iconBeatsPerCycle}}">
       </label>
     </div>
     <div class="pfx-checkbox-group">
@@ -77,12 +77,12 @@
     <legend><i class="fa-regular fa-square-full"></i> Border</legend>
     <div class="pfx-row">
       <label class="pfx-field pfx-field-narrow pfx-field-row" title="A multiple of the border glow's default size -- 1 unchanged, 0.5 half, 2 double"><span>Width<br>×</span>
-        <input type="number" step="0.1" min="0" placeholder="1.0" name="borderWidthFactor" value="{{row.borderWidthFactor}}">
+        <input type="number" step="0.1" min="0" placeholder="{{placeholders.borderWidthFactor}}" name="borderWidthFactor" value="{{row.borderWidthFactor}}">
       </label>
     </div>
     <div class="pfx-row">
       <label class="pfx-field pfx-field-narrow pfx-field-row" title="Pulse speed, as a multiple of Cycle Time"><span>Beats/<br>Cycle</span>
-        <input type="number" step="0.1" min="0.1" name="borderBeatsPerCycle" placeholder="1" value="{{row.borderBeatsPerCycle}}">
+        <input type="number" step="0.1" min="0.1" name="borderBeatsPerCycle" placeholder="{{placeholders.borderBeatsPerCycle}}" value="{{row.borderBeatsPerCycle}}">
       </label>
     </div>
     <div class="pfx-row">

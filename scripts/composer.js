@@ -56,6 +56,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   // list right now" preference, not part of the sequence itself. Always starts on beats.
   showSeconds = false;
 
+  /** @type {?PauseFXStepEditor} the one currently-open row editor, if any -- #onEditStep
+   *  closes it before opening another, so only one can ever be open at once. */
+  activeStepEditor = null;
+
   // Startup-only fields -- everything else lives on a step (incl. the first one), edited like
   // any other. endCombat/closeWindows stay here instead -- see composer-logic.js's top comment.
   globals = { pulseLengthS: "", macroName: "", endCombat: false, closeWindowsPlayers: false, closeWindowsGM: false };
@@ -249,9 +253,32 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static #onEditStep(event, target) {
     const index = Number(target.closest("[data-index]").dataset.index);
-    new PauseFXStepEditor(this.rows[index], {
-      onClose: () => this.render({ parts: ["body"] }), // refresh this row's summary badges
-    }).render(true);
+    this.activeStepEditor?.close(); // only one editor open at a time
+    const precedingSteps = this.rows.slice(0, index).map(stepFromRow);
+    const effective = effectiveStateAt(precedingSteps, precedingSteps.length);
+    const row = this.rows[index];
+    // A disabled color swatch shows what's actually inherited, not a fixed placeholder color --
+    // same "what you'll get if you leave this alone" idea as the text/number placeholders below.
+    if (!row.iconGlowEnabled && effective.iconGlow !== undefined) row.iconGlow = effective.iconGlow;
+    if (!row.textGlowEnabled && effective.textGlow !== undefined) row.textGlow = effective.textGlow;
+    if (!row.borderColorEnabled && effective.borderColor !== undefined) row.borderColor = effective.borderColor;
+    const placeholders = {
+      icon: effective.icon,
+      text: effective.text,
+      iconBeatsPerCycle: effective.iconBeatsPerCycle ?? 1,
+      textBeatsPerCycle: effective.textBeatsPerCycle ?? 1,
+      borderBeatsPerCycle: effective.borderBeatsPerCycle ?? 1,
+      borderWidthFactor: effective.borderWidth ?? 1,
+    };
+    const editor = new PauseFXStepEditor(row, {
+      placeholders,
+      onClose: () => {
+        if (this.activeStepEditor === editor) this.activeStepEditor = null;
+        this.render({ parts: ["body"] }); // refresh this row's summary badges
+      },
+    });
+    this.activeStepEditor = editor;
+    editor.render(true);
   }
 
   static async #onSaveMacro() {
