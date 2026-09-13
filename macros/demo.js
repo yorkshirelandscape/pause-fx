@@ -36,7 +36,7 @@ await game.modules.get("pause-fx").api.run({
     },
     { "iconVisible": true, "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "text": "pre/post-AV timed that hold automatically", "wait": { "units": 2 } },
     {
-      "text": "a folder becomes a slideshow -- this one advances on its own",
+      "iconVisible": false, "text": "a folder becomes a slideshow -- this one advances on its own",
       "image": "icons/environment/vehicles", "imagePulses": 0.5,
       "preAV": { "units": 0.3 }, "wait": { "units": 3 }, "postAV": { "units": 0.5 }
     },
@@ -45,7 +45,7 @@ await game.modules.get("pause-fx").api.run({
       "image": "icons/environment/cosmos", "imagePulses": 0
     },
     {
-      "text": "sound can be bound to a step's own timing",
+      "iconVisible": true, "text": "sound can be bound to a step's own timing",
       "audio": "sounds/combat/epic-start-horn.ogg", "audioVolume": 0.6, "waitForAudioEnd": true,
       "preAV": { "units": 0.3 }, "postAV": { "units": 0.5 }
     },

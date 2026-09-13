@@ -432,7 +432,9 @@ function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, currentlySpinnin
     if (iconSpin === undefined) iconEl.style.setProperty(ICON_DURATION_VAR, `${FOUNDRY_ICON_SPIN_MS / 1000}s`);
   }
   iconEl.classList.toggle("pause-fx-icon-spin", spinning);
-  iconEl.style.animationPlayState = ""; // clears any earlier stopIconSpin freeze
+  // Only an explicit iconSpin resume clears a stopIconSpin freeze -- an icon/iconGlow change
+  // alone shouldn't quietly restart a rotation the author deliberately froze.
+  if (iconSpin !== undefined) iconEl.style.animationPlayState = "";
   if (iconGlow !== undefined) iconEl.style.filter = iconGlow ? `drop-shadow(0 0 12px ${iconGlow})` : "";
 }
 
