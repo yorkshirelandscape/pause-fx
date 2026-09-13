@@ -299,11 +299,8 @@
   text-align: center;
 }
 #pause-fx-composer .pfx-field-cycle-time input { text-align: center; }
-#pause-fx-composer .pfx-startup-stack { display: flex; flex-direction: column; justify-content: center; gap: 0.3rem; }
+#pause-fx-composer .pfx-startup-stack { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 0.3rem; }
 #pause-fx-composer .pfx-startup-row { display: flex; align-items: center; gap: 0.4rem; }
-/* Beats/Seconds sits at the row's own far edge -- space-between, not flex-grow on the
-   control itself, so it stays sized to its content instead of stretching to fill the row. */
-#pause-fx-composer .pfx-startup-row:first-child { justify-content: space-between; }
 /* Only End Encounter lives in row 1 -- Players/GMs (row 2) stay regular weight. */
 #pause-fx-composer .pfx-startup-row:first-child .pfx-checkbox { font-weight: 700; }
 #pause-fx-composer .pfx-inline-label {
@@ -312,7 +309,7 @@
   font-weight: 700;
   white-space: nowrap;
 }
-#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.85rem; margin-left: auto; }
+#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.85rem; }
 /*+toolbar-button-foundry-height-override Foundry's own default height was too short for
    icon+label content -- invisible until a button (Run) got a solid fill to clip against. */
 #pause-fx-composer .pfx-toolbar-button {
@@ -347,9 +344,11 @@
 }
 /* Both units stay visible with the active one picked out, instead of one button whose own
    label names the OTHER mode -- a plain toggle here left which state was current ambiguous. */
+/* Claims the rest of row 1 past End Encounter and centers Beats/Seconds within it -- the
+   pill itself stays sized to its content, End Encounter stays left-anchored. */
+#pause-fx-composer .pfx-startup-row-fill { display: flex; flex: 1; justify-content: center; }
 #pause-fx-composer .pfx-segmented {
   display: flex;
-  align-self: center;
   border: 1px solid var(--pfx-surface-border);
   border-radius: 4px;
   overflow: hidden;

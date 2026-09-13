@@ -7,11 +7,13 @@
     <div class="pfx-startup-stack">
       <div class="pfx-startup-row">
         <label class="pfx-checkbox">End Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
-        <span class="pfx-segmented" role="group" aria-label="Duration display">
-          <button type="button" class="pfx-segmented-option{{#unless showSeconds}} pfx-segmented-option-active{{/unless}}"
-                  data-action="setDurationUnit" data-unit="beats" title="Show Duration in Beats">Beats</button>
-          <button type="button" class="pfx-segmented-option{{#if showSeconds}} pfx-segmented-option-active{{/if}}"
-                  data-action="setDurationUnit" data-unit="seconds" title="Show Duration in Seconds">Seconds</button>
+        <span class="pfx-startup-row-fill">
+          <span class="pfx-segmented" role="group" aria-label="Duration display">
+            <button type="button" class="pfx-segmented-option{{#unless showSeconds}} pfx-segmented-option-active{{/unless}}"
+                    data-action="setDurationUnit" data-unit="beats" title="Show Duration in Beats">Beats</button>
+            <button type="button" class="pfx-segmented-option{{#if showSeconds}} pfx-segmented-option-active{{/if}}"
+                    data-action="setDurationUnit" data-unit="seconds" title="Show Duration in Seconds">Seconds</button>
+          </span>
         </span>
       </div>
       <div class="pfx-startup-row">
