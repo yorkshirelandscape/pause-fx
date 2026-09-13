@@ -418,18 +418,19 @@ async function playSound(spec) {
  * Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps.
  * Its own beat duration is set wherever iconBeatsPerCycle is known, not here (see setBeatDuration).
  * currentlySpinning/the return value thread continuity across calls -- //+foundry-default-continuity.
+ * durationEverSet decides whether a spin reaches for Foundry's real rate --
+ * //+icon-spin-duration-source-of-truth why this, not iconSpin's own explicit/inherited
+ * status (a Composer-authored step's iconSpin is never genuinely "inherited" on the wire).
  * @returns {boolean} the spin state now in effect, for the caller's own next call.
  */
-function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, currentlySpinning) {
+function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, currentlySpinning, durationEverSet) {
   if (!iconEl) return currentlySpinning;
   const spinning = iconSpin !== undefined ? iconSpin : currentlySpinning;
   iconEl.classList.remove("fa-spin"); //+foundry-icon-fa-spin-default Foundry's own native class -- replaced by our own below
   if (icon !== undefined) iconEl.src = icon;
   if (spinning) {
     injectStyles();
-    // Continuity only -- an explicit iconSpin:true leaves ICON_DURATION_VAR at whatever
-    // beats-per-cycle already set it to; this just keeps an inherited spin at Foundry's pace.
-    if (iconSpin === undefined) iconEl.style.setProperty(ICON_DURATION_VAR, `${FOUNDRY_ICON_SPIN_MS / 1000}s`);
+    if (!durationEverSet) iconEl.style.setProperty(ICON_DURATION_VAR, `${FOUNDRY_ICON_SPIN_MS / 1000}s`);
   }
   iconEl.classList.toggle("pause-fx-icon-spin", spinning);
   // Only an explicit iconSpin resume clears a stopIconSpin freeze -- an icon/iconGlow change
@@ -597,6 +598,8 @@ export class PauseFX {
 
     let iconEl, label;
     let iconSpinning = true; // Foundry's own default -- see applyIconChanges
+    // True once iconBeatsPerCycle has ever been applied -- //+icon-spin-duration-source-of-truth why.
+    let iconDurationEverSet = config.iconBeatsPerCycle !== undefined;
     const applySkin = (_app, html) => {
       const root = document.getElementById("pause") ?? (html instanceof jQuery ? html[0] : html);
       if (!root) return;
@@ -619,7 +622,7 @@ export class PauseFX {
       setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, iconBeatsPerCycle, "icon");
       // Any of the three on its own is enough -- glow or spin without a new icon path still applies.
       if (icon !== undefined || iconSpin !== undefined || iconGlow !== undefined) {
-        iconSpinning = applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, iconSpinning);
+        iconSpinning = applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, iconSpinning, iconDurationEverSet);
       }
 
       label = [...root.children].find((el) => el !== iconEl);
@@ -712,11 +715,12 @@ export class PauseFX {
       }
 
       if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
-        iconSpinning = applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow }, iconSpinning);
+        iconSpinning = applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow }, iconSpinning, iconDurationEverSet);
       }
       if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
       if (step.iconBeatsPerCycle !== undefined && iconEl) {
         retimeIconSpin(iconEl, cycleMs, step.iconBeatsPerCycle);
+        iconDurationEverSet = true;
       }
       if (step.borderColor) activateBorder(step.borderColor, { label });
       if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
