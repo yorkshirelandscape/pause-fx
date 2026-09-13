@@ -39,6 +39,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       editStep: PauseFXComposer.#onEditStep,
       saveMacro: PauseFXComposer.#onSaveMacro,
       run: PauseFXComposer.#onRun,
+      toggleSeconds: PauseFXComposer.#onToggleSeconds,
     },
   };
 
@@ -48,6 +49,10 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
    *  rows[0] is always present and can't be deleted (it can still be dragged elsewhere --
    *  whichever row currently sits first loses/gains that protection, not a specific row). */
   rows = [rowFromStep({ ...defaultStep(), iconSpin: effectiveIconSpin([]), textPulse: effectiveTextPulse([]) })];
+
+  // Display-only, never saved -- a personal "how do I want to read this window's own step
+  // list right now" preference, not part of the sequence itself. Always starts on beats.
+  showSeconds = false;
 
   // Startup-only fields -- everything else lives on a step (incl. the first one), edited like
   // any other. endCombat/closeWindows stay here instead -- see composer-logic.js's top comment.
@@ -73,7 +78,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
         // Badges/text preview what's really on screen here -- //+foundry-default-continuity why.
         const stepsSoFar = steps.slice(0, index + 1);
         const resolved = { ...step, icon: effectiveIcon(stepsSoFar), text: effectiveText(stepsSoFar) };
-        return { index, badges: stepBadges(resolved, this.globals.pulseLengthS), text: stepDisplayText(resolved) };
+        const pulseLengthS = this.showSeconds ? this.globals.pulseLengthS : null;
+        return { index, badges: stepBadges(resolved, pulseLengthS), text: stepDisplayText(resolved) };
       }),
     };
   }
@@ -95,6 +101,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onRender(context, options);
     this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
     this.#ensureHeaderButtons();
+    this.#updateSecondsButton();
     this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
   }
 
@@ -115,6 +122,18 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     };
     header.insertBefore(makeButton("run", "fa-solid fa-play", "Run"), ellipsis);
     header.insertBefore(makeButton("saveMacro", "fa-solid fa-floppy-disk", "Save as Macro"), ellipsis);
+    header.insertBefore(makeButton("toggleSeconds", "fa-solid fa-clock", "Show Duration in Seconds"), ellipsis);
+  }
+
+  // The button itself is only ever inserted once (see above); its own pressed-look and
+  // tooltip still need to track showSeconds on every render, not just the first.
+  #updateSecondsButton() {
+    const btn = this.element.querySelector('[data-action="toggleSeconds"]');
+    if (!btn) return;
+    btn.classList.toggle("pfx-header-control-active", this.showSeconds);
+    const tooltip = this.showSeconds ? "Show Duration in Beats" : "Show Duration in Seconds";
+    btn.dataset.tooltip = tooltip;
+    btn.setAttribute("aria-label", tooltip);
   }
 
   #onDragStart(event) {
@@ -231,6 +250,11 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       iconSpin: effectiveIconSpin(precedingSteps),
       textPulse: effectiveTextPulse(precedingSteps),
     }));
+    this.render({ parts: ["body"] });
+  }
+
+  static #onToggleSeconds() {
+    this.showSeconds = !this.showSeconds;
     this.render({ parts: ["body"] });
   }
 

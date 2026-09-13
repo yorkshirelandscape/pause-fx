@@ -647,3 +647,12 @@
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track { background: var(--pfx-accent); }
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track .pfx-switch-thumb { transform: translateX(1rem); }
 #pause-fx-step-editor .pfx-switch input:focus-visible + .pfx-switch-track { outline: 2px solid var(--pfx-accent); outline-offset: 2px; }
+
+/* ---- Composer header: Duration-display toggle ---- */
+/* A "pressed" look for the seconds/beats toggle -- Foundry's own header-control has no
+   active state of its own to build on. */
+#pause-fx-composer .header-control.pfx-header-control-active {
+  color: var(--pfx-accent);
+  background: color-mix(in srgb, var(--pfx-accent) 20%, transparent);
+  border-radius: 4px;
+}
