@@ -76,8 +76,8 @@
   <fieldset class="pfx-block pfx-block-border">
     <legend><i class="fa-regular fa-square-full"></i> Border</legend>
     <div class="pfx-row">
-      <label class="pfx-field pfx-field-narrow pfx-field-row"><span>Width<br>+/- %</span>
-        <input type="number" step="5" min="-100" placeholder="0" name="borderWidthPct" value="{{row.borderWidthPct}}">
+      <label class="pfx-field pfx-field-narrow pfx-field-row" title="A multiple of the border glow's default size -- 1 unchanged, 0.5 half, 2 double"><span>Width<br>×</span>
+        <input type="number" step="0.1" min="0" placeholder="1.0" name="borderWidthFactor" value="{{row.borderWidthFactor}}">
       </label>
     </div>
     <div class="pfx-row">

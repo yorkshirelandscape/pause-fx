@@ -193,7 +193,7 @@ export function stepFromRow(row) {
   step.iconSpin = !!row.iconSpin;
   if (row.iconGlowEnabled && row.iconGlow) step.iconGlow = row.iconGlow;
   if (row.borderColorEnabled && row.borderColor) step.borderColor = row.borderColor;
-  if (hasValue(row.borderWidthPct)) step.borderWidth = Number(row.borderWidthPct);
+  if (hasValue(row.borderWidthFactor)) step.borderWidth = Number(row.borderWidthFactor);
   // //+cycle-time-beats-per-cycle a step-level override, persisting forward like borderColor --
   // blank means "leave whatever's already running alone," not "reset to 1."
   if (hasValue(row.iconBeatsPerCycle)) step.iconBeatsPerCycle = Number(row.iconBeatsPerCycle);
@@ -246,7 +246,7 @@ export function rowFromStep(step) {
     iconGlow: step.iconGlow ?? "#4DD0E1", // a deliberate teal default, not an arbitrary placeholder
     borderColorEnabled: step.borderColor !== undefined,
     borderColor: step.borderColor ?? "#4DD0E1",
-    borderWidthPct: step.borderWidth ?? "",
+    borderWidthFactor: step.borderWidth ?? "",
     iconBeatsPerCycle: step.iconBeatsPerCycle ?? "",
     textBeatsPerCycle: step.textBeatsPerCycle ?? "",
     borderBeatsPerCycle: step.borderBeatsPerCycle ?? "",
@@ -254,7 +254,7 @@ export function rowFromStep(step) {
 }
 
 const NUMBER_FIELDS = new Set([
-  "waitUnits", "preAvUnits", "postAvUnits", "audioVolume", "videoVolume", "borderWidthPct", "imagePulses",
+  "waitUnits", "preAvUnits", "postAvUnits", "audioVolume", "videoVolume", "borderWidthFactor", "imagePulses",
   "iconBeatsPerCycle", "textBeatsPerCycle", "borderBeatsPerCycle",
 ]);
 const BOOL_FIELDS = new Set([

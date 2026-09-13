@@ -152,10 +152,10 @@
 /* Sized narrow (a handful of characters -- pulse counts, volumes, percentages). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
-/* Border's own two inputs match each other, a hair narrower/shorter than the shared size --
+/* Border's own two inputs match each other, narrower/shorter than the shared size --
    must follow it (same specificity). */
-#pause-fx-step-editor input[name="borderWidthPct"],
-#pause-fx-step-editor input[name="borderBeatsPerCycle"] { width: 4rem; height: 1.6rem; text-align: center; }
+#pause-fx-step-editor input[name="borderWidthFactor"],
+#pause-fx-step-editor input[name="borderBeatsPerCycle"] { width: 3rem; height: 1.4rem; text-align: center; }
 /* Every Beats/Cycle field's value centers, not just Border's own pair above. */
 #pause-fx-step-editor input[name="textBeatsPerCycle"],
 #pause-fx-step-editor input[name="iconBeatsPerCycle"] { text-align: center; }

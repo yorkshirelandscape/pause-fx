@@ -352,11 +352,10 @@ function clearBorderColour() {
   document.body.style.removeProperty(BORDER_COLOUR_VAR);
 }
 
-// deltaPct: 0/unset is the keyframes' baked-in size, -100 shrinks to nothing, +100 doubles it.
-// Clamped to >= 0 -- a hand-authored macro could pass below the UI's own -100 floor.
-function setBorderWidth(deltaPct) {
-  const scale = Math.max(0, 1 + deltaPct / 100);
-  document.body.style.setProperty(BORDER_SCALE_VAR, String(scale));
+// factor: a multiple of the keyframes' own baked-in size -- 1/unset unchanged, 0.5 half, 2
+// double. Clamped to >= 0 -- a hand-authored macro could pass a negative value.
+function setBorderWidth(factor) {
+  document.body.style.setProperty(BORDER_SCALE_VAR, String(Math.max(0, factor)));
 }
 
 function clearBorderWidth() {
@@ -505,7 +504,7 @@ export class PauseFX {
    * @param {string} [config.borderColor] - CSS colour for pause-fx's border-glow overlay.
    *   Omitted, no overlay (the label's own text colour rides on this too, unless textGlow
    *   overrides it).
-   * @param {number} [config.borderWidth] - % difference from the border glow's default size.
+   * @param {number} [config.borderWidth=1] - a multiple of the border glow's default size.
    * @param {string} [config.textGlow] - CSS colour for the label's own text, and the base
    *   for its two-ring outline (a tight inner ring, a diffuse outer one, each a lighter/
    *   darker tint assigned by contrast against the text). Omitted, both track whatever

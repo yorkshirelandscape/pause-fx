@@ -18,7 +18,7 @@ const BLANK_ROW = {
   waitForAudioEnd: false, audio: "", audioVolume: "", audioLoop: false,
   mediaType: "none", mediaPath: "", videoVolume: "", imagePulses: "", loop: false, icon: "",
   iconNone: false, iconSpin: false, iconGlowEnabled: false, iconGlow: "#4DD0E1",
-  borderColorEnabled: false, borderColor: "#4DD0E1", borderWidthPct: "",
+  borderColorEnabled: false, borderColor: "#4DD0E1", borderWidthFactor: "",
   iconBeatsPerCycle: "", textBeatsPerCycle: "", borderBeatsPerCycle: "",
 };
 
@@ -99,12 +99,12 @@ test("effectiveStateAt: carries forward sticky fields, doesn't include the targe
 
 test("effectiveStateAt: beats-per-cycle overrides and textFade carry forward too", () => {
   const steps = [
-    { iconBeatsPerCycle: 2, textFade: true, borderWidth: 150 },
+    { iconBeatsPerCycle: 2, textFade: true, borderWidth: 1.5 },
   ];
   const state = effectiveStateAt(steps, 1);
   assert.equal(state.iconBeatsPerCycle, 2);
   assert.equal(state.textFade, true);
-  assert.equal(state.borderWidth, 150);
+  assert.equal(state.borderWidth, 1.5);
 });
 
 // iconSpin/textPulse are always concrete now too (see stepFromRow itself) -- shorthand for
@@ -193,7 +193,7 @@ test("stepFromRow: a blank path saves no media at all, whatever the switch says"
 
 test("stepFromRow: a real 0 is a value, not a blank -- pulses, volumes and widths all keep it", () => {
   const row = {
-    ...BLANK_ROW, waitUnits: 0, preAvUnits: 0, postAvUnits: 0, borderWidthPct: 0,
+    ...BLANK_ROW, waitUnits: 0, preAvUnits: 0, postAvUnits: 0, borderWidthFactor: 0,
     audio: "sting.ogg", audioVolume: 0, mediaType: "video", mediaPath: "a.webm", videoVolume: 0,
   };
   assert.deepEqual(stepFromRow(row), {
@@ -222,16 +222,16 @@ test("stepFromRow: unpause is its own field, same 'Stop' block as stopAudio", ()
 test("stepFromRow: icon/glow/border/spin/width -- same rules as the old startup fields, now per-step", () => {
   const row = {
     ...BLANK_ROW, icon: "eye.gif", iconSpin: true, iconGlowEnabled: true, iconGlow: "#00ff00",
-    borderColorEnabled: true, borderColor: "#0000ff", borderWidthPct: "150",
+    borderColorEnabled: true, borderColor: "#0000ff", borderWidthFactor: "2",
   };
   assert.deepEqual(stepFromRow(row), {
-    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff", borderWidth: 150,
+    icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff", borderWidth: 2,
     iconVisible: true, textPulse: false,
   });
 });
 
 test("stepFromRow: borderWidth works even without borderColorEnabled -- resizing a glow set earlier", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, borderWidthPct: "-50" }), { borderWidth: -50, iconVisible: true, ...OFF });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, borderWidthFactor: "0.5" }), { borderWidth: 0.5, iconVisible: true, ...OFF });
 });
 
 test("stepFromRow: a colour set but not enabled is left out, same as blank", () => {
@@ -270,7 +270,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
       stopIconSpin: true, stopBorderPulse: true, iconVisible: true, ...OFF,
     },
     {
-      icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 150,
+      icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 1.5,
       iconVisible: true, iconSpin: true, textPulse: false,
     },
     { text: "", iconVisible: true, ...OFF }, // explicit blank
@@ -291,7 +291,7 @@ test("coerceStepField: bool fields always become real booleans", () => {
 test("coerceStepField: number fields parse, but stay '' when blank (not NaN/0)", () => {
   assert.equal(coerceStepField("waitUnits", "2.5"), 2.5);
   assert.equal(coerceStepField("waitUnits", ""), "");
-  assert.equal(coerceStepField("borderWidthPct", "-50"), -50);
+  assert.equal(coerceStepField("borderWidthFactor", "0.5"), 0.5);
   assert.equal(coerceStepField("imagePulses", "0"), 0);
   assert.equal(coerceStepField("imagePulses", ""), "");
 });
