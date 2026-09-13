@@ -8,9 +8,11 @@
       <div class="pfx-startup-checks">
         <label class="pfx-checkbox">End Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
         <span class="pfx-close-windows">
-          <span class="pfx-inline-label">Minimize Windows:</span>
-          <label class="pfx-checkbox">Players <input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}></label>
-          <label class="pfx-checkbox">GMs <input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}></label>
+          <span class="pfx-inline-label">Minimize<br>Windows</span>
+          <span class="pfx-close-windows-checks">
+            <label class="pfx-checkbox">Players <input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}></label>
+            <label class="pfx-checkbox">GMs <input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}></label>
+          </span>
         </span>
       </div>
     </div>
