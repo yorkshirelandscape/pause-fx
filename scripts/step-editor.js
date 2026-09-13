@@ -50,7 +50,6 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
   _onRender(context, options) {
     super._onRender(context, options);
     this.#syncMediaTypeFields(this.row.mediaType); // reflect the current type on every (re)render
-    this.#setManualAdvancePlaceholder();
   }
 
   #onFieldChange(target) {
@@ -67,18 +66,6 @@ export class PauseFXStepEditor extends HandlebarsApplicationMixin(ApplicationV2)
     if (target.name === "mediaType") return target.checked ? "image" : "video";
     if (target.type === "checkbox") return target.checked;
     return target.value;
-  }
-
-  // Shows the actually-configured "Advance Pause FX" keybind (unbound by default -- see
-  // its own registration) in place of the template's static "manual" placeholder.
-  #setManualAdvancePlaceholder() {
-    const field = this.element.querySelector('[name="imagePulses"]');
-    const [binding] = game.keybindings.bindings.get(`${MODULE_ID}.advance`) ?? [];
-    if (!field || !binding) return; // stays "manual" from the template if still unbound
-    const { KeyboardManager } = foundry.helpers.interaction;
-    const keys = [...binding.modifiers, binding.key]
-      .map((code) => KeyboardManager.getKeycodeDisplayString(code)).join("+");
-    field.placeholder = `"${keys}"`; // quoted -- a bound digit key would read as a real value otherwise
   }
 
   // Video and image show different field sets; a blank row's "none" reads as image (see

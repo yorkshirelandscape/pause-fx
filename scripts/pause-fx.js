@@ -41,14 +41,22 @@ if (globalThis.socketlib) {
   Hooks.once("socketlib.ready", registerSocket);
 }
 
-// ---- manual advance -- a GM keybind that resolves whichever step(s) are waiting on it ----
+// ---- manual advance -- a double-click on the slideshow image resolves whatever's waiting ----
 
 let advanceResolvers = [];
+
+/** Resolves every pending waitForManualAdvance() at once -- wired to the slideshow image's
+ *  own dblclick, not a keybind (see git history for the earlier keybind-based version). */
+function advanceAll() {
+  const resolvers = advanceResolvers;
+  advanceResolvers = [];
+  resolvers.forEach((resolve) => resolve());
+}
 
 /**
  * @param {AbortSignal} [signal] - resolves early (without actually being "advanced") if this
  *   fires first -- an unpause mid-sequence shouldn't leave a manual-advance step hung forever.
- * @returns {Promise<void>} resolves the next time the GM presses the advance keybind.
+ * @returns {Promise<void>} resolves the next time the displayed image is double-clicked.
  */
 function waitForManualAdvance(signal) {
   return new Promise((resolve) => {
@@ -64,22 +72,6 @@ function waitForManualAdvance(signal) {
     signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
-
-Hooks.once("init", () => {
-  game.keybindings.register(MODULE_ID, "advance", {
-    name: "Advance Pause FX",
-    hint: "While a pause-fx sequence is waiting on a manual-advance step (a 0-pulse timer), advances it.",
-    editable: [],
-    restricted: true, // GM only
-    onDown: () => {
-      if (!advanceResolvers.length) return false; // not consumed -- let it fall through
-      const resolvers = advanceResolvers;
-      advanceResolvers = [];
-      resolvers.forEach((resolve) => resolve());
-      return true;
-    },
-  });
-});
 
 /**
  * Whether `app` is a real floating window (a titled window with a close control), as
@@ -727,6 +719,10 @@ export class PauseFX {
           // Loaded but not yet playing -- pre-AV (below) elapses before anything actually starts.
           if (isVideo) {
             Object.assign(visualEl, { src: step.video, autoplay: false, loop: !!step.loop, controls: false, volume: step.videoVolume ?? 0.5 });
+          } else {
+            // Harmless when nothing's actually waiting on it -- advanceAll() is a no-op then.
+            visualEl.style.cursor = "pointer";
+            visualEl.addEventListener("dblclick", advanceAll);
           }
           document.body.appendChild(visualEl);
           overlay = visualEl;
