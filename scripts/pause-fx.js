@@ -261,6 +261,15 @@ function injectStyles() {
     }
     @media (prefers-reduced-motion: no-preference) {
       .pause-fx-text-dilate { animation: pause-fx-text-dilate var(${TEXT_DURATION_VAR}, 3s) ease-in-out infinite; animation-play-state: var(${DILATE_PLAY_VAR}, running); }
+      /* //+text-pulse-fade-combinable higher specificity than either rule above -- wins
+         outright when both are present, so they run together instead of one overriding. */
+      .pause-fx-text-dilate.pause-fx-text-fade {
+        animation-name: pause-fx-text-dilate, pause-fx-text-fade;
+        animation-duration: var(${TEXT_DURATION_VAR}, 3s), var(${TEXT_DURATION_VAR}, 3s);
+        animation-timing-function: ease-in-out, ease-in-out;
+        animation-iteration-count: infinite, infinite;
+        animation-play-state: var(${DILATE_PLAY_VAR}, running), var(${FADE_PLAY_VAR}, running);
+      }
     }
 
     /* Foundry's own fixed-duration spin -- see foundry-icon-fa-spin-default -- is stopped
@@ -283,16 +292,17 @@ function setBeatDuration(el, varName, cycleMs, beatsPerCycle, label) {
   el.style.setProperty(varName, `${beatDurationS(cycleMs, beatsPerCycle, label)}s`);
 }
 
-// Keeps a mid-flight speed change seamless -- //+icon-spin-retiming-jump why. animationNames
-// may be one name or several (retimes whichever's actually running); pseudo e.g. "::before".
+// Keeps a mid-flight speed change seamless -- //+icon-spin-retiming-jump why. Retimes every
+// matching animation actually running, not just the first (pseudo e.g. "::before").
 function retimeAnimation(el, animationNames, varName, cycleMs, beatsPerCycle, label, pseudo) {
   const names = Array.isArray(animationNames) ? animationNames : [animationNames];
-  const anim = el.getAnimations({ subtree: true }).find((a) => names.includes(a.animationName));
+  const anims = el.getAnimations({ subtree: true }).filter((a) => names.includes(a.animationName));
   const durationMs = () => parseFloat(getComputedStyle(el, pseudo).animationDuration) * 1000;
-  const oldDurationMs = anim ? durationMs() : 0;
-  const phase = oldDurationMs ? (anim.currentTime % oldDurationMs) / oldDurationMs : 0;
+  const oldDurationMs = anims.length ? durationMs() : 0;
+  const phases = anims.map((a) => (oldDurationMs ? (a.currentTime % oldDurationMs) / oldDurationMs : 0));
   setBeatDuration(el, varName, cycleMs, beatsPerCycle, label);
-  if (anim) anim.currentTime = phase * durationMs();
+  const newDurationMs = durationMs();
+  anims.forEach((a, i) => { a.currentTime = phases[i] * newDurationMs; });
 }
 
 // ---- border colour: an inline custom property + class on <body>, local to this client ----
@@ -476,29 +486,27 @@ function activateBorder(colour, { label }) {
 }
 
 /** Starts the label's own dilate (scale only, no colour) independently of border activation. */
-// //+text-dilate-fade-mutually-exclusive each clears the other's class -- both are the same
-// `animation` shorthand property on one element, so leaving both set is never additive.
+// //+text-pulse-fade-combinable just its own class -- see injectStyles' combined rule for
+// how this stacks with Fade instead of one overriding the other.
 function activateTextDilate(label) {
   injectStyles();
-  label.classList.remove("pause-fx-text-fade");
   label.classList.add("pause-fx-text-dilate");
   label.style.removeProperty(DILATE_PLAY_VAR); // clears any earlier stopTextPulse freeze
 }
+function deactivateTextDilate(label) {
+  label.classList.remove("pause-fx-text-dilate");
+}
 
-/** Starts the label's own fade (colour only, no scale) independently of border activation --
- *  needs .pause-fx-label too, for the resting fill colour its own keyframes read between
- *  pulses (see injectStyles' fade keyframes). */
+/** Starts the label's own opacity fade, independently of Pulse or border activation -- needs
+ *  .pause-fx-label too, for the resting fill colour border/glow track (unrelated to fade
+ *  itself -- see text-fade-self-contained-opacity). */
 function activateTextFade(label) {
   injectStyles();
-  label.classList.remove("pause-fx-text-dilate");
   label.classList.add("pause-fx-label", "pause-fx-text-fade");
   label.style.removeProperty(FADE_PLAY_VAR); // clears any earlier stopTextFade freeze
 }
-
-// Neither Pulse nor Fade -- static text, normal scale and opacity. Both fields are always
-// concrete now (see stepFromRow), so "both false" is a real, reachable choice, not just omission.
-function deactivateTextAnimation(label) {
-  label.classList.remove("pause-fx-text-dilate", "pause-fx-text-fade");
+function deactivateTextFade(label) {
+  label.classList.remove("pause-fx-text-fade");
 }
 
 // ---- the sequencer itself ----
@@ -721,10 +729,12 @@ export class PauseFX {
       }
       if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
       //+text-fade-explicit-off explicit false matters here too, not just true.
-      if (step.textPulse !== undefined || step.textFade !== undefined) {
-        if (step.textPulse) activateTextDilate(label);
-        else if (step.textFade) activateTextFade(label);
-        else deactivateTextAnimation(label);
+      //+text-pulse-fade-combinable independent now -- both can run together.
+      if (step.textPulse !== undefined) {
+        if (step.textPulse) activateTextDilate(label); else deactivateTextDilate(label);
+      }
+      if (step.textFade !== undefined) {
+        if (step.textFade) activateTextFade(label); else deactivateTextFade(label);
       }
       if (step.stopTextPulse) label.style.setProperty(DILATE_PLAY_VAR, "paused");
       if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
