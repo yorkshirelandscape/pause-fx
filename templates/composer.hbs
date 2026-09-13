@@ -1,11 +1,10 @@
 <div class="pfx-composer">
-  <fieldset class="pfx-startup">
-    <legend><i class="fa-solid fa-bolt fa-lg"></i> Startup</legend>
-    <div class="pfx-row">
-      <label class="pfx-field pfx-field-narrow pfx-field-pulse-time">
-        <span>Cycle<br>Time</span>
-        <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="{{defaultPulseLengthLabel}}" value="{{globals.pulseLengthS}}">
-      </label>
+  <div class="pfx-startup">
+    <label class="pfx-field pfx-field-narrow">
+      <span>Cycle<br>Time</span>
+      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="{{defaultPulseLengthLabel}}" value="{{globals.pulseLengthS}}">
+    </label>
+    <div class="pfx-startup-checks">
       <label class="pfx-checkbox">End Active Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
       <span class="pfx-close-windows">
         <span class="pfx-inline-label">Minimize Windows:</span>
@@ -13,7 +12,16 @@
         <label class="pfx-checkbox">GMs <input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}></label>
       </span>
     </div>
-  </fieldset>
+    <span class="pfx-toolbar">
+      <button type="button" class="pfx-toolbar-button" data-action="saveMacro" title="Save as Macro"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <button type="button" class="pfx-toolbar-button" data-action="run" title="Run"><i class="fa-solid fa-play"></i> Run</button>
+      <button type="button" class="pfx-toolbar-button{{#if showSeconds}} pfx-toolbar-button-active{{/if}}" data-action="toggleSeconds"
+              title="{{#if showSeconds}}Show Duration in Beats{{else}}Show Duration in Seconds{{/if}}">
+        <i class="fa-solid fa-clock"></i> {{#if showSeconds}}Seconds{{else}}Beats{{/if}}
+      </button>
+      <button type="button" class="pfx-toolbar-button" data-action="addStep" title="Add Step"><i class="fa-solid fa-plus"></i> Add Step</button>
+    </span>
+  </div>
 
   <fieldset class="pfx-steps-fieldset">
     <legend><i class="fa-solid fa-stairs fa-lg"></i> Steps</legend>
@@ -95,6 +103,5 @@
       </li>
       {{/each}}
     </ol>
-    <button type="button" data-action="addStep"><i class="fa-solid fa-plus"></i> Add Step</button>
   </fieldset>
 </div>

@@ -6,9 +6,8 @@
    tokens, not invented hex values; native form controls left alone. Structure means something
    (the wait badge is a pill because it's a value; every other badge is a square). */
 
-/* ApplicationV2's .window-content is plain overflow:hidden by default -- a resizable dialog
-   with variable content silently clips instead of scrolling unless a module opts in itself. */
-#pause-fx-composer .window-content, /*+unlayered-css-always-wins*/
+/* Composer's own scroll region is one level down (.pfx-steps-fieldset) -- see that rule. */
+#pause-fx-composer .window-content { overflow: hidden; } /*+unlayered-css-always-wins*/
 #pause-fx-step-editor .window-content {
   overflow-y: auto;
   overflow-x: hidden;
@@ -74,7 +73,6 @@
 /* fa-lg's own values (measured live off Foundry's actual rule) -- baked in directly since
    our selector's specificity would beat a bare .fa-lg class anyway. */
 #pause-fx-step-editor .pfx-block-stop legend i,
-#pause-fx-composer .pfx-startup legend i,
 #pause-fx-composer .pfx-steps-fieldset legend i {
   font-size: 1.25em;
   line-height: 0.0625em;
@@ -150,15 +148,6 @@
   opacity: 1 !important;
   border-color: var(--pfx-surface-border) !important;
 }
-/* Label beside the input instead of above it, its two words stacked -- shorter than the
-   shared .pfx-field's column layout, freeing up vertical space in the Startup row. */
-#pause-fx-composer .pfx-field-pulse-time {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  line-height: 1.05;
-}
-#pause-fx-composer .pfx-field-pulse-time span { text-align: center; }
 /* Sized narrow (a handful of characters -- pulse counts, volumes, percentages). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
@@ -290,27 +279,57 @@
 }
 
 /* ---- Startup ---- */
-#pause-fx-composer .pfx-startup { padding: 0.5rem 0.7rem 0.65rem; }
-/* Close Windows' label + two checkboxes wrap as one flex item (.pfx-close-windows), so
-   space-between treats them as a unit instead of spacing each individually. */
-#pause-fx-composer .pfx-startup .pfx-row { justify-content: space-between; }
-#pause-fx-composer .pfx-close-windows {
+/* Fills .window-content so Startup can pin above the one scrolling region below it. */
+#pause-fx-composer .pfx-composer { height: 100%; }
+/* A plain div now -- a bottom rule only, not the fieldset's own boxed-panel look. One row:
+   Cycle Time, the two checkbox settings stacked as a unit, then the toolbar. */
+#pause-fx-composer .pfx-startup {
+  flex-shrink: 0; /* pinned -- never compressed by the scrolling steps list below it */
   display: flex;
-  align-items: flex-end;
-  gap: 0.4rem 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.2rem 0.65rem;
+  border-bottom: 1px solid var(--pfx-surface-border);
 }
+#pause-fx-composer .pfx-startup-checks { display: flex; flex-direction: column; gap: 0.3rem; }
+#pause-fx-composer .pfx-close-windows { display: flex; align-items: center; gap: 0.4rem 0.75rem; }
 #pause-fx-composer .pfx-inline-label {
   font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
-  /* Padded out to match a real checkbox's ~27px box height, so flex-end alignment lines up
-     this label's text with the checkboxes' visual centre, not just the two boxes' edges. */
-  padding: 6px 0;
-  align-self: flex-end;
   white-space: nowrap;
+}
+#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.15rem; }
+#pause-fx-composer .pfx-toolbar-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pfx-text-body);
+  font-size: var(--font-size-11, 0.6875rem);
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+#pause-fx-composer .pfx-toolbar-button i { font-size: 1.1rem; }
+#pause-fx-composer .pfx-toolbar-button:hover {
+  background: color-mix(in srgb, var(--pfx-accent) 18%, transparent);
+  color: var(--pfx-text-bright);
+}
+/* A "pressed" look for the seconds/beats toggle specifically -- the only toolbar button
+   with an on/off state of its own. */
+#pause-fx-composer .pfx-toolbar-button-active {
+  color: var(--pfx-accent);
+  background: color-mix(in srgb, var(--pfx-accent) 20%, transparent);
 }
 
 /* ---- Steps list ---- */
-#pause-fx-composer .pfx-steps-fieldset { padding: 0.4rem 0.5rem 0.5rem; }
+/* The Composer's own one scrolling region now (Startup, above, stays pinned) -- min-height:0
+   is what actually lets a flex child's own overflow:auto take effect, not just flex:1 alone. */
+#pause-fx-composer .pfx-steps-fieldset { padding: 0.4rem 0.5rem 0.5rem; flex: 1; min-height: 0; overflow-y: auto; }
 #pause-fx-composer .pfx-steps { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 #pause-fx-composer .pfx-step {
   position: relative;
@@ -507,15 +526,6 @@
   pointer-events: none;
 }
 
-#pause-fx-composer [data-action="addStep"] {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 6px;
-  transition: border-color 120ms ease, color 120ms ease;
-}
-#pause-fx-composer [data-action="addStep"]:hover { border-color: var(--pfx-accent); color: var(--pfx-text-bright); }
-
 /* ---- Step editor dialog ---- */
 #pause-fx-step-editor .pfx-block { display: flex; flex-direction: column; gap: 0.5rem; }
 #pause-fx-step-editor .pfx-block-wait { grid-area: wait; }
@@ -655,12 +665,3 @@
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track { background: var(--pfx-accent); }
 #pause-fx-step-editor .pfx-switch input:checked + .pfx-switch-track .pfx-switch-thumb { transform: translateX(1rem); }
 #pause-fx-step-editor .pfx-switch input:focus-visible + .pfx-switch-track { outline: 2px solid var(--pfx-accent); outline-offset: 2px; }
-
-/* ---- Composer header: Duration-display toggle ---- */
-/* A "pressed" look for the seconds/beats toggle -- Foundry's own header-control has no
-   active state of its own to build on. */
-#pause-fx-composer .header-control.pfx-header-control-active {
-  color: var(--pfx-accent);
-  background: color-mix(in srgb, var(--pfx-accent) 20%, transparent);
-  border-radius: 4px;
-}

@@ -74,6 +74,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     const steps = this.rows.map(stepFromRow);
     return {
       globals: this.globals,
+      showSeconds: this.showSeconds,
       defaultPulseLengthLabel: `${msToSeconds(DEFAULT_CYCLE_MS)} sec`, // the placeholder's own value
       rows: steps.map((step, index) => {
         // Badges/text preview what's really on screen here -- //+foundry-default-continuity why.
@@ -101,40 +102,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   _onRender(context, options) {
     super._onRender(context, options);
     this.#dragDrop.bind(this.element); // re-bind every render -- the step <li>s are new DOM each time
-    this.#ensureHeaderButtons();
-    this.#updateSecondsButton();
     this.element.querySelectorAll(".pfx-step-remove").forEach((btn) => this.#wireStepRemove(btn));
-  }
-
-  // Foundry's own header only renders toggle-controls/close directly -- window.controls entries
-  // land in the dropdown, not the bar. Inserted once (idempotent), since the header isn't a PART.
-  #ensureHeaderButtons() {
-    const header = this.element.querySelector(".window-header");
-    if (!header || header.querySelector('[data-action="run"]')) return;
-    const ellipsis = header.querySelector('[data-action="toggleControls"]');
-    const makeButton = (action, icon, tooltip) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = `header-control icon ${icon}`;
-      btn.dataset.action = action;
-      btn.dataset.tooltip = tooltip;
-      btn.setAttribute("aria-label", tooltip);
-      return btn;
-    };
-    header.insertBefore(makeButton("run", "fa-solid fa-play", "Run"), ellipsis);
-    header.insertBefore(makeButton("saveMacro", "fa-solid fa-floppy-disk", "Save as Macro"), ellipsis);
-    header.insertBefore(makeButton("toggleSeconds", "fa-solid fa-clock", "Show Duration in Seconds"), ellipsis);
-  }
-
-  // The button itself is only ever inserted once (see above); its own pressed-look and
-  // tooltip still need to track showSeconds on every render, not just the first.
-  #updateSecondsButton() {
-    const btn = this.element.querySelector('[data-action="toggleSeconds"]');
-    if (!btn) return;
-    btn.classList.toggle("pfx-header-control-active", this.showSeconds);
-    const tooltip = this.showSeconds ? "Show Duration in Beats" : "Show Duration in Seconds";
-    btn.dataset.tooltip = tooltip;
-    btn.setAttribute("aria-label", tooltip);
   }
 
   #onDragStart(event) {
