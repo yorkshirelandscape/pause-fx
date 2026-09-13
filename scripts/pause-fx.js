@@ -281,13 +281,15 @@ function setBeatDuration(el, varName, cycleMs, beatsPerCycle, label) {
   el.style.setProperty(varName, `${beatDurationS(cycleMs, beatsPerCycle, label)}s`);
 }
 
-// Keeps a mid-flight speed change seamless -- //+icon-spin-retiming-jump why.
-function retimeIconSpin(iconEl, cycleMs, beatsPerCycle) {
-  const anim = iconEl.getAnimations().find((a) => a.animationName === "pause-fx-icon-spin");
-  const oldDurationMs = anim ? parseFloat(getComputedStyle(iconEl).animationDuration) * 1000 : 0;
+// Keeps a mid-flight speed change seamless, on el itself or its `pseudo` (e.g. "::before")
+// -- //+icon-spin-retiming-jump why.
+function retimeAnimation(el, animationName, varName, cycleMs, beatsPerCycle, label, pseudo) {
+  const anim = el.getAnimations({ subtree: true }).find((a) => a.animationName === animationName);
+  const durationMs = () => parseFloat(getComputedStyle(el, pseudo).animationDuration) * 1000;
+  const oldDurationMs = anim ? durationMs() : 0;
   const phase = oldDurationMs ? (anim.currentTime % oldDurationMs) / oldDurationMs : 0;
-  setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, beatsPerCycle, "icon");
-  if (anim) anim.currentTime = phase * parseFloat(getComputedStyle(iconEl).animationDuration) * 1000;
+  setBeatDuration(el, varName, cycleMs, beatsPerCycle, label);
+  if (anim) anim.currentTime = phase * durationMs();
 }
 
 // ---- border colour: an inline custom property + class on <body>, local to this client ----
@@ -725,14 +727,16 @@ export class PauseFX {
       }
       if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
       if (step.iconBeatsPerCycle !== undefined && iconEl) {
-        retimeIconSpin(iconEl, cycleMs, step.iconBeatsPerCycle);
+        retimeAnimation(iconEl, "pause-fx-icon-spin", ICON_DURATION_VAR, cycleMs, step.iconBeatsPerCycle, "icon");
         iconDurationEverSet = true;
       }
       if (step.borderColor) activateBorder(step.borderColor, { label });
       if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
       if (step.stopBorderPulse) document.body.classList.add(BORDER_FROZEN_CLASS);
       if (step.borderBeatsPerCycle !== undefined) {
-        setBeatDuration(document.body, BORDER_DURATION_VAR, cycleMs, step.borderBeatsPerCycle, "border");
+        // //+icon-spin-retiming-jump same mid-flight jump, same fix -- border's own pulse
+        // lives on a ::before pseudo-element, not <body> itself.
+        retimeAnimation(document.body, "pause-fx-border-pulse", BORDER_DURATION_VAR, cycleMs, step.borderBeatsPerCycle, "border", "::before");
       }
 
       // //+pre-av-duration-post-av-step-model AV phase: video/image self-contained per step;
