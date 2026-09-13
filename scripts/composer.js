@@ -40,7 +40,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       duplicateStep: PauseFXComposer.#onDuplicateStep,
       saveMacro: PauseFXComposer.#onSaveMacro,
       run: PauseFXComposer.#onRun,
-      toggleSeconds: PauseFXComposer.#onToggleSeconds,
+      setDurationUnit: PauseFXComposer.#onSetDurationUnit,
     },
   };
 
@@ -228,8 +228,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     this.render({ parts: ["body"] });
   }
 
-  static #onToggleSeconds() {
-    this.showSeconds = !this.showSeconds;
+  static #onSetDurationUnit(event, target) {
+    this.showSeconds = target.dataset.unit === "seconds";
     this.render({ parts: ["body"] });
   }
 
