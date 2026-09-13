@@ -300,7 +300,10 @@
 }
 #pause-fx-composer .pfx-field-cycle-time input { text-align: center; }
 #pause-fx-composer .pfx-startup-stack { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 0.3rem; }
-#pause-fx-composer .pfx-startup-row { display: flex; align-items: center; gap: 0.4rem; }
+/* space-between -- each row's own last item (Freeze Audio; the Players/GMs pair) lands flush
+   against the row's right edge, so their checkboxes (the last thing in each label) line up. */
+#pause-fx-composer .pfx-startup-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+#pause-fx-composer .pfx-checkbox-pair { display: flex; align-items: center; gap: 0.4rem; }
 /* Only End Encounter lives in row 1 -- Players/GMs (row 2) stay regular weight. */
 #pause-fx-composer .pfx-startup-row:first-child .pfx-checkbox { font-weight: 700; }
 #pause-fx-composer .pfx-inline-label {
