@@ -304,7 +304,7 @@
   color: var(--pfx-text-body);
   white-space: nowrap;
 }
-#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.6rem; }
+#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
 /*+toolbar-button-foundry-height-override Foundry's own default height was too short for
    icon+label content -- invisible until a button (Run) got a solid fill to clip against. */
 #pause-fx-composer .pfx-toolbar-button {
