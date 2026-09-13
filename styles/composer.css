@@ -132,9 +132,9 @@
   color: var(--pfx-text-body);
   align-self: flex-start; /* don't stretch to the column's full width when standing alone */
 }
-/* Text's "None"/"Pulse" checkboxes group as one unit at the row's far end, not spread out. */
-#pause-fx-step-editor .pfx-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-#pause-fx-step-editor .pfx-checkbox-group { display: flex; align-items: center; gap: 0.6rem; }
+/* Each field's None/Pulse/Fade/Glow (or None/Glow/Spin) toggles sit as their own row
+   beneath it, wrapping if the dialog narrows rather than clipping. */
+#pause-fx-step-editor .pfx-checkbox-group { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
 /*+disabled-input-border-paradox Foundry's :disabled border reads as MORE defined than an
    enabled field here, since ours have no border at all. */
 #pause-fx-step-editor input:disabled { /*+unlayered-css-always-wins*/
@@ -159,8 +159,13 @@
 /* Sized narrow (a handful of characters -- pulse counts, volumes, percentages). */
 #pause-fx-composer .pfx-field-narrow input,
 #pause-fx-step-editor .pfx-field-narrow input { width: 4.5rem; }
-/* A hair narrower/shorter than the shared size -- must follow it (same specificity). */
-#pause-fx-step-editor input[name="borderWidthPct"] { width: 4rem; height: 1.6rem; text-align: center; }
+/* Border's own two inputs match each other, a hair narrower/shorter than the shared size --
+   must follow it (same specificity). */
+#pause-fx-step-editor input[name="borderWidthPct"],
+#pause-fx-step-editor input[name="borderBeatsPerCycle"] { width: 4rem; height: 1.6rem; text-align: center; }
+/* Every Beats/Cycle field's value centers, not just Border's own pair above. */
+#pause-fx-step-editor input[name="textBeatsPerCycle"],
+#pause-fx-step-editor input[name="iconBeatsPerCycle"] { text-align: center; }
 /* Everything else (paths, free text) gets a real but bounded width -- not the dialog's full ~450px. */
 #pause-fx-step-editor .pfx-field input[type="text"],
 #pause-fx-step-editor .pfx-field input[type="search"] { width: 12rem; }
@@ -199,13 +204,14 @@
   justify-self: end;
   text-align: right;
 }
-/* Image mode's Pulses field replaces Volume+its readout entirely -- one field, both rows. */
+/* Image mode's Beats field replaces Volume+its readout entirely -- one field, both rows. */
 #pause-fx-step-editor .pfx-io-pulses {
   grid-column: 4;
   grid-row: 1 / 3;
   justify-self: end;
   align-self: center;
 }
+#pause-fx-step-editor .pfx-io-pulses input { text-align: center; }
 #pause-fx-step-editor .pfx-io-range { display: contents; }
 #pause-fx-step-editor .pfx-io-range > input[type="number"] {
   grid-area: io-vnum;
@@ -529,11 +535,9 @@
 }
 #pause-fx-step-editor [data-action="browseFile"]:hover { border-color: var(--pfx-accent); color: var(--pfx-text-bright); }
 
-/* Sole occupant of a wide block -- let this one field fill the row, not the shared 12rem. */
-#pause-fx-step-editor .pfx-block-icon .pfx-field,
-#pause-fx-step-editor .pfx-block-text .pfx-field {
-  flex: 1;
-}
+/* Message/Path fill the row beside their own Beats/Cycle field, which stays the shared
+   narrow width instead -- not every .pfx-field in these blocks, just this one. */
+#pause-fx-step-editor .pfx-field-grow { flex: 1; }
 #pause-fx-step-editor .pfx-block-text input[type="search"] { width: 100%; }
 #pause-fx-step-editor .pfx-block-icon .pfx-with-picker { flex: 1; }
 #pause-fx-step-editor .pfx-block-icon .pfx-with-picker input[type="text"] { flex: 1; width: auto; }
@@ -546,23 +550,23 @@
 #pause-fx-step-editor .pfx-block-wait legend { margin-bottom: -0.1rem; }
 
 /* Duration/Border center their row's content horizontally, no reason to hug the left edge.
-   Duration also centers vertically -- flex-end (the default) hugged Pulses to the AV pair's bottom. */
+   Duration also centers vertically -- flex-end (the default) hugged Beats to the AV pair's bottom. */
 #pause-fx-step-editor .pfx-block-wait .pfx-row { align-items: center; }
 #pause-fx-step-editor .pfx-block-wait .pfx-row,
 #pause-fx-step-editor .pfx-block-border .pfx-row {
   justify-content: center;
 }
-/* Center "Pulses" and its value too, not just the field's position in the row -- align-self
+/* Center "Beats" and its value too, not just the field's position in the row -- align-self
    overrides the shared .pfx-field's own flex-start, which otherwise beats the row's align-items. */
 #pause-fx-step-editor .pfx-block-wait .pfx-field {
   align-items: center;
   align-self: center;
   text-align: center;
 }
-/* Smaller than before -- gives the AV pair (below) more room to breathe in the same row. */
+/* Wide enough for two decimal places (e.g. "1.45"), not just a bare integer. */
 #pause-fx-step-editor .pfx-block-wait input[name="waitUnits"] {
   text-align: center;
-  width: 2.5rem;
+  width: 3.3rem;
   font-size: 0.95rem;
 }
 
@@ -592,9 +596,18 @@
 }
 #pause-fx-step-editor .pfx-stop-unpause { grid-column: 3; grid-row: 2; } /* off auto-flow -- 2,2 stays empty */
 
-/* Centered, matching Text's own field-label-row -- despite Icon Glow's swatch (1.7rem)
-   standing taller than the label's line height, flex-end here read as a mismatch. */
-#pause-fx-step-editor .pfx-block-icon .pfx-field-label-row { align-items: center; }
+/* Border's own two narrow fields: label to the input's left instead of above it, wrapping
+   onto two lines at this width rather than stretching the field wider to fit one. */
+#pause-fx-step-editor .pfx-field-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+#pause-fx-step-editor .pfx-field-row span {
+  width: 3.6rem;
+  white-space: normal;
+  text-align: right;
+}
 
 /*+media-toggle-accessible-switch A real checkbox underneath, restyled as a two-position
    switch -- teal (video) / accent orange (image), so both sides read as "on". */
