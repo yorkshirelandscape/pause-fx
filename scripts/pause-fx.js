@@ -804,43 +804,42 @@ export class PauseFX {
         if (step.preAV) await wait(clockMsFor(step.preAV, cycles), signal);
         if (signal.aborted) break;
 
-        // 0-units imagePulses waits for a manual advance between slides; no imagePulses at
-        // all is a single still with nothing to advance through.
+        //+image-step-defaults-to-manual-advance omitted imagePulses behaves like 0 (manual)
+        // -- matches the step-editor's own "DblClick" placeholder for a blank field.
         let slideshowDone = null;
         if (hasVisual) {
           if (isVideo) {
             visualEl.play();
           } else {
             visualEl.src = imageFiles[0];
-            if (step.imagePulses !== undefined) {
-              let resolveSlideshowDone;
-              slideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
-              const showSlideshow = async () => {
-                let i = 0;
-                while (true) {
-                  //+slideshow-closes-over-element-not-overlay isConnected: the step already
-                  // ended and took the element with it -- else this loops past the run.
-                  if (signal.aborted || !visualEl.isConnected) { resolveSlideshowDone(); return; }
-                  if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
-                  if (step.imagePulses === 0) await waitForManualAdvance(signal);
-                  else await wait(clockMsFor({ units: step.imagePulses }, cycles), signal);
-                  i++;
-                  if (i >= imageFiles.length) {
-                    resolveSlideshowDone(); // one full pass done, looping or not -- fires once
-                    if (!step.loop) break;
-                  }
+            const imagePulses = step.imagePulses ?? 0;
+            let resolveSlideshowDone;
+            slideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
+            const showSlideshow = async () => {
+              let i = 0;
+              while (true) {
+                //+slideshow-closes-over-element-not-overlay isConnected: the step already
+                // ended and took the element with it -- else this loops past the run.
+                if (signal.aborted || !visualEl.isConnected) { resolveSlideshowDone(); return; }
+                if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
+                if (imagePulses === 0) await waitForManualAdvance(signal);
+                else await wait(clockMsFor({ units: imagePulses }, cycles), signal);
+                i++;
+                if (i >= imageFiles.length) {
+                  resolveSlideshowDone(); // one full pass done, looping or not -- fires once
+                  if (!step.loop) break;
                 }
-              };
-              void showSlideshow();
-            }
+              }
+            };
+            void showSlideshow();
           }
         }
         if (boundSound) boundSound.play();
 
-        // Explicit Duration always wins when set. Unset, wait for the later of whichever
-        // channels aren't looping -- see the linked note if everything loops instead.
+        //+manual-slideshow-loop-has-a-natural-end explicit Duration always wins when set;
+        // unset, wait for the later of whichever channels genuinely have no natural end.
         const naturalEnds = [];
-        if (hasVisual && !step.loop) {
+        if (hasVisual && (!step.loop || (step.imagePulses ?? 0) === 0)) {
           // "error" too: an unloadable video never fires "ended", and would hang the sequence.
           if (isVideo) naturalEnds.push(waitForEvent(visualEl, ["ended", "error"], signal));
           else if (slideshowDone) naturalEnds.push(slideshowDone);
