@@ -282,8 +282,8 @@
 /* ---- Startup ---- */
 /* Fills .window-content so Startup can pin above the one scrolling region below it. */
 #pause-fx-composer .pfx-composer { height: 100%; }
-/* A plain div. Cycle Time, the settings grid, then the toolbar pushed to the far edge --
-   stretched so all three share one height, each centering its own content in it. */
+/* A plain div. Cycle Time beside a stack of three rows -- End Encounter/Beats-Seconds,
+   Minimize Windows/Players/GMs, then the toolbar -- stretched to share Cycle Time's height. */
 #pause-fx-composer .pfx-startup {
   flex-shrink: 0; /* pinned -- never compressed by the scrolling steps list below it */
   display: flex;
@@ -293,25 +293,18 @@
 }
 #pause-fx-composer .pfx-field-cycle-time { align-self: stretch; justify-content: center; }
 #pause-fx-composer .pfx-field-cycle-time span { white-space: nowrap; color: var(--pfx-text-heading); font-weight: 600; }
-/* Column-major: End Encounter/Minimize Windows fill column 1, Beats-Seconds/Players-GMs
-   fill column 2 -- row 2 reads left-to-right as "Minimize Windows: Players GMs". */
-#pause-fx-composer .pfx-startup-grid {
-  display: grid;
-  grid-template-rows: auto auto;
-  grid-auto-flow: column;
-  align-items: center;
-  gap: 0.3rem 0.9rem;
-}
-#pause-fx-composer .pfx-close-windows-checks { display: flex; align-items: center; gap: 0.4rem; }
-/* A group label, not a control -- smaller and quieter than the "Players"/"GMs" checkboxes
-   it introduces, so the two read as different things at a glance. */
+#pause-fx-composer .pfx-field-cycle-time input { text-align: center; }
+#pause-fx-composer .pfx-startup-stack { display: flex; flex-direction: column; justify-content: center; gap: 0.3rem; }
+#pause-fx-composer .pfx-startup-row { display: flex; align-items: center; gap: 0.4rem; }
+/* Beats/Seconds sits at the row's own far edge -- space-between, not flex-grow on the
+   control itself, so it stays sized to its content instead of stretching to fill the row. */
+#pause-fx-composer .pfx-startup-row:first-child { justify-content: space-between; }
 #pause-fx-composer .pfx-inline-label {
-  font-size: var(--font-size-11, 0.6875rem);
+  font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
-  opacity: 0.8;
   white-space: nowrap;
 }
-#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
+#pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.6rem; }
 /*+toolbar-button-foundry-height-override Foundry's own default height was too short for
    icon+label content -- invisible until a button (Run) got a solid fill to clip against. */
 #pause-fx-composer .pfx-toolbar-button {
