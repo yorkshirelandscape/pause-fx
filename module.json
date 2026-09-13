@@ -2,7 +2,7 @@
   "id": "pause-fx",
   "title": "Pause FX",
   "description": "Declarative, reusable themed pause-screen reveals -- border/icon/text/video/image/audio steps on cycle-based clocks, plus closing every connected client's open windows via socketlib.",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "manifest": "https://github.com/yorkshirelandscape/pause-fx/releases/latest/download/module.json",
   "url": "https://github.com/yorkshirelandscape/pause-fx",
   "download": "https://github.com/yorkshirelandscape/pause-fx/releases/latest/download/pause-fx.zip",
