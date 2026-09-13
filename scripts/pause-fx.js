@@ -701,6 +701,9 @@ export class PauseFX {
       if (step.text !== undefined) {
         label.textContent = step.text;
         label.style.textTransform = "none"; //+pause-text-transform-override
+        //+icon-text-vertical-recenter out of flow (not display:none -- see the icon's own
+        // case below) so the icon re-centers alone in #pause's own column when text is empty.
+        label.style.position = step.text ? "" : "absolute";
       }
       if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
       if (step.textPulse) activateTextDilate(label);
@@ -712,6 +715,9 @@ export class PauseFX {
       }
       if (step.iconVisible !== undefined && iconEl) {
         iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
+        //+icon-text-vertical-recenter position, not display:none -- keeps the spin
+        // animation's own currentTime ticking (see icon-spin-retiming-jump) while hidden.
+        iconEl.style.position = step.iconVisible ? "" : "absolute";
       }
 
       if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
