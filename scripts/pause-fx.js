@@ -281,10 +281,11 @@ function setBeatDuration(el, varName, cycleMs, beatsPerCycle, label) {
   el.style.setProperty(varName, `${beatDurationS(cycleMs, beatsPerCycle, label)}s`);
 }
 
-// Keeps a mid-flight speed change seamless, on el itself or its `pseudo` (e.g. "::before")
-// -- //+icon-spin-retiming-jump why.
-function retimeAnimation(el, animationName, varName, cycleMs, beatsPerCycle, label, pseudo) {
-  const anim = el.getAnimations({ subtree: true }).find((a) => a.animationName === animationName);
+// Keeps a mid-flight speed change seamless -- //+icon-spin-retiming-jump why. animationNames
+// may be one name or several (retimes whichever's actually running); pseudo e.g. "::before".
+function retimeAnimation(el, animationNames, varName, cycleMs, beatsPerCycle, label, pseudo) {
+  const names = Array.isArray(animationNames) ? animationNames : [animationNames];
+  const anim = el.getAnimations({ subtree: true }).find((a) => names.includes(a.animationName));
   const durationMs = () => parseFloat(getComputedStyle(el, pseudo).animationDuration) * 1000;
   const oldDurationMs = anim ? durationMs() : 0;
   const phase = oldDurationMs ? (anim.currentTime % oldDurationMs) / oldDurationMs : 0;
@@ -474,8 +475,11 @@ function activateBorder(colour, { label }) {
 }
 
 /** Starts the label's own dilate (scale only, no colour) independently of border activation. */
+// //+text-dilate-fade-mutually-exclusive each clears the other's class -- both are the same
+// `animation` shorthand property on one element, so leaving both set is never additive.
 function activateTextDilate(label) {
   injectStyles();
+  label.classList.remove("pause-fx-text-fade");
   label.classList.add("pause-fx-text-dilate");
   label.style.removeProperty(DILATE_PLAY_VAR); // clears any earlier stopTextPulse freeze
 }
@@ -485,6 +489,7 @@ function activateTextDilate(label) {
  *  pulses (see injectStyles' fade keyframes). */
 function activateTextFade(label) {
   injectStyles();
+  label.classList.remove("pause-fx-text-dilate");
   label.classList.add("pause-fx-label", "pause-fx-text-fade");
   label.style.removeProperty(FADE_PLAY_VAR); // clears any earlier stopTextFade freeze
 }
@@ -713,7 +718,7 @@ export class PauseFX {
       if (step.textFade) activateTextFade(label);
       if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
       if (step.textBeatsPerCycle !== undefined) {
-        setBeatDuration(label, TEXT_DURATION_VAR, cycleMs, step.textBeatsPerCycle, "text");
+        retimeAnimation(label, ["pause-fx-text-dilate", "pause-fx-text-fade"], TEXT_DURATION_VAR, cycleMs, step.textBeatsPerCycle, "text");
       }
       if (step.iconVisible !== undefined && iconEl) {
         iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
