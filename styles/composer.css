@@ -297,7 +297,7 @@
 #pause-fx-composer .pfx-startup-divider { align-self: stretch; flex-shrink: 0; width: 1px; background: var(--pfx-surface-border); }
 #pause-fx-composer .pfx-field-cycle-time { align-self: stretch; justify-content: center; }
 #pause-fx-composer .pfx-field-cycle-time span { white-space: nowrap; color: var(--pfx-text-heading); font-weight: 600; }
-#pause-fx-composer .pfx-startup-checks { display: flex; flex-direction: column; justify-content: center; gap: 0.3rem; }
+#pause-fx-composer .pfx-startup-checks { display: flex; align-items: center; gap: 0.9rem; }
 #pause-fx-composer .pfx-close-windows { display: flex; align-items: center; gap: 0.4rem; }
 #pause-fx-composer .pfx-close-windows-checks { display: flex; flex-direction: column; gap: 0.2rem; }
 /* A group label, not a control -- smaller and quieter than the "Players"/"GMs" checkboxes
