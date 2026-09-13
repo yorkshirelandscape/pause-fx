@@ -39,8 +39,7 @@ await game.modules.get("pause-fx").api.run({
     },
     {
       "text": "...this one waits for you -- double-click the image to advance it",
-      "image": "icons/environment/cosmos", "imagePulses": 0,
-      "preAV": { "units": 0.3 }, "wait": { "units": 3 }, "postAV": { "units": 0.5 }
+      "image": "icons/environment/cosmos", "imagePulses": 0
     },
     {
       "text": "sound can be bound to a step's own timing",
