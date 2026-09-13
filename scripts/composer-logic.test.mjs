@@ -336,14 +336,17 @@ test("stepBadges: loop badge fires off audioLoop too, not just the video/image l
   assert.deepEqual(stepBadges({ audioLoop: true }), [{ type: "loop" }]);
 });
 
-test("stepBadges: an icon badge appears even with only glow/spin/visibility set, no icon path", () => {
-  assert.deepEqual(
-    stepBadges({ iconSpin: true }),
-    [{ type: "icon", icon: undefined, glow: undefined, spin: true, visible: undefined }],
-  );
+test("stepBadges: an icon badge appears with only glow/visibility set, no icon path -- but not from iconSpin alone", () => {
+  // iconSpin is always concrete now (see foundry-default-continuity), so on its own it
+  // must NOT trigger the badge -- every step would show one otherwise.
+  assert.deepEqual(stepBadges({ iconSpin: true }), []);
   assert.deepEqual(
     stepBadges({ iconVisible: false }),
     [{ type: "icon", icon: undefined, glow: undefined, spin: false, visible: false }],
+  );
+  assert.deepEqual(
+    stepBadges({ iconGlow: "#00ff00", iconSpin: true }),
+    [{ type: "icon", icon: undefined, glow: "#00ff00", spin: true, visible: undefined }],
   );
 });
 

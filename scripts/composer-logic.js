@@ -277,7 +277,9 @@ export function stepBadges(step, pulseLengthS) {
   if (step.audio && step.waitForAudioEnd && avType !== "audio") badges.push({ type: "audioBound" });
   if (step.borderColor) badges.push({ type: "border", colour: step.borderColor });
   if (step.textGlow !== undefined) badges.push({ type: "textGlow", colour: step.textGlow });
-  if (step.icon || step.iconGlow !== undefined || step.iconSpin !== undefined || step.iconVisible === false) {
+  // iconSpin isn't a trigger here -- it's always concrete now (see foundry-default-continuity),
+  // so it'd fire on every step regardless of whether the icon itself is actually involved.
+  if (step.icon || step.iconGlow !== undefined || step.iconVisible === false) {
     // A hidden icon can't meaningfully be spinning -- the glyph would contradict its own
     // eye-slash overlay otherwise.
     const spinning = !!step.iconSpin && step.iconVisible !== false;
