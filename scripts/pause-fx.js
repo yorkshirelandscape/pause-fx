@@ -254,7 +254,7 @@ function injectStyles() {
 
     @keyframes pause-fx-text-dilate {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.08); }
+      50% { transform: scale(1.025); } /* Foundry's own real peak -- //+foundry-default-continuity */
     }
     @media (prefers-reduced-motion: no-preference) {
       .pause-fx-text-dilate { animation: pause-fx-text-dilate var(${TEXT_DURATION_VAR}, 3s) ease-in-out infinite; animation-play-state: var(${DILATE_PLAY_VAR}, running); }
@@ -278,6 +278,15 @@ function removeStyles() {
 // Sets one element's own beat-duration var -- see beatDurationS for the actual math/clamp.
 function setBeatDuration(el, varName, cycleMs, beatsPerCycle, label) {
   el.style.setProperty(varName, `${beatDurationS(cycleMs, beatsPerCycle, label)}s`);
+}
+
+// Keeps a mid-flight speed change seamless -- //+icon-spin-retiming-jump why.
+function retimeIconSpin(iconEl, cycleMs, beatsPerCycle) {
+  const anim = iconEl.getAnimations().find((a) => a.animationName === "pause-fx-icon-spin");
+  const oldDurationMs = anim ? parseFloat(getComputedStyle(iconEl).animationDuration) * 1000 : 0;
+  const phase = oldDurationMs ? (anim.currentTime % oldDurationMs) / oldDurationMs : 0;
+  setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, beatsPerCycle, "icon");
+  if (anim) anim.currentTime = phase * parseFloat(getComputedStyle(iconEl).animationDuration) * 1000;
 }
 
 // ---- border colour: an inline custom property + class on <body>, local to this client ----
@@ -704,7 +713,7 @@ export class PauseFX {
       }
       if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
       if (step.iconBeatsPerCycle !== undefined && iconEl) {
-        setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, step.iconBeatsPerCycle, "icon");
+        retimeIconSpin(iconEl, cycleMs, step.iconBeatsPerCycle);
       }
       if (step.borderColor) activateBorder(step.borderColor, { label });
       if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);

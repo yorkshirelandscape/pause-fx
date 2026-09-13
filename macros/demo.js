@@ -12,10 +12,13 @@ await game.modules.get("pause-fx").api.run({
   "steps": [
     { "wait": { "units": 1.5 } },
     {
-      "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "borderColor": "#4DD0E1",
-      "text": "PAUSE FX", "audio": "sounds/combat/epic-turn-1hit.ogg", "audioVolume": 0.7,
-      "wait": { "units": 2 }
+      "icon": "modules/pause-fx/ui/clapperboard.svg", "iconGlow": "#4DD0E1", "borderColor": "#4DD0E1",
+      "iconSpin": false, "text": "PAUSE FX", "audio": "sounds/combat/epic-turn-1hit.ogg", "audioVolume": 0.7,
+      "wait": { "units": 1 }
     },
+    { "iconSpin": true, "iconBeatsPerCycle": 1, "wait": { "units": 0.5 } },
+    { "iconBeatsPerCycle": 1.5, "wait": { "units": 0.5 } },
+    { "iconBeatsPerCycle": 2, "wait": { "units": 0.5 } },
     { "text": "a quick tour of what it can do", "wait": { "units": 2 } },
     { "textPulse": true, "text": "text can pulse in time with the border", "wait": { "units": 3 } },
     { "stopTextPulse": true, "text": "...and freeze in place, mid-pulse", "wait": { "units": 2 } },
