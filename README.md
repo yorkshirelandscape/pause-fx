@@ -16,7 +16,7 @@ Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the
 
 **Startup**, at the top, covers what's true for the whole session: **Cycle Time** (how many seconds one pulse of the glow/animation takes -- every step's timing is measured in cycles of this, not raw seconds, so the whole sequence stays readable), whether to **End Active Encounter**, and whether to **Minimize Windows** for Players and/or GMs when the sequence starts -- collapsed out of the way, not closed; nothing open gets lost.
 
-**Steps** is the sequence itself -- an ordered list of beats. The first entry is pinned in place (it can't be dragged or deleted) and is where the icon, its glow, the border color, and the opening message get set; past that, it behaves exactly like any other step, opened and edited the same way. Click **+ Add Step** to add another; drag a step's handle to reorder it; click its trash icon to remove it (click once to confirm, or hold it down for about a second to skip the confirmation).
+**Steps** is the sequence itself -- an ordered list of beats, every one opened and edited the same way. The first is typically where the icon, its glow, the border color, and the opening message get set, but nothing pins it in place. Click **+ Add Step** to add another; drag a step's handle to reorder it; click its duplicate icon to copy it in place, right after itself; click its trash icon to remove it (click once to confirm, or hold it down for about a second to skip the confirmation).
 
 Clicking a step opens its editor, with one block per kind of change:
 
@@ -32,7 +32,7 @@ When it's ready, the window's own header has **Run** (play it live, right now) a
 
 ### A simple example
 
-Building tension before a reveal might look like: the pinned first step sets a red glow and an eye icon, with the pause screen reading "Something stirs." A few pulses later, a step changes the text to "...and suddenly--" A step after that plays a sting sound. The next step hides the icon and plays a video full-screen, holding on its last frame for a couple of pulses once it ends (Post-AV) before the final step brings the icon back then unpauses the game.
+Building tension before a reveal might look like: the first step sets a red glow and an eye icon, with the pause screen reading "Something stirs." A few pulses later, a step changes the text to "...and suddenly--" A step after that plays a sting sound. The next step hides the icon and plays a video full-screen, holding on its last frame for a couple of pulses once it ends (Post-AV) before the final step brings the icon back then unpauses the game.
 
 ## Tips
 

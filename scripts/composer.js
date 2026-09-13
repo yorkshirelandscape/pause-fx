@@ -37,6 +37,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     actions: {
       addStep: PauseFXComposer.#onAddStep,
       editStep: PauseFXComposer.#onEditStep,
+      duplicateStep: PauseFXComposer.#onDuplicateStep,
       saveMacro: PauseFXComposer.#onSaveMacro,
       run: PauseFXComposer.#onRun,
       toggleSeconds: PauseFXComposer.#onToggleSeconds,
@@ -46,8 +47,8 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
   static PARTS = { body: { template: `modules/${MODULE_ID}/templates/composer.hbs` } };
 
   /** @type {Array<object>} in-progress step rows -- see composer-logic.js's rowFromStep.
-   *  rows[0] is always present and can't be deleted (it can still be dragged elsewhere --
-   *  whichever row currently sits first loses/gains that protection, not a specific row). */
+   *  Starts with one blank row; any row (including that one) can be deleted, reordered, or
+   *  duplicated -- nothing pins a specific row in place. */
   rows = [rowFromStep({ ...defaultStep(), iconSpin: effectiveIconSpin([]), textPulse: effectiveTextPulse([]) })];
 
   // Display-only, never saved -- a personal "how do I want to read this window's own step
@@ -250,6 +251,12 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       iconSpin: effectiveIconSpin(precedingSteps),
       textPulse: effectiveTextPulse(precedingSteps),
     }));
+    this.render({ parts: ["body"] });
+  }
+
+  static #onDuplicateStep(event, target) {
+    const index = Number(target.closest("[data-index]").dataset.index);
+    this.rows.splice(index + 1, 0, { ...this.rows[index] });
     this.render({ parts: ["body"] });
   }
 

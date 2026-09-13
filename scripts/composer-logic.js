@@ -2,12 +2,11 @@
 // design note, not tied to one line] Split out from the ApplicationV2 classes themselves so
 // this logic is unit-testable without a DOM/Foundry runtime -- see composer-logic.test.mjs.
 //
-// Every row shares ONE schema, whether it's the first (undeletable) row or any other --
-// icon/iconGlow/borderColor/borderWidth are just step fields, usable anywhere in the
-// sequence, matching what pause-fx.js's own steps[] schema accepts (see that file's
-// PauseFX.run JSDoc). endCombat and closeAllWindows stay Startup-only (globals, not a
-// per-step field) -- ending an encounter or closing windows partway through a sequence
-// isn't a thing pause-fx needs to support.
+// Every row shares ONE schema -- icon/iconGlow/borderColor/borderWidth are just step fields,
+// usable anywhere in the sequence, matching what pause-fx.js's own steps[] schema accepts
+// (see that file's PauseFX.run JSDoc). endCombat and closeAllWindows stay Startup-only
+// (globals, not a per-step field) -- ending an encounter or closing windows partway through
+// a sequence isn't a thing pause-fx needs to support.
 
 /** A blank step, used as the seed for "Add Step" and for a freshly-opened Composer's row 0. */
 export function defaultStep() {

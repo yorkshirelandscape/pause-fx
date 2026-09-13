@@ -475,15 +475,20 @@
   opacity: 0.85;
 }
 
+#pause-fx-composer .pfx-step-duplicate,
 #pause-fx-composer .pfx-step-remove {
   align-self: center;
-  position: relative; /* anchors the hold-progress wedge below */
   line-height: 1;
   padding: 0.3rem 0.45rem;
   border: none;
   background: transparent;
   border-radius: 4px;
   color: var(--pfx-text-body);
+}
+#pause-fx-composer .pfx-step-duplicate { position: relative; }
+#pause-fx-composer .pfx-step-duplicate:hover { background: color-mix(in srgb, var(--pfx-accent) 18%, transparent); color: var(--pfx-text-bright); }
+#pause-fx-composer .pfx-step-remove {
+  position: relative; /* anchors the hold-progress wedge below */
   --pfx-hold-progress: 0;
 }
 #pause-fx-composer .pfx-step-remove:hover { background: color-mix(in srgb, var(--pfx-danger) 18%, transparent); color: var(--pfx-text-bright); }

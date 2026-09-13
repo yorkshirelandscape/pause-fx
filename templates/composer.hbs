@@ -85,12 +85,13 @@
           </span>
           <span class="pfx-step-text">{{row.text}}</span>
         </button>
-        {{#unless (eq row.index 0)}}
+        <button type="button" class="pfx-step-duplicate" data-action="duplicateStep" data-index="{{row.index}}" title="Duplicate">
+          <i class="fa-solid fa-copy"></i>
+        </button>
         <button type="button" class="pfx-step-remove" data-index="{{row.index}}"
                 title="Click to remove (confirms) -- hold ~1.4s to skip the confirmation">
           <i class="fa-solid fa-trash"></i>
         </button>
-        {{/unless}}
       </li>
       {{/each}}
     </ol>

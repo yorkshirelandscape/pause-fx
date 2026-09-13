@@ -1,4 +1,4 @@
-// Step editor -- one dialog, shared by every row (including the undeletable first one).
+// Step editor -- one dialog, shared by every row.
 // Every field is always visible (see composer.css) -- nothing here hides/resets on its own.
 
 import { coerceStepField, effectiveMediaType } from "./composer-logic.js";
