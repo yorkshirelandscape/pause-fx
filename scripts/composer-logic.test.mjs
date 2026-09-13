@@ -107,10 +107,10 @@ test("effectiveStateAt: beats-per-cycle overrides and textFade carry forward too
   assert.equal(state.borderWidth, 1.5);
 });
 
-// iconSpin/textPulse are always concrete now too (see stepFromRow itself) -- shorthand for
-// the pair every expected object below carries alongside iconVisible.
-const ON = { iconSpin: true, textPulse: true };
-const OFF = { iconSpin: false, textPulse: false };
+// iconSpin/textPulse/textFade are always concrete now too (see stepFromRow itself) --
+// shorthand for the trio every expected object below carries alongside iconVisible.
+const ON = { iconSpin: true, textPulse: true, textFade: false };
+const OFF = { iconSpin: false, textPulse: false, textFade: false };
 
 test("stepFromRow: blank optional fields are omitted, not set to '' / false", () => {
   // Icon visibility, spin and pulse are the exceptions -- see the iconNone tests below for why.
@@ -128,7 +128,15 @@ test("stepFromRow: textNone forces an explicit blank, even if text also has a va
 });
 
 test("stepFromRow: textPulse starts the label's pulse independently of border activation", () => {
-  assert.deepEqual(stepFromRow({ ...BLANK_ROW, textPulse: true }), { iconVisible: true, iconSpin: false, textPulse: true });
+  assert.deepEqual(stepFromRow({ ...BLANK_ROW, textPulse: true }), { iconVisible: true, iconSpin: false, textPulse: true, textFade: false });
+});
+
+// //+text-fade-explicit-off omitting it when false left the engine no way to know Fade
+// had been turned off, once it was already running.
+test("stepFromRow: textFade is always concrete -- unchecking it says so explicitly, isn't omitted", () => {
+  const step = stepFromRow({ ...BLANK_ROW, textFade: false });
+  assert.equal(step.textFade, false);
+  assert.ok("textFade" in step);
 });
 
 test("stepFromRow: iconNone (Icon field's own None, not Stop -- hiding isn't time-sensitive) is always a concrete iconVisible, never omitted", () => {
@@ -226,7 +234,7 @@ test("stepFromRow: icon/glow/border/spin/width -- same rules as the old startup 
   };
   assert.deepEqual(stepFromRow(row), {
     icon: "eye.gif", iconSpin: true, iconGlow: "#00ff00", borderColor: "#0000ff", borderWidth: 2,
-    iconVisible: true, textPulse: false,
+    iconVisible: true, textPulse: false, textFade: false,
   });
 });
 
@@ -254,10 +262,10 @@ test("rowFromStep: fills every field with a defined default, never undefined", (
 });
 
 test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
-  // iconVisible/iconSpin/textPulse are included on every entry now -- all three are always
-  // concrete, so a step missing one wouldn't actually round-trip (see rowFromStep's own JSDoc).
+  // iconVisible/iconSpin/textPulse/textFade are included on every entry now -- all four are
+  // always concrete, so a step missing one wouldn't actually round-trip (see rowFromStep's JSDoc).
   const steps = [
-    { wait: { units: 1.45 }, text: "...AND SUDDENLY...", iconVisible: true, iconSpin: false, textPulse: true },
+    { wait: { units: 1.45 }, text: "...AND SUDDENLY...", iconVisible: true, iconSpin: false, textPulse: true, textFade: false },
     { wait: { units: 4 }, text: "A MANNEQUIN BEGINS TO TWITCH", iconVisible: true, ...OFF },
     { video: "reveal.webm", videoVolume: 0.5, loop: true, iconVisible: false, ...OFF },
     { preAV: { units: 0.5 }, video: "reveal.webm", iconVisible: true, borderColor: "#FF0000", ...OFF },
@@ -271,7 +279,7 @@ test("stepFromRow(rowFromStep(step)) round-trips a representative step", () => {
     },
     {
       icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", borderWidth: 1.5,
-      iconVisible: true, iconSpin: true, textPulse: false,
+      iconVisible: true, iconSpin: true, textPulse: false, textFade: false,
     },
     { text: "", iconVisible: true, ...OFF }, // explicit blank
     { iconBeatsPerCycle: 2, textBeatsPerCycle: 0.5, borderBeatsPerCycle: 1, iconVisible: true, ...OFF },

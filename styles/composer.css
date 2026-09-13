@@ -674,6 +674,7 @@
   white-space: normal;
   text-align: right;
 }
+#pause-fx-step-editor .pfx-field-row-span-wide { width: auto; white-space: nowrap; }
 
 /*+media-toggle-accessible-switch A real checkbox underneath, restyled as a two-position
    switch -- teal (video) / accent orange (image), so both sides read as "on". */

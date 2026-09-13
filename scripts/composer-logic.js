@@ -157,10 +157,10 @@ export function stepFromRow(row) {
   if (hasValue(row.postAvUnits)) step.postAV = { units: Number(row.postAvUnits) };
   if (row.textNone) step.text = ""; // explicitly blank, not "untouched"
   else if (row.text) step.text = row.text;
-  // Always a concrete true/false -- same reasoning as iconVisible below, now that pause-fx.js's
-  // own default is pulsing, not silent: an unchecked box has to say "off," not "untouched."
+  //+text-fade-explicit-off both always concrete -- Pulse/Fade are alternatives, so Fade
+  // needs "explicitly off" too, same reasoning as iconVisible below.
   step.textPulse = !!row.textPulse;
-  if (row.textFade) step.textFade = true;
+  step.textFade = !!row.textFade;
   if (row.textGlowEnabled && row.textGlow) step.textGlow = row.textGlow;
   if (row.stopAudio) step.stopAudio = true;
   if (row.stopTextPulse) step.stopTextPulse = true;

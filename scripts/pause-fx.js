@@ -495,6 +495,12 @@ function activateTextFade(label) {
   label.style.removeProperty(FADE_PLAY_VAR); // clears any earlier stopTextFade freeze
 }
 
+// Neither Pulse nor Fade -- static text, normal scale and opacity. Both fields are always
+// concrete now (see stepFromRow), so "both false" is a real, reachable choice, not just omission.
+function deactivateTextAnimation(label) {
+  label.classList.remove("pause-fx-text-dilate", "pause-fx-text-fade");
+}
+
 // ---- the sequencer itself ----
 
 export class PauseFX {
@@ -714,9 +720,13 @@ export class PauseFX {
         label.style.position = step.text ? "" : "absolute";
       }
       if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
-      if (step.textPulse) activateTextDilate(label);
+      //+text-fade-explicit-off explicit false matters here too, not just true.
+      if (step.textPulse !== undefined || step.textFade !== undefined) {
+        if (step.textPulse) activateTextDilate(label);
+        else if (step.textFade) activateTextFade(label);
+        else deactivateTextAnimation(label);
+      }
       if (step.stopTextPulse) label.style.setProperty(DILATE_PLAY_VAR, "paused");
-      if (step.textFade) activateTextFade(label);
       if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
       if (step.textBeatsPerCycle !== undefined) {
         retimeAnimation(label, ["pause-fx-text-dilate", "pause-fx-text-fade"], TEXT_DURATION_VAR, cycleMs, step.textBeatsPerCycle, "text");
