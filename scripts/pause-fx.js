@@ -158,6 +158,9 @@ export function beatDurationS(cycleMs, beatsPerCycle, label) {
   return MIN_BEAT_MS / 1000;
 }
 
+// Foundry's own real icon-spin duration, hardcoded -- //+foundry-default-continuity why.
+const FOUNDRY_ICON_SPIN_MS = 5000;
+
 // ---- style injection (border + text pulse keyframes, scoped to this run) ----
 
 let styleEl = null;
@@ -401,19 +404,25 @@ async function playSound(spec) {
 
 // ---- shared by initial setup AND any step that touches icon/border, not just the first ----
 
-// Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps.
-// Its own beat duration is set wherever iconBeatsPerCycle is known, not here (see setBeatDuration).
-function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }) {
-  if (!iconEl) return;
-  //+foundry-icon-fa-spin-default Foundry's own icon spins by default -- stop once
-  // we're managing it at all.
-  iconEl.classList.remove("fa-spin");
+/**
+ * Sparse -- only touches the fields actually given, same "omitted = don't touch" as steps.
+ * Its own beat duration is set wherever iconBeatsPerCycle is known, not here (see setBeatDuration).
+ * currentlySpinning/the return value thread continuity across calls -- //+foundry-default-continuity.
+ * @returns {boolean} the spin state now in effect, for the caller's own next call.
+ */
+function applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, currentlySpinning) {
+  if (!iconEl) return currentlySpinning;
+  const spinning = iconSpin !== undefined ? iconSpin : currentlySpinning;
+  iconEl.classList.remove("fa-spin"); //+foundry-icon-fa-spin-default Foundry's own native class -- replaced by our own below
   if (icon !== undefined) iconEl.src = icon;
-  if (iconSpin !== undefined) {
-    if (iconSpin) injectStyles();
-    iconEl.classList.toggle("pause-fx-icon-spin", iconSpin);
-    iconEl.style.animationPlayState = ""; // clears any earlier stopIconSpin freeze
+  if (spinning) {
+    injectStyles();
+    // Continuity only -- an explicit iconSpin:true leaves ICON_DURATION_VAR at whatever
+    // beats-per-cycle already set it to; this just keeps an inherited spin at Foundry's pace.
+    if (iconSpin === undefined) iconEl.style.setProperty(ICON_DURATION_VAR, `${FOUNDRY_ICON_SPIN_MS / 1000}s`);
   }
+  iconEl.classList.toggle("pause-fx-icon-spin", spinning);
+  iconEl.style.animationPlayState = ""; // clears any earlier stopIconSpin freeze
   if (iconGlow !== undefined) iconEl.style.filter = iconGlow ? `drop-shadow(0 0 12px ${iconGlow})` : "";
 }
 
@@ -575,9 +584,13 @@ export class PauseFX {
     Hooks.on("pauseGame", resetOnUnpause);
 
     let iconEl, label;
+    let iconSpinning = true; // Foundry's own default -- see applyIconChanges
     const applySkin = (_app, html) => {
       const root = document.getElementById("pause") ?? (html instanceof jQuery ? html[0] : html);
       if (!root) return;
+      // Always, not gated on any actual customization -- else Foundry's own default band
+      // shows first and visibly swaps to this one the moment a step finally styles anything.
+      injectStyles();
       if (!document.getElementById(BAND_ID)) {
         const band = document.createElement("div");
         band.id = BAND_ID;
@@ -594,7 +607,7 @@ export class PauseFX {
       setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, iconBeatsPerCycle, "icon");
       // Any of the three on its own is enough -- glow or spin without a new icon path still applies.
       if (icon !== undefined || iconSpin !== undefined || iconGlow !== undefined) {
-        applyIconChanges(iconEl, { icon, iconSpin, iconGlow });
+        iconSpinning = applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, iconSpinning);
       }
 
       label = [...root.children].find((el) => el !== iconEl);
@@ -624,6 +637,8 @@ export class PauseFX {
       label.style.overflow = "hidden";
       label.style.textOverflow = "ellipsis";
       setBeatDuration(label, TEXT_DURATION_VAR, cycleMs, textBeatsPerCycle, "text");
+      // Text dilates by default, matching Foundry's own -- //+foundry-default-continuity why.
+      activateTextDilate(label);
       if (borderColor) {
         label.classList.add("pause-fx-label"); // see the run()-level comment above
         setTextGlowRings(label, borderColor); // default; textGlow below wins if also set
@@ -685,7 +700,7 @@ export class PauseFX {
       }
 
       if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
-        applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow });
+        iconSpinning = applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow }, iconSpinning);
       }
       if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
       if (step.iconBeatsPerCycle !== undefined && iconEl) {
