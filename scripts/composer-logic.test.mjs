@@ -347,6 +347,13 @@ test("stepBadges: an icon badge appears even with only glow/spin/visibility set,
   );
 });
 
+test("stepBadges: a hidden icon never shows as spinning, even if iconSpin is true", () => {
+  assert.deepEqual(
+    stepBadges({ iconSpin: true, iconVisible: false }),
+    [{ type: "icon", icon: undefined, glow: undefined, spin: false, visible: false }],
+  );
+});
+
 test("formatBeatsPerCycle: common fractions get their own glyph, everything else a decimal multiplier", () => {
   assert.equal(formatBeatsPerCycle(1), "1×");
   assert.equal(formatBeatsPerCycle(2), "2×");
