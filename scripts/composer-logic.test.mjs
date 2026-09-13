@@ -7,7 +7,7 @@ import {
   defaultStep, stepFromRow, rowFromStep, coerceStepField, stepBadges, stepDisplayText,
   secondsToMs, msToSeconds, configFromGlobals, commandForConfig, formatBeatsPerCycle, formatMixedFraction,
   hasMacroMarker, configFromCommand, stepsFromConfig, effectiveIconVisible, effectiveMediaType,
-  effectiveIconSpin, effectiveTextPulse, effectiveIcon, effectiveText,
+  effectiveIconSpin, effectiveTextPulse, effectiveIcon, effectiveText, effectiveStateAt,
 } from "./composer-logic.js";
 
 const BLANK_ROW = {
@@ -76,6 +76,35 @@ test("effectiveIcon/effectiveText: default to Foundry's own real ones, inclusive
   assert.equal(effectiveText([{}]), "GAME PAUSED");
   assert.equal(effectiveText([{ text: "hi" }, {}]), "hi");
   assert.equal(effectiveText([{ text: "hi" }, { text: "" }]), ""); // explicit blank carries forward too
+});
+
+test("effectiveStateAt: an empty index 0 resolves to the engine's own bare defaults", () => {
+  assert.deepEqual(effectiveStateAt([{ text: "hi" }], 0), {
+    icon: "ui/pause.svg", iconVisible: true, iconSpin: true, text: "GAME PAUSED", textPulse: true,
+  });
+});
+
+test("effectiveStateAt: carries forward sticky fields, doesn't include the target step's own", () => {
+  const steps = [
+    { icon: "eye.gif", iconGlow: "#960018", borderColor: "#FF0000", text: "stirs" },
+    { text: "suddenly", textGlow: "#4DD0E1" },
+    { icon: "later.gif", text: "not yet applied" }, // index 2 -- excluded, it's the target itself
+  ];
+  assert.deepEqual(effectiveStateAt(steps, 2), {
+    icon: "eye.gif", iconVisible: true, iconSpin: true,
+    text: "suddenly", textPulse: true,
+    iconGlow: "#960018", borderColor: "#FF0000", textGlow: "#4DD0E1",
+  });
+});
+
+test("effectiveStateAt: beats-per-cycle overrides and textFade carry forward too", () => {
+  const steps = [
+    { iconBeatsPerCycle: 2, textFade: true, borderWidth: 150 },
+  ];
+  const state = effectiveStateAt(steps, 1);
+  assert.equal(state.iconBeatsPerCycle, 2);
+  assert.equal(state.textFade, true);
+  assert.equal(state.borderWidth, 150);
 });
 
 // iconSpin/textPulse are always concrete now too (see stepFromRow itself) -- shorthand for

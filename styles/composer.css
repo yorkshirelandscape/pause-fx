@@ -539,16 +539,22 @@
   opacity: 0.85;
 }
 
+/* A tighter gap than .pfx-step's own (which also separates the drag handle and the main
+   open-button -- this one's just for the three action icons bunched at the row's end). */
+#pause-fx-composer .pfx-step-actions { display: flex; align-items: center; gap: 0; align-self: center; }
+#pause-fx-composer .pfx-step-play,
 #pause-fx-composer .pfx-step-duplicate,
 #pause-fx-composer .pfx-step-remove {
   align-self: center;
   line-height: 1;
-  padding: 0.3rem 0.45rem;
+  padding: 0.2rem 0.28rem;
   border: none;
   background: transparent;
   border-radius: 4px;
   color: var(--pfx-text-body);
+  font-size: 0.8em;
 }
+#pause-fx-composer .pfx-step-play:hover { background: color-mix(in srgb, var(--pfx-accent) 18%, transparent); color: var(--pfx-accent); }
 #pause-fx-composer .pfx-step-duplicate { position: relative; }
 #pause-fx-composer .pfx-step-duplicate:hover { background: color-mix(in srgb, var(--pfx-accent) 18%, transparent); color: var(--pfx-text-bright); }
 #pause-fx-composer .pfx-step-remove {

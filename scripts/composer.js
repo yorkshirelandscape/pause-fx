@@ -6,7 +6,7 @@ import {
   defaultStep, stepFromRow, rowFromStep, stepBadges, stepDisplayText,
   msToSeconds, configFromGlobals, commandForConfig, hasMacroMarker, configFromCommand,
   stepsFromConfig, effectiveIconVisible, effectiveIconSpin, effectiveTextPulse,
-  effectiveIcon, effectiveText,
+  effectiveIcon, effectiveText, effectiveStateAt,
 } from "./composer-logic.js";
 import { PauseFXStepEditor } from "./step-editor.js";
 
@@ -38,6 +38,7 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
       addStep: PauseFXComposer.#onAddStep,
       editStep: PauseFXComposer.#onEditStep,
       duplicateStep: PauseFXComposer.#onDuplicateStep,
+      playFromHere: PauseFXComposer.#onPlayFromHere,
       saveMacro: PauseFXComposer.#onSaveMacro,
       run: PauseFXComposer.#onRun,
       setDurationUnit: PauseFXComposer.#onSetDurationUnit,
@@ -226,6 +227,19 @@ export class PauseFXComposer extends HandlebarsApplicationMixin(ApplicationV2) {
     const index = Number(target.closest("[data-index]").dataset.index);
     this.rows.splice(index + 1, 0, { ...this.rows[index] });
     this.render({ parts: ["body"] });
+  }
+
+  //+play-from-here-state-reconstruction seeds a wait:0 step with the sticky state the
+  // real sequence would already have set by this point, so it looks right immediately.
+  static async #onPlayFromHere(event, target) {
+    const index = Number(target.closest("[data-index]").dataset.index);
+    const steps = this.rows.map(stepFromRow);
+    const seed = { ...effectiveStateAt(steps, index), wait: { units: 0 } };
+    // No endCombat/closeAllWindows -- previewing a step shouldn't re-trigger those.
+    const config = configFromGlobals({ pulseLengthS: this.globals.pulseLengthS }, [seed, ...steps.slice(index)]);
+    this.setPosition({ top: 10, left: 10 });
+    this.minimize();
+    await PauseFX.run(config);
   }
 
   static #onSetDurationUnit(event, target) {

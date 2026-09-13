@@ -62,6 +62,43 @@ export function effectiveText(stepsUpToAndIncluding) {
   return "GAME PAUSED"; //+pause-text-transform-override Foundry's own real default
 }
 
+/** Last defined value of `field` across `steps`, or `fallback` if none set it. The shared
+ *  walk-backward step for the sticky fields below that don't have their own named helper. */
+function lastDefined(steps, field, fallback) {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i][field] !== undefined) return steps[i][field];
+  }
+  return fallback;
+}
+
+//+play-from-here-state-reconstruction doesn't attempt to reconstruct a mid-animation
+// freeze (stopIconSpin etc.) -- same already-accepted limitation as this file's own badges.
+/**
+ * Every "sticky" step field (persists until a later step changes it -- not a one-shot event
+ * like wait/media/audio/stop*) resolved as of just before `steps[index]` runs. Reuses the
+ * effective* helpers above for the fields that already have one.
+ * @param {Array<object>} steps
+ * @param {number} index
+ * @returns {object} a step-shaped object of resolved fields, spreadable onto PauseFX.run's
+ *   own config (it accepts the same field names at its top level, as "initial state").
+ */
+export function effectiveStateAt(steps, index) {
+  const preceding = steps.slice(0, index);
+  const state = {
+    icon: effectiveIcon(preceding),
+    iconVisible: effectiveIconVisible(preceding),
+    iconSpin: effectiveIconSpin(preceding),
+    text: effectiveText(preceding),
+    textPulse: effectiveTextPulse(preceding),
+  };
+  for (const field of ["iconGlow", "borderColor", "borderWidth", "textGlow", "iconBeatsPerCycle", "textBeatsPerCycle", "borderBeatsPerCycle"]) {
+    const value = lastDefined(preceding, field, undefined);
+    if (value !== undefined) state[field] = value;
+  }
+  if (lastDefined(preceding, "textFade", false)) state.textFade = true;
+  return state;
+}
+
 /** Whether a row field carries a real value, as opposed to a blank/never-filled input.
  *  0 counts -- a 0-pulse wait and a 0 volume both mean something. */
 function hasValue(value) {
