@@ -352,21 +352,30 @@ const IMAGE_EXTENSION = /\.(webp|png|jpe?g|gif|svg|avif|bmp)$/i;
 /**
  * `path` may be a single image file or a folder of them (a slideshow) -- this is what tells
  * the two apart. A path that already looks like an image file is trusted as one outright
- * (skips the browse call entirely); anything else is browsed as a folder, falling back to
- * treating it as a single file if that fails or turns up nothing.
+ * (skips the browse call entirely); anything else is browsed as a folder. `browse()` itself
+ * takes the storage source as a plain required argument -- no inference, no "just tell me
+ * what's there" form -- so a bare path (all a hand-written or Composer-saved step ever has)
+ * genuinely doesn't say which one it lives under; a GM's own upload is "data", a core-shipped
+ * folder like icons/* is "public". Tried in that order (favoring the more common real-world
+ * case), and the server's own success/failure is what settles it -- not a copy of Foundry's
+ * own internal directory list, which could drift out of sync with a future version. Falls
+ * back to treating the path as a single file if neither resolves it.
  * @param {string} path
  * @returns {Promise<Array<string>>} one or more file paths, in folder order.
  */
 async function resolveImageFiles(path) {
   if (IMAGE_EXTENSION.test(path)) return [path];
-  try {
-    const FilePicker = foundry.applications.apps.FilePicker.implementation;
-    const { files } = await FilePicker.browse("data", path);
-    const images = files.filter((f) => IMAGE_EXTENSION.test(f)).sort();
-    return images.length ? images : [path];
-  } catch {
-    return [path]; // not a browsable folder -- treat the path as a single file after all
+  const FilePicker = foundry.applications.apps.FilePicker.implementation;
+  for (const source of ["data", "public"]) {
+    try {
+      const { files } = await FilePicker.browse(source, path);
+      const images = files.filter((f) => IMAGE_EXTENSION.test(f)).sort();
+      if (images.length) return images;
+    } catch {
+      // not browsable under this source -- try the other, or fall through to the literal path
+    }
   }
+  return [path];
 }
 
 /**

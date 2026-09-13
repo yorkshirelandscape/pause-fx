@@ -33,8 +33,14 @@ await game.modules.get("pause-fx").api.run({
     },
     { "iconVisible": true, "icon": "ui/pause.svg", "iconGlow": "#4DD0E1", "text": "pre/post-AV timed that hold automatically", "wait": { "units": 2 } },
     {
-      "text": "a still image works the same way", "image": "icons/dice/d20black.svg",
-      "imagePulses": 2, "preAV": { "units": 0.3 }, "postAV": { "units": 0.5 }
+      "text": "a folder becomes a slideshow -- this one advances on its own",
+      "image": "icons/environment/vehicles", "imagePulses": 0.5,
+      "preAV": { "units": 0.3 }, "wait": { "units": 3 }, "postAV": { "units": 0.5 }
+    },
+    {
+      "text": "...this one waits for you -- double-click the image to advance it",
+      "image": "icons/environment/cosmos", "imagePulses": 0,
+      "preAV": { "units": 0.3 }, "wait": { "units": 3 }, "postAV": { "units": 0.5 }
     },
     {
       "text": "sound can be bound to a step's own timing",
