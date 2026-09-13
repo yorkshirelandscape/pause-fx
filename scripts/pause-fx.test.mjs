@@ -26,58 +26,58 @@ test("isRealWindow: true only for apps with a real frame (a titled window with a
   assert.equal(isRealWindow({}), false); // undefined hasFrame -- docked chrome that never set it
 });
 
-test("closeAllWindowsHandler: closes real floating windows, leaves docked UI chrome alone", () => {
+test("closeAllWindowsHandler: minimizes real floating windows, leaves docked UI chrome alone", () => {
   // Regression: closing every instance also took out persistent chrome, and (separately)
   // Pause FX's own Composer -- which Run's own closeAllWindows would close on itself.
-  const closed = [];
-  const mkApp = (id, hasFrame) => ({ id, hasFrame, close: () => closed.push(id) });
+  const minimized = [];
+  const mkApp = (id, hasFrame) => ({ id, hasFrame, minimize: () => minimized.push(id) });
 
   globalThis.ui.windows = { legacyDialog: mkApp("legacy-dialog", true) };
   globalThis.foundry.applications.instances = new Map([
-    ["sidebar", mkApp("sidebar", false)], // docked chrome -- must NOT close
-    ["hotbar", mkApp("hotbar", false)], // docked chrome -- must NOT close
-    ["pause", mkApp("pause", false)], // the pause overlay itself -- must NOT close
-    ["UserConfig-abc123", mkApp("user-config", true)], // a real floating dialog -- must close
-    ["pause-fx-composer", mkApp("pause-fx-composer", true)], // Run's own Composer -- must NOT close
-    ["pause-fx-step-editor", mkApp("pause-fx-step-editor", true)], // ditto -- must NOT close
+    ["sidebar", mkApp("sidebar", false)], // docked chrome -- must NOT minimize
+    ["hotbar", mkApp("hotbar", false)], // docked chrome -- must NOT minimize
+    ["pause", mkApp("pause", false)], // the pause overlay itself -- must NOT minimize
+    ["UserConfig-abc123", mkApp("user-config", true)], // a real floating dialog -- must minimize
+    ["pause-fx-composer", mkApp("pause-fx-composer", true)], // Run's own Composer -- must NOT minimize
+    ["pause-fx-step-editor", mkApp("pause-fx-step-editor", true)], // ditto -- must NOT minimize
   ]);
 
   closeAllWindowsHandler();
 
-  assert.deepEqual(closed.sort(), ["legacy-dialog", "user-config"]);
+  assert.deepEqual(minimized.sort(), ["legacy-dialog", "user-config"]);
 });
 
 test("closeAllWindowsHandler: a client skips entirely when its own role isn't targeted", () => {
   // Every connected client runs this handler regardless of who a reveal meant to target --
   // each one has to decide for itself whether to act, based on game.user.isGM locally.
-  const closed = [];
-  const mkApp = (id) => ({ id, hasFrame: true, close: () => closed.push(id) });
+  const minimized = [];
+  const mkApp = (id) => ({ id, hasFrame: true, minimize: () => minimized.push(id) });
   globalThis.ui.windows = { dialog: mkApp("dialog") };
   globalThis.foundry.applications.instances = new Map();
 
   globalThis.game.user.isGM = true;
   closeAllWindowsHandler({ players: true, gm: false }); // targets players only
-  assert.deepEqual(closed, [], "a GM client must not close anything when gm:false");
+  assert.deepEqual(minimized, [], "a GM client must not minimize anything when gm:false");
 
   closeAllWindowsHandler({ players: true, gm: true });
-  assert.deepEqual(closed, ["dialog"], "the same GM client acts once gm:true");
+  assert.deepEqual(minimized, ["dialog"], "the same GM client acts once gm:true");
 
-  closed.length = 0;
+  minimized.length = 0;
   globalThis.game.user.isGM = false;
   closeAllWindowsHandler({ players: false, gm: true }); // targets GMs only
-  assert.deepEqual(closed, [], "a player client must not close anything when players:false");
+  assert.deepEqual(minimized, [], "a player client must not minimize anything when players:false");
 
   globalThis.game.user.isGM = false; // restore the module-wide default for later tests
 });
 
 test("closeAllWindowsHandler: no target argument defaults to acting on every role", () => {
-  const closed = [];
-  globalThis.ui.windows = { dialog: { id: "dialog", hasFrame: true, close: () => closed.push("dialog") } };
+  const minimized = [];
+  globalThis.ui.windows = { dialog: { id: "dialog", hasFrame: true, minimize: () => minimized.push("dialog") } };
   globalThis.foundry.applications.instances = new Map();
 
   globalThis.game.user.isGM = true;
   closeAllWindowsHandler();
-  assert.deepEqual(closed, ["dialog"]);
+  assert.deepEqual(minimized, ["dialog"]);
   globalThis.game.user.isGM = false;
 });
 

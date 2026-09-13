@@ -14,7 +14,7 @@ Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the
 
 ### The Composer window
 
-**Startup**, at the top, covers what's true for the whole session: **Cycle Time** (how many seconds one pulse of the glow/animation takes -- every step's timing is measured in cycles of this, not raw seconds, so the whole sequence stays readable), whether to **End Active Encounter**, and whether to **Close Windows** for Players and/or GMs when the sequence starts.
+**Startup**, at the top, covers what's true for the whole session: **Cycle Time** (how many seconds one pulse of the glow/animation takes -- every step's timing is measured in cycles of this, not raw seconds, so the whole sequence stays readable), whether to **End Active Encounter**, and whether to **Minimize Windows** for Players and/or GMs when the sequence starts -- collapsed out of the way, not closed; nothing open gets lost.
 
 **Steps** is the sequence itself -- an ordered list of beats. The first entry is pinned in place (it can't be dragged or deleted) and is where the icon, its glow, the border color, and the opening message get set; past that, it behaves exactly like any other step, opened and edited the same way. Click **+ Add Step** to add another; drag a step's handle to reorder it; click its trash icon to remove it (click once to confirm, or hold it down for about a second to skip the confirmation).
 
