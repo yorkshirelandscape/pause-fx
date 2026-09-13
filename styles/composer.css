@@ -55,6 +55,9 @@
   border: 1px solid var(--pfx-surface-border);
   border-radius: 8px;
   padding: 0.6rem 0.85rem 0.85rem 0.6rem;
+  /* <fieldset>'s own UA default is min-width:min-content, not auto -- without this, a
+     fieldset's content (e.g. a step's own text) can't truncate, pushing the dialog wider. */
+  min-width: 0;
 }
 #pause-fx-composer legend,
 #pause-fx-step-editor legend {
