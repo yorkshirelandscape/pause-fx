@@ -282,15 +282,14 @@
 /* ---- Startup ---- */
 /* Fills .window-content so Startup can pin above the one scrolling region below it. */
 #pause-fx-composer .pfx-composer { height: 100%; }
-/* A plain div, bottom rule only. Settings, a divider, then the toolbar pushed to the far
-   edge -- stretched so both zones share one height, each centering its own content in it. */
+/* A plain div. Settings, a divider, then the toolbar pushed to the far edge -- stretched
+   so both zones share one height, each centering its own content in it. */
 #pause-fx-composer .pfx-startup {
   flex-shrink: 0; /* pinned -- never compressed by the scrolling steps list below it */
   display: flex;
   align-items: stretch;
   gap: 0.9rem;
   padding: 0.4rem 0.2rem 0.5rem;
-  border-bottom: 1px solid var(--pfx-surface-border);
 }
 #pause-fx-composer .pfx-startup-settings { display: flex; align-items: center; gap: 0.9rem; }
 /* flex-shrink:0 -- an empty span's own min-content is 0, so it's the one child that would
