@@ -33,7 +33,7 @@
 
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.35rem;
   padding: 0.5rem;
 }
 /*+step-editor-grid-hand-tuned-to-mockup deliberate irregular layout -- see the
@@ -282,8 +282,8 @@
 /* ---- Startup ---- */
 /* Fills .window-content so Startup can pin above the one scrolling region below it. */
 #pause-fx-composer .pfx-composer { height: 100%; }
-/* A plain div. Cycle Time beside a stack of three rows -- End Encounter/Beats-Seconds,
-   Minimize Windows/Players/GMs, then the toolbar -- stretched to share Cycle Time's height. */
+/* A plain div. Cycle Time, a two-row stack, then the toolbar pushed to the far edge --
+   all stretched to share one height. */
 #pause-fx-composer .pfx-startup {
   flex-shrink: 0; /* pinned -- never compressed by the scrolling steps list below it */
   display: flex;
@@ -292,16 +292,24 @@
   padding: 0.25rem 0.2rem;
 }
 #pause-fx-composer .pfx-field-cycle-time { align-self: stretch; justify-content: center; }
-#pause-fx-composer .pfx-field-cycle-time span { white-space: nowrap; color: var(--pfx-text-heading); font-weight: 600; }
+#pause-fx-composer .pfx-field-cycle-time span {
+  white-space: nowrap;
+  color: var(--pfx-text-heading);
+  font-weight: 600;
+  text-align: center;
+}
 #pause-fx-composer .pfx-field-cycle-time input { text-align: center; }
 #pause-fx-composer .pfx-startup-stack { display: flex; flex-direction: column; justify-content: center; gap: 0.3rem; }
 #pause-fx-composer .pfx-startup-row { display: flex; align-items: center; gap: 0.4rem; }
 /* Beats/Seconds sits at the row's own far edge -- space-between, not flex-grow on the
    control itself, so it stays sized to its content instead of stretching to fill the row. */
 #pause-fx-composer .pfx-startup-row:first-child { justify-content: space-between; }
+/* Only End Encounter lives in row 1 -- Players/GMs (row 2) stay regular weight. */
+#pause-fx-composer .pfx-startup-row:first-child .pfx-checkbox { font-weight: 700; }
 #pause-fx-composer .pfx-inline-label {
   font-size: var(--font-size-13, 0.8125rem);
   color: var(--pfx-text-body);
+  font-weight: 700;
   white-space: nowrap;
 }
 #pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
@@ -311,18 +319,18 @@
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.3rem 0.5rem;
+  gap: 0.25rem;
+  padding: 0.4rem 0.65rem;
   height: auto;
   border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--pfx-text-body);
-  font-size: var(--font-size-11, 0.6875rem);
+  font-size: var(--font-size-12, 0.75rem);
   white-space: nowrap;
   transition: background 120ms ease, color 120ms ease;
 }
-#pause-fx-composer .pfx-toolbar-button i { font-size: 1.1rem; }
+#pause-fx-composer .pfx-toolbar-button i { font-size: 1.3rem; }
 #pause-fx-composer .pfx-toolbar-button:hover {
   background: color-mix(in srgb, var(--pfx-accent) 18%, transparent);
   color: var(--pfx-text-bright);
