@@ -2,13 +2,20 @@
   "id": "pause-fx",
   "title": "Pause FX",
   "description": "Declarative, reusable themed pause-screen reveals -- border/icon/text/video/image/audio steps on cycle-based clocks, plus closing every connected client's open windows via socketlib.",
-  "version": "0.1.10",
-  "manifest": "https://forge.volfied.net/volfied/pause-fx/releases/download/latest/module.json",
-  "download": "https://forge.volfied.net/volfied/pause-fx/releases/download/v0.1.10/pause-fx.zip",
+  "version": "1.0.0",
+  "manifest": "https://github.com/yorkshirelandscape/pause-fx/releases/latest/download/module.json",
+  "url": "https://github.com/yorkshirelandscape/pause-fx",
+  "download": "https://github.com/yorkshirelandscape/pause-fx/releases/latest/download/pause-fx.zip",
+  "readme": "https://raw.githubusercontent.com/yorkshirelandscape/pause-fx/main/README.md",
+  "bugs": "https://github.com/yorkshirelandscape/pause-fx/issues",
+  "changelog": "https://raw.githubusercontent.com/yorkshirelandscape/pause-fx/main/CHANGELOG.md",
   "socket": true,
   "authors": [
     {
-      "name": "volfied"
+      "name": "volfied",
+      "email": "andrew.bryce.howard@gmail.com",
+      "url": "https://www.volfied.net",
+      "discord": "volfied"
     }
   ],
   "compatibility": {

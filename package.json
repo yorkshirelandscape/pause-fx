@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Declarative, reusable Foundry pause-screen effects -- see module.json for the real manifest.",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "node --test"
   }
