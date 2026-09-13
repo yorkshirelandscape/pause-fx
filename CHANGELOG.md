@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   playlists (any channel) the moment a sequence starts, and resumes each one where it left
   off once the game unpauses.
 
+### Changed
+- Tidied up the Startup row's layout.
+
 ## [1.0.1] - 2026-09-13
 
 ### Fixed
