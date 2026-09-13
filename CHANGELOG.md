@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-09-13
+
+### Fixed
+- The bundled demo macro's icon disappeared partway through and never came back -- several
+  steps omitted a field that only looks redundant, silently inheriting "hidden" from an
+  earlier step instead of turning the icon back on as intended.
+
 ## [1.0.0] - 2026-09-13
 
 ### Added
@@ -22,4 +29,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A bundled demo macro -- a feature tour built entirely from stock Foundry assets -- copied
   into the world's own "Pause FX" macro folder the first time Load or Run is used.
 
+[1.0.1]: https://forge.volfied.net/volfied/pause-fx/compare/v1.0.0...v1.0.1
 [1.0.0]: https://forge.volfied.net/volfied/pause-fx/releases/tag/v1.0.0
