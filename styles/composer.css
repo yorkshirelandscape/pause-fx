@@ -282,32 +282,33 @@
 /* ---- Startup ---- */
 /* Fills .window-content so Startup can pin above the one scrolling region below it. */
 #pause-fx-composer .pfx-composer { height: 100%; }
-/* A plain div. Settings, a divider, then the toolbar pushed to the far edge -- stretched
-   so both zones share one height, each centering its own content in it. */
+/* A plain div. Cycle Time, the settings grid, then the toolbar pushed to the far edge --
+   stretched so all three share one height, each centering its own content in it. */
 #pause-fx-composer .pfx-startup {
   flex-shrink: 0; /* pinned -- never compressed by the scrolling steps list below it */
   display: flex;
   align-items: stretch;
   gap: 0.9rem;
-  padding: 0.4rem 0.2rem 0.5rem;
+  padding: 0.25rem 0.2rem;
 }
-#pause-fx-composer .pfx-startup-settings { display: flex; align-items: center; gap: 0.9rem; }
-/* flex-shrink:0 -- an empty span's own min-content is 0, so it's the one child that would
-   quietly absorb any shrink deficit down to nothing; see checkbox-flex-shrink-distortion. */
-#pause-fx-composer .pfx-startup-divider { align-self: stretch; flex-shrink: 0; width: 1px; background: var(--pfx-surface-border); }
 #pause-fx-composer .pfx-field-cycle-time { align-self: stretch; justify-content: center; }
 #pause-fx-composer .pfx-field-cycle-time span { white-space: nowrap; color: var(--pfx-text-heading); font-weight: 600; }
-#pause-fx-composer .pfx-startup-checks { display: flex; align-items: center; gap: 0.9rem; }
-#pause-fx-composer .pfx-close-windows { display: flex; align-items: center; gap: 0.4rem; }
-#pause-fx-composer .pfx-close-windows-checks { display: flex; flex-direction: column; gap: 0.2rem; }
+/* Column-major: End Encounter/Minimize Windows fill column 1, Beats-Seconds/Players-GMs
+   fill column 2 -- row 2 reads left-to-right as "Minimize Windows: Players GMs". */
+#pause-fx-composer .pfx-startup-grid {
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 0.3rem 0.9rem;
+}
+#pause-fx-composer .pfx-close-windows-checks { display: flex; align-items: center; gap: 0.4rem; }
 /* A group label, not a control -- smaller and quieter than the "Players"/"GMs" checkboxes
    it introduces, so the two read as different things at a glance. */
 #pause-fx-composer .pfx-inline-label {
   font-size: var(--font-size-11, 0.6875rem);
   color: var(--pfx-text-body);
   opacity: 0.8;
-  line-height: 1.2;
-  text-align: right;
   white-space: nowrap;
 }
 #pause-fx-composer .pfx-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }

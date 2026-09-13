@@ -1,31 +1,26 @@
 <div class="pfx-composer">
   <div class="pfx-startup">
-    <div class="pfx-startup-settings">
-      <label class="pfx-field pfx-field-narrow pfx-field-cycle-time">
-        <span>Cycle Time</span>
-        <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="{{defaultPulseLengthLabel}}" value="{{globals.pulseLengthS}}">
-      </label>
-      <div class="pfx-startup-checks">
-        <label class="pfx-checkbox">End Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
-        <span class="pfx-close-windows">
-          <span class="pfx-inline-label">Minimize<br>Windows</span>
-          <span class="pfx-close-windows-checks">
-            <label class="pfx-checkbox">Players <input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}></label>
-            <label class="pfx-checkbox">GMs <input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}></label>
-          </span>
-        </span>
-      </div>
-    </div>
-    <span class="pfx-startup-divider"></span>
-    <span class="pfx-toolbar">
-      <button type="button" class="pfx-toolbar-button" data-action="saveMacro" title="Save as Macro"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-      <button type="button" class="pfx-toolbar-button pfx-toolbar-button-primary" data-action="run" title="Run"><i class="fa-solid fa-play"></i> Run</button>
+    <label class="pfx-field pfx-field-narrow pfx-field-cycle-time">
+      <span>Cycle Time</span>
+      <input type="number" step="0.01" min="0" name="pulseLengthS" placeholder="{{defaultPulseLengthLabel}}" value="{{globals.pulseLengthS}}">
+    </label>
+    <div class="pfx-startup-grid">
+      <label class="pfx-checkbox">End Encounter <input type="checkbox" name="endCombat" {{checked globals.endCombat}}></label>
+      <span class="pfx-inline-label">Minimize Windows</span>
       <span class="pfx-segmented" role="group" aria-label="Duration display">
         <button type="button" class="pfx-segmented-option{{#unless showSeconds}} pfx-segmented-option-active{{/unless}}"
                 data-action="setDurationUnit" data-unit="beats" title="Show Duration in Beats">Beats</button>
         <button type="button" class="pfx-segmented-option{{#if showSeconds}} pfx-segmented-option-active{{/if}}"
                 data-action="setDurationUnit" data-unit="seconds" title="Show Duration in Seconds">Seconds</button>
       </span>
+      <span class="pfx-close-windows-checks">
+        <label class="pfx-checkbox">Players <input type="checkbox" name="closeWindowsPlayers" {{checked globals.closeWindowsPlayers}}></label>
+        <label class="pfx-checkbox">GMs <input type="checkbox" name="closeWindowsGM" {{checked globals.closeWindowsGM}}></label>
+      </span>
+    </div>
+    <span class="pfx-toolbar">
+      <button type="button" class="pfx-toolbar-button pfx-toolbar-button-primary" data-action="run" title="Run"><i class="fa-solid fa-play"></i> Run</button>
+      <button type="button" class="pfx-toolbar-button" data-action="saveMacro" title="Save as Macro"><i class="fa-solid fa-floppy-disk"></i> Save</button>
       <button type="button" class="pfx-toolbar-button" data-action="addStep" title="Add Step"><i class="fa-solid fa-plus"></i> Add Step</button>
     </span>
   </div>
