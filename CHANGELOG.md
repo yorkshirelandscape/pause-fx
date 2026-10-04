@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Players now actually see the reveal -- every effect (border, icon, text, video, image,
+  audio) used to play on the triggering GM's screen only, leaving everyone else on Foundry's
+  plain pause screen. Double-click slideshow advances follow the GM on every screen too.
+
+### Removed
+- The socketlib dependency -- Pause FX now uses Foundry's own built-in module socket.
+
 ## [1.1.0] - 2026-09-13
 
 ### Added

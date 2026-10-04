@@ -4,10 +4,6 @@ Pause FX turns Foundry's plain "GAME PAUSED" screen into a scripted reveal: a gl
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 
-## Requires
-
-[socketlib](https://github.com/manuelVo/foundryvtt-socketlib). Foundry will offer to install it automatically alongside Pause FX -- it's what makes the effect show up for everyone at the table, not just the GM triggering it.
-
 ## Building a reveal
 
 Once enabled in a world, a clapperboard icon labeled **Pause FX** appears in the scene controls on the left (GMs only). It offers three buttons: open a new, blank sequence in the Composer; load a previously saved one into the Composer; or run a saved one right away without opening it. The first time you Load or Run, a demo macro -- a feature tour built entirely from stock Foundry assets -- is copied into the world's own "Pause FX" macro folder, so there's always something to see and pick apart even in a brand-new world.
@@ -37,4 +33,4 @@ Building tension before a reveal might look like: the first step sets a red glow
 ## Tips
 
 - If your icon is an animated GIF, set Cycle Time to match its own loop length so the border glows in time with it.
-- Only a GM can start a sequence; everyone at the table sees the same effect once it runs, thanks to socketlib.
+- Only a GM can start a sequence; everyone connected at the time sees the same effect. A player who joins mid-sequence sees only Foundry's plain pause screen.

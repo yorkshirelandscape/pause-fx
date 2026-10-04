@@ -2,22 +2,27 @@
 // dependencies) -- not the full PauseFX.run() sequence, which needs a real Foundry
 // runtime and is covered by live testing instead. [CC+: whole-file preamble]
 //
-// Minimal Foundry globals (`ui`, `foundry`, `Hooks`) are stubbed just enough for
-// closeAllWindowsHandler to run and for the module to import cleanly without socketlib
-// present.
+// Minimal Foundry globals (`ui`, `foundry`, `game`, `Hooks`) are stubbed just enough for
+// closeAllWindowsHandler/socket routing to run and for the module to import cleanly.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.ui = { windows: {}, notifications: { warn() {} } };
 globalThis.foundry = { applications: { instances: new Map() } };
-globalThis.game = { user: { isGM: false } };
-// socketlib isn't present in this test env, so the module's top-level code falls back to
-// Hooks.once("socketlib.ready", ...) on import -- stub just enough for that to no-op cleanly.
-globalThis.Hooks = { once() {} };
+globalThis.game = { user: { isGM: false }, paused: false };
+// A tiny real hook bus -- waitForPause actually listens on pauseGame.
+const hookListeners = new Map();
+globalThis.Hooks = {
+  once() {},
+  on(name, fn) { (hookListeners.get(name) ?? hookListeners.set(name, new Set()).get(name)).add(fn); },
+  off(name, fn) { hookListeners.get(name)?.delete(fn); },
+  call(name, ...args) { for (const fn of [...(hookListeners.get(name) ?? [])]) fn(...args); },
+};
 
 const {
   isRealWindow, closeAllWindowsHandler, clockMsFor, beatDurationS, wait, waitForEvent,
+  waitForPause, waitForManualAdvance, onSocketMessage, SOCKET_NAME,
 } = await import("./pause-fx.js");
 
 test("isRealWindow: true only for apps with a real frame (a titled window with a close control)", () => {
@@ -105,6 +110,7 @@ test("beatDurationS: falsy beatsPerCycle (0/undefined) treated as 1", () => {
 });
 
 test("beatDurationS: clamps to the photosensitive-safety floor and warns when it bites", () => {
+  globalThis.game.user.isGM = true;
   const warnings = [];
   globalThis.ui.notifications.warn = (msg) => warnings.push(msg);
 
@@ -116,6 +122,9 @@ test("beatDurationS: clamps to the photosensitive-safety floor and warns when it
   assert.equal(beatDurationS(3000, 6, "icon"), 0.5); // exactly the floor -- still clamps
   assert.equal(warnings.length, 0); // >= floor, not below it -- no warning
 
+  globalThis.game.user.isGM = false; // a player's client clamps too, but stays quiet
+  beatDurationS(1000, 10, "border");
+  assert.equal(warnings.length, 0);
   globalThis.ui.notifications.warn = () => {}; // restore the no-op for later tests
 });
 
@@ -166,3 +175,63 @@ test("waitForEvent: an abort resolves it too, so an unpause can't leave a step h
   controller.abort();
   await pending;
 });
+
+test("SOCKET_NAME: Foundry's own per-module channel, no third-party socket library", () => {
+  assert.equal(SOCKET_NAME, "module.pause-fx");
+});
+
+test("onSocketMessage: the GM's advance resolves this client's own pending manual advance", async () => {
+  // Regression: players only ever saw Foundry's plain pause screen -- the whole sequence,
+  // manual slideshow advances included, ran on the GM's client alone.
+  let advanced = false;
+  const pending = waitForManualAdvance(new AbortController().signal).then(() => { advanced = true; });
+  onSocketMessage({ action: "nonsense" }); // unknown actions are ignored
+  await wait(5);
+  assert.equal(advanced, false);
+  onSocketMessage({ action: "advance" });
+  await pending;
+  assert.equal(advanced, true);
+});
+
+test("onSocketMessage: tolerates an empty/malformed payload", () => {
+  assert.doesNotThrow(() => onSocketMessage());
+  assert.doesNotThrow(() => onSocketMessage({}));
+});
+
+test("waitForPause: resolves true immediately when the game is already paused", async () => {
+  globalThis.game.paused = true;
+  assert.equal(await waitForPause(new AbortController().signal, 50), true);
+  globalThis.game.paused = false;
+});
+
+test("waitForPause: resolves true once the GM's pause arrives, ignoring an unpause first", async () => {
+  const pending = waitForPause(new AbortController().signal, 1000);
+  Hooks.call("pauseGame", false); // not a pause -- keep waiting
+  Hooks.call("pauseGame", true);
+  assert.equal(await pending, true);
+  assert.equal(hookListeners.get("pauseGame").size, 0, "listener must detach");
+});
+
+test("waitForPause: resolves false on timeout or abort, and detaches either way", async () => {
+  assert.equal(await waitForPause(new AbortController().signal, 10), false);
+  const ctl = new AbortController();
+  const pending = waitForPause(ctl.signal, 1000);
+  ctl.abort();
+  assert.equal(await pending, false);
+  assert.equal(hookListeners.get("pauseGame").size, 0);
+});
+
+test("onSocketMessage: ignores a message whose server-stamped sender isn't a GM", async () => {
+  globalThis.game.users = new Map([["gm1", { isGM: true }], ["pc1", { isGM: false }]]);
+  let advanced = false;
+  const pending = waitForManualAdvance(new AbortController().signal).then(() => { advanced = true; });
+  onSocketMessage({ action: "advance" }, "pc1");
+  onSocketMessage({ action: "advance" }, "nobody");
+  await wait(5);
+  assert.equal(advanced, false);
+  onSocketMessage({ action: "advance" }, "gm1");
+  await pending;
+  assert.equal(advanced, true);
+  delete globalThis.game.users;
+});
+

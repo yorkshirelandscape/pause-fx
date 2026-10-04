@@ -1,7 +1,7 @@
 {
   "id": "pause-fx",
   "title": "Pause FX",
-  "description": "Declarative, reusable themed pause-screen reveals -- border/icon/text/video/image/audio steps on cycle-based clocks, plus closing every connected client's open windows via socketlib.",
+  "description": "Declarative, reusable themed pause-screen reveals -- border/icon/text/video/image/audio steps on cycle-based clocks, shown to every connected client, plus minimizing everyone's open windows.",
   "version": "1.1.0",
   "manifest": "https://github.com/yorkshirelandscape/pause-fx/releases/latest/download/module.json",
   "url": "https://github.com/yorkshirelandscape/pause-fx",
@@ -41,14 +41,5 @@
       },
       "flags": {}
     }
-  ],
-  "relationships": {
-    "requires": [
-      {
-        "id": "socketlib",
-        "type": "module",
-        "manifest": "https://github.com/manuelVo/foundryvtt-socketlib/releases/latest/download/module.json"
-      }
-    ]
-  }
+  ]
 }

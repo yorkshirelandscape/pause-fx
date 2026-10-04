@@ -24,21 +24,20 @@ export const DEFAULT_CYCLE_MS = 3000;
 // Seizure-safety floor -- //+cycle-time-beats-per-cycle for the guidance this follows.
 const MIN_BEAT_MS = 500;
 
-let socket;
+// Foundry's own module channel (needs "socket": true in module.json) -- the server relays
+// to every OTHER client, never back to the sender. //+broadcast-whole-run
+export const SOCKET_NAME = `module.${MODULE_ID}`;
 
-//+socketlib-ready-race Registers pause-fx's socket immediately if socketlib is already
-// loaded, otherwise once its "ready" hook fires -- load order isn't guaranteed.
-function registerSocket() {
-  socket = socketlib.registerModule(MODULE_ID);
-  socket.register("closeAllWindows", closeAllWindowsHandler);
-  const mod = game.modules.get(MODULE_ID);
-  if (mod) mod.socket = socket;
-}
-
-if (globalThis.socketlib) {
-  registerSocket();
-} else {
-  Hooks.once("socketlib.ready", registerSocket);
+/**
+ * Routes a broadcast from the GM's run -- every client but the triggering GM plays its own copy.
+ * @param {object} [message]
+ * @param {string} [senderId] - stamped by the server, not the sender; anything not from a GM
+ *   is ignored, so a player's console can't push a reveal to the whole table.
+ */
+export function onSocketMessage({ action, config } = {}, senderId) {
+  if (typeof senderId === "string" && !game.users?.get(senderId)?.isGM) return;
+  if (action === "play") void play(config, { leader: false });
+  else if (action === "advance") advanceAll();
 }
 
 // ---- manual advance -- a double-click on the slideshow image resolves whatever's waiting ----
@@ -47,10 +46,16 @@ let advanceResolvers = [];
 
 /** Resolves every pending waitForManualAdvance() at once -- wired to the slideshow image's
  *  own dblclick, not a keybind (see git history for the earlier keybind-based version). */
-function advanceAll() {
+export function advanceAll() {
   const resolvers = advanceResolvers;
   advanceResolvers = [];
   resolvers.forEach((resolve) => resolve());
+}
+
+/** The GM's own dblclick -- advances every client's slideshow, not just its own. */
+function advanceEveryone() {
+  game.socket.emit(SOCKET_NAME, { action: "advance" });
+  advanceAll();
 }
 
 /**
@@ -58,7 +63,7 @@ function advanceAll() {
  *   fires first -- an unpause mid-sequence shouldn't leave a manual-advance step hung forever.
  * @returns {Promise<void>} resolves the next time the displayed image is double-clicked.
  */
-function waitForManualAdvance(signal) {
+export function waitForManualAdvance(signal) {
   return new Promise((resolve) => {
     if (signal?.aborted) return resolve();
     // Each side detaches the other, so neither outlives the wait it belongs to.
@@ -89,8 +94,8 @@ const OWN_WINDOW_IDS = new Set(["pause-fx-composer", "pause-fx-step-editor"]);
 
 /**
  * Minimizes every real floating window (legacy and ApplicationV2) on whichever client runs
- * this -- called via socket.executeForEveryone so every connected client minimizes its own,
- * each deciding for itself whether to act based on its own role vs. `target`. Leaves
+ * this -- every client runs it as part of its own copy of a sequence, each deciding for
+ * itself whether to act based on its own role vs. `target`. Leaves
  * Foundry's own docked UI chrome, and Pause FX's own Composer/step editor, untouched.
  * Minimizing, not closing -- nothing open gets lost, it's just out of the way.
  * @param {object} [target]
@@ -113,6 +118,31 @@ export const wait = (ms, signal) => new Promise((resolve) => {
   const id = setTimeout(() => { signal?.removeEventListener("abort", onAbort); resolve(); }, ms);
   signal?.addEventListener("abort", onAbort, { once: true });
 });
+
+/**
+ * Resolves true once the game is paused (immediately if it already is), false on abort or
+ * after `timeoutMs` -- a non-GM client's stand-in for the GM's own togglePause.
+ * @param {AbortSignal} signal
+ * @param {number} [timeoutMs=5000]
+ * @returns {Promise<boolean>}
+ */
+export function waitForPause(signal, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    if (game.paused) return resolve(true);
+    if (signal.aborted) return resolve(false);
+    const finish = (paused) => {
+      Hooks.off("pauseGame", onPause);
+      clearTimeout(id);
+      signal.removeEventListener("abort", onAbort);
+      resolve(paused);
+    };
+    const onPause = (paused) => { if (paused) finish(true); };
+    const onAbort = () => finish(false);
+    const id = setTimeout(() => finish(false), timeoutMs);
+    Hooks.on("pauseGame", onPause);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 // Resolves on the first of `events` to fire on `target`, or early on abort -- every listener
 // self-detaches either way, so a long sequence doesn't pile them up on the run's own signal.
@@ -153,7 +183,8 @@ export function clockMsFor(waitSpec, { cycleMs }) {
 export function beatDurationS(cycleMs, beatsPerCycle, label) {
   const rawMs = cycleMs / (beatsPerCycle || 1);
   if (rawMs >= MIN_BEAT_MS) return rawMs / 1000;
-  ui.notifications.warn(
+  // Every client clamps, but only the GM (who can actually fix it) hears about it.
+  if (game.user.isGM) ui.notifications.warn(
     `pause-fx: ${label}'s beats-per-cycle would pulse faster than ${MIN_BEAT_MS}ms -- capped for photosensitivity safety.`,
   );
   return MIN_BEAT_MS / 1000;
@@ -429,7 +460,7 @@ async function playSound(spec) {
 /**
  * Pauses every currently-playing PlaylistSound in the world (any channel), the same way
  * Foundry's own Playlists sidebar pause button does -- a plain document update, so it syncs
- * to every connected client on its own, no socketlib needed. //+freeze-audio-resumable-pause
+ * to every connected client on its own, no socket message needed. //+freeze-audio-resumable-pause
  * records pausedTime (not stopSound's reset-to-null) so resumeFrozenAudio can pick each one
  * back up where it left off, not restart it.
  * @returns {Promise<Array<{playlist: object, sound: object}>>} what this call actually paused.
@@ -581,354 +612,374 @@ export class PauseFX {
       ui.notifications.warn("Only the GM can trigger this.");
       return;
     }
+    // Resolved once here, not per client -- browsing a folder needs a permission players may lack.
+    const steps = await Promise.all((config.steps ?? []).map(async (step) => (
+      step.image && !step.video ? { ...step, imageFiles: await resolveImageFiles(step.image) } : step
+    )));
+    const resolved = { ...config, steps };
+    game.socket.emit(SOCKET_NAME, { action: "play", config: resolved });
+    await play(resolved, { leader: true });
+  }
+}
 
-    // This run's own cancellation token -- any unpause fires it; every wait/gate below listens.
-    const runController = new AbortController();
-    const { signal } = runController;
+/**
+ * One client's own copy of a sequence -- every connected client runs this, so every screen
+ * gets the same effects. Only the `leader` (the GM who called run) touches shared world
+ * state: pause/unpause, ending combat, freezing playlists, and advancing a manual slideshow.
+ * @param {object} config - see PauseFX.run.
+ * @param {object} options
+ * @param {boolean} options.leader
+ */
+async function play(config, { leader }) {
+  // This run's own cancellation token -- any unpause fires it; every wait/gate below listens.
+  const runController = new AbortController();
+  const { signal } = runController;
 
-    const {
-      icon,
-      iconGlow,
-      borderColor,
-      borderWidth,
-      textGlow,
-      iconSpin,
-      text: initialText,
-      cycleMs = DEFAULT_CYCLE_MS,
-      iconBeatsPerCycle = 1,
-      textBeatsPerCycle = 1,
-      borderBeatsPerCycle = 1,
-      closeAllWindows,
-      endCombat: shouldEndCombat = false,
-      freezeAudio,
-      steps = [],
-    } = config;
+  const {
+    icon,
+    iconGlow,
+    borderColor,
+    borderWidth,
+    textGlow,
+    iconSpin,
+    text: initialText,
+    cycleMs = DEFAULT_CYCLE_MS,
+    iconBeatsPerCycle = 1,
+    textBeatsPerCycle = 1,
+    borderBeatsPerCycle = 1,
+    closeAllWindows,
+    endCombat: shouldEndCombat = false,
+    freezeAudio,
+    steps = [],
+  } = config;
 
-    // Resumed in resetOnUnpause below -- whatever this paused, and only that, picks back up
-    // where it left off once the reveal ends, however it ends.
-    const frozenAudio = freezeAudio ? await freezeWorldAudio() : [];
+  // Resumed in resetOnUnpause below -- whatever this paused, and only that, picks back up
+  // where it left off once the reveal ends, however it ends.
+  const frozenAudio = leader && freezeAudio ? await freezeWorldAudio() : [];
 
-    if (shouldEndCombat) await game.combat?.endCombat();
-    if (closeAllWindows) {
-      if (!socket) ui.notifications.warn("pause-fx: socketlib isn't ready yet, skipping closeAllWindows.");
-      // A socket hiccup shouldn't cost the whole reveal -- the GM's own screen still works.
-      else await socket.executeForEveryone("closeAllWindows", closeAllWindows).catch((error) => {
-        console.error("pause-fx | closeAllWindows broadcast failed", error);
+  if (leader && shouldEndCombat) await game.combat?.endCombat();
+  if (closeAllWindows) closeAllWindowsHandler(closeAllWindows);
+
+  // Opt-in -- an un-customized run looks like Foundry's own pause screen, not a themed one.
+  if (borderColor) {
+    setBorderColour(borderColor);
+    injectStyles();
+  }
+  if (borderWidth !== undefined) setBorderWidth(borderWidth);
+  // Harmless to set even when border's never activated -- read only once the CSS rule
+  // that uses it actually applies.
+  setBeatDuration(document.body, BORDER_DURATION_VAR, cycleMs, borderBeatsPerCycle, "border");
+
+  // Every sound this run started and hasn't stopped yet -- a set, not a single slot, so an
+  // earlier detached track can't be orphaned (and left looping past unpause) by a later one.
+  const activeSounds = new Set();
+  const stopAllSounds = () => {
+    for (const sound of activeSounds) sound.stop();
+    activeSounds.clear();
+  };
+
+  // `overlay` is declared further down -- safe to close over here since this function isn't
+  // called until the pauseGame hook fires, well after that declaration runs.
+  const resetOnUnpause = (paused) => {
+    if (paused) return; // ignore the pause-on event this run itself triggers below
+    runController.abort(); //+abort-controller-unpause-cleanup stops every pending
+    // wait/gate/background loop this run owns
+    overlay?.remove();
+    overlay = null;
+    stopAllSounds();
+    if (frozenAudio.length) resumeFrozenAudio(frozenAudio);
+    clearBorderColour();
+    clearBorderWidth();
+    document.body.classList.remove(BORDER_FROZEN_CLASS);
+    removeStyles();
+    document.getElementById(BAND_ID)?.remove();
+    Hooks.off("pauseGame", resetOnUnpause);
+  };
+  Hooks.on("pauseGame", resetOnUnpause);
+
+  let iconEl, label;
+  let iconSpinning = true; // Foundry's own default -- see applyIconChanges
+  // True once iconBeatsPerCycle has ever been applied -- //+icon-spin-duration-source-of-truth why.
+  let iconDurationEverSet = config.iconBeatsPerCycle !== undefined;
+  const applySkin = (_app, html) => {
+    const root = document.getElementById("pause") ?? (html instanceof jQuery ? html[0] : html);
+    if (!root) return;
+    // Always, not gated on any actual customization -- else Foundry's own default band
+    // shows first and visibly swaps to this one the moment a step finally styles anything.
+    injectStyles();
+    if (!document.getElementById(BAND_ID)) {
+      const band = document.createElement("div");
+      band.id = BAND_ID;
+      document.body.appendChild(band);
+    }
+
+    iconEl = root.querySelector("img, svg, i");
+    if (iconEl && iconEl.tagName !== "IMG") {
+      const img = document.createElement("img");
+      img.className = iconEl.className;
+      iconEl.replaceWith(img);
+      iconEl = img;
+    }
+    setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, iconBeatsPerCycle, "icon");
+    // Any of the three on its own is enough -- glow or spin without a new icon path still applies.
+    if (icon !== undefined || iconSpin !== undefined || iconGlow !== undefined) {
+      iconSpinning = applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, iconSpinning, iconDurationEverSet);
+    }
+
+    label = [...root.children].find((el) => el !== iconEl);
+    if (!label) {
+      label = document.createElement("div");
+      Object.assign(label.style, {
+        marginTop: "0.5em",
+        fontSize: "2rem",
       });
+      root.appendChild(label);
     }
-
-    // Opt-in -- an un-customized run looks like Foundry's own pause screen, not a themed one.
+    //+label-transform-origin-epicycle fixed, not content-based -- avoids moving
+    // scale()'s own anchor point mid-pulse.
+    label.style.width = "min(90vw, 32rem)";
+    label.style.textAlign = "center";
+    label.style.textWrap = "balance"; // spreads a wrap across the min line count evenly
+    // Foundry's figcaption rule sets line-height:1rem, cramming a wrapped second line into
+    // the first. Reserve room for two lines always (like width above) so length never nudges the icon.
+    label.style.lineHeight = "1.15";
+    label.style.height = "2.3em";
+    // Hard 2-line cap (ellipsis past it) -- webkit-box, not flex, since line-clamp needs it;
+    // box-pack replaces align-items for centering a short message within the reserved height.
+    label.style.display = "-webkit-box";
+    label.style.webkitBoxOrient = "vertical";
+    label.style.webkitBoxPack = "center";
+    label.style.webkitLineClamp = "2";
+    label.style.overflow = "hidden";
+    label.style.textOverflow = "ellipsis";
+    setBeatDuration(label, TEXT_DURATION_VAR, cycleMs, textBeatsPerCycle, "text");
+    // Text dilates by default, matching Foundry's own -- //+foundry-default-continuity why.
+    activateTextDilate(label);
     if (borderColor) {
-      setBorderColour(borderColor);
-      injectStyles();
+      label.classList.add("pause-fx-label"); // see the run()-level comment above
+      setTextGlowRings(label, borderColor); // default; textGlow below wins if also set
     }
-    if (borderWidth !== undefined) setBorderWidth(borderWidth);
-    // Harmless to set even when border's never activated -- read only once the CSS rule
-    // that uses it actually applies.
-    setBeatDuration(document.body, BORDER_DURATION_VAR, cycleMs, borderBeatsPerCycle, "border");
-
-    // Every sound this run started and hasn't stopped yet -- a set, not a single slot, so an
-    // earlier detached track can't be orphaned (and left looping past unpause) by a later one.
-    const activeSounds = new Set();
-    const stopAllSounds = () => {
-      for (const sound of activeSounds) sound.stop();
-      activeSounds.clear();
-    };
-
-    // `overlay` is declared further down -- safe to close over here since this function isn't
-    // called until the pauseGame hook fires, well after that declaration runs.
-    const resetOnUnpause = (paused) => {
-      if (paused) return; // ignore the pause-on event this run itself triggers below
-      runController.abort(); //+abort-controller-unpause-cleanup stops every pending
-      // wait/gate/background loop this run owns
-      overlay?.remove();
-      overlay = null;
-      stopAllSounds();
-      if (frozenAudio.length) resumeFrozenAudio(frozenAudio);
-      clearBorderColour();
-      clearBorderWidth();
-      document.body.classList.remove(BORDER_FROZEN_CLASS);
-      removeStyles();
-      document.getElementById(BAND_ID)?.remove();
-      Hooks.off("pauseGame", resetOnUnpause);
-    };
-    Hooks.on("pauseGame", resetOnUnpause);
-
-    let iconEl, label;
-    let iconSpinning = true; // Foundry's own default -- see applyIconChanges
-    // True once iconBeatsPerCycle has ever been applied -- //+icon-spin-duration-source-of-truth why.
-    let iconDurationEverSet = config.iconBeatsPerCycle !== undefined;
-    const applySkin = (_app, html) => {
-      const root = document.getElementById("pause") ?? (html instanceof jQuery ? html[0] : html);
-      if (!root) return;
-      // Always, not gated on any actual customization -- else Foundry's own default band
-      // shows first and visibly swaps to this one the moment a step finally styles anything.
-      injectStyles();
-      if (!document.getElementById(BAND_ID)) {
-        const band = document.createElement("div");
-        band.id = BAND_ID;
-        document.body.appendChild(band);
-      }
-
-      iconEl = root.querySelector("img, svg, i");
-      if (iconEl && iconEl.tagName !== "IMG") {
-        const img = document.createElement("img");
-        img.className = iconEl.className;
-        iconEl.replaceWith(img);
-        iconEl = img;
-      }
-      setBeatDuration(iconEl, ICON_DURATION_VAR, cycleMs, iconBeatsPerCycle, "icon");
-      // Any of the three on its own is enough -- glow or spin without a new icon path still applies.
-      if (icon !== undefined || iconSpin !== undefined || iconGlow !== undefined) {
-        iconSpinning = applyIconChanges(iconEl, { icon, iconSpin, iconGlow }, iconSpinning, iconDurationEverSet);
-      }
-
-      label = [...root.children].find((el) => el !== iconEl);
-      if (!label) {
-        label = document.createElement("div");
-        Object.assign(label.style, {
-          marginTop: "0.5em",
-          fontSize: "2rem",
-        });
-        root.appendChild(label);
-      }
-      //+label-transform-origin-epicycle fixed, not content-based -- avoids moving
-      // scale()'s own anchor point mid-pulse.
-      label.style.width = "min(90vw, 32rem)";
-      label.style.textAlign = "center";
-      label.style.textWrap = "balance"; // spreads a wrap across the min line count evenly
-      // Foundry's figcaption rule sets line-height:1rem, cramming a wrapped second line into
-      // the first. Reserve room for two lines always (like width above) so length never nudges the icon.
-      label.style.lineHeight = "1.15";
-      label.style.height = "2.3em";
-      // Hard 2-line cap (ellipsis past it) -- webkit-box, not flex, since line-clamp needs it;
-      // box-pack replaces align-items for centering a short message within the reserved height.
-      label.style.display = "-webkit-box";
-      label.style.webkitBoxOrient = "vertical";
-      label.style.webkitBoxPack = "center";
-      label.style.webkitLineClamp = "2";
-      label.style.overflow = "hidden";
-      label.style.textOverflow = "ellipsis";
-      setBeatDuration(label, TEXT_DURATION_VAR, cycleMs, textBeatsPerCycle, "text");
-      // Text dilates by default, matching Foundry's own -- //+foundry-default-continuity why.
-      activateTextDilate(label);
-      if (borderColor) {
-        label.classList.add("pause-fx-label"); // see the run()-level comment above
-        setTextGlowRings(label, borderColor); // default; textGlow below wins if also set
-      }
-      if (textGlow !== undefined) applyTextGlow(label, textGlow);
-      //+pause-text-transform-override only when actually setting custom text -- else the
-      // untouched default should still read Foundry's own uppercase "GAME PAUSED".
-      if (initialText !== undefined) {
-        label.textContent = initialText;
-        label.style.textTransform = "none";
-      }
-    };
-    const skin = (app, html) => {
-      applySkin(app, html);
-      Hooks.off("renderPause", skin);
-      Hooks.off("renderGamePause", skin);
-    };
-    //+render-pause-can-refire-mid-session both a hook listener and a synchronous
-    // capture are needed -- either can land last.
-    Hooks.once("renderPause", skin); // pre-V13 class name
-    Hooks.once("renderGamePause", skin); // V13+ (GamePause)
-    if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element);
-
-    await game.togglePause(true, { broadcast: true });
-
-    // Give a real render (and the hooks above) a moment to land before trusting anything --
-    // then stop listening, so a stray LATER pause elsewhere doesn't re-skin mid-sequence.
-    await wait(150, signal);
+    if (textGlow !== undefined) applyTextGlow(label, textGlow);
+    //+pause-text-transform-override only when actually setting custom text -- else the
+    // untouched default should still read Foundry's own uppercase "GAME PAUSED".
+    if (initialText !== undefined) {
+      label.textContent = initialText;
+      label.style.textTransform = "none";
+    }
+  };
+  const skin = (app, html) => {
+    applySkin(app, html);
     Hooks.off("renderPause", skin);
     Hooks.off("renderGamePause", skin);
-    if (!iconEl || !label) await wait(200, signal); // still not ready? slower client -- give it longer.
-    if (!document.getElementById("pause") || !label) {
-      ui.notifications.error("pause-fx: pause screen never rendered, aborting the sequence.");
-      return;
+  };
+  //+render-pause-can-refire-mid-session both a hook listener and a synchronous
+  // capture are needed -- either can land last.
+  Hooks.once("renderPause", skin); // pre-V13 class name
+  Hooks.once("renderGamePause", skin); // V13+ (GamePause)
+  if (ui.pause.rendered) applySkin(ui.pause, ui.pause.element);
+
+  if (leader) {
+    await game.togglePause(true, { broadcast: true });
+  } else if (!(await waitForPause(signal))) {
+    // The GM's pause never reached this client -- don't leave a half-applied skin behind.
+    Hooks.off("renderPause", skin);
+    Hooks.off("renderGamePause", skin);
+    resetOnUnpause(false);
+    return;
+  }
+
+  // Give a real render (and the hooks above) a moment to land before trusting anything --
+  // then stop listening, so a stray LATER pause elsewhere doesn't re-skin mid-sequence.
+  await wait(150, signal);
+  Hooks.off("renderPause", skin);
+  Hooks.off("renderGamePause", skin);
+  if (!iconEl || !label) await wait(200, signal); // still not ready? slower client -- give it longer.
+  if (!document.getElementById("pause") || !label) {
+    if (leader) ui.notifications.error("pause-fx: pause screen never rendered, aborting the sequence.");
+    return;
+  }
+
+  let overlay = null; // the current video/image element, if any
+
+  for (const step of steps) {
+    // An unpause (this run's own step.unpause included) cuts the sequence off here.
+    if (signal.aborted) break;
+
+    //+apply-then-wait-step-model apply this step's own effects first, then hold
+    // for its own duration (below).
+    if (step.text !== undefined) {
+      label.textContent = step.text;
+      label.style.textTransform = "none"; //+pause-text-transform-override
+      //+icon-text-vertical-recenter out of flow (not display:none -- see the icon's own
+      // case below) so the icon re-centers alone in #pause's own column when text is empty.
+      label.style.position = step.text ? "" : "absolute";
+    }
+    if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
+    //+text-fade-explicit-off explicit false matters here too, not just true.
+    //+text-pulse-fade-combinable independent now -- both can run together.
+    if (step.textPulse !== undefined) {
+      if (step.textPulse) activateTextDilate(label); else deactivateTextDilate(label);
+    }
+    if (step.textFade !== undefined) {
+      if (step.textFade) activateTextFade(label); else deactivateTextFade(label);
+    }
+    if (step.stopTextPulse) label.style.setProperty(DILATE_PLAY_VAR, "paused");
+    if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
+    if (step.textBeatsPerCycle !== undefined) {
+      retimeAnimation(label, ["pause-fx-text-dilate", "pause-fx-text-fade"], TEXT_DURATION_VAR, cycleMs, step.textBeatsPerCycle, "text");
+    }
+    if (step.iconVisible !== undefined && iconEl) {
+      iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
+      //+icon-text-vertical-recenter position, not display:none -- keeps the spin
+      // animation's own currentTime ticking (see icon-spin-retiming-jump) while hidden.
+      iconEl.style.position = step.iconVisible ? "" : "absolute";
     }
 
-    let overlay = null; // the current video/image element, if any
+    if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
+      iconSpinning = applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow }, iconSpinning, iconDurationEverSet);
+    }
+    if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
+    if (step.iconBeatsPerCycle !== undefined && iconEl) {
+      retimeAnimation(iconEl, "pause-fx-icon-spin", ICON_DURATION_VAR, cycleMs, step.iconBeatsPerCycle, "icon");
+      iconDurationEverSet = true;
+    }
+    if (step.borderColor) activateBorder(step.borderColor, { label });
+    if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
+    if (step.stopBorderPulse) document.body.classList.add(BORDER_FROZEN_CLASS);
+    if (step.borderBeatsPerCycle !== undefined) {
+      // //+icon-spin-retiming-jump same mid-flight jump, same fix -- border's own pulse
+      // lives on a ::before pseudo-element, not <body> itself.
+      retimeAnimation(document.body, "pause-fx-border-pulse", BORDER_DURATION_VAR, cycleMs, step.borderBeatsPerCycle, "border", "::before");
+    }
 
-    for (const step of steps) {
-      // An unpause (this run's own step.unpause included) cuts the sequence off here.
-      if (signal.aborted) break;
+    // //+pre-av-duration-post-av-step-model AV phase: video/image self-contained per step;
+    // audio joins it only when waitForAudioEnd binds it, else detached (starts now, stoppable later).
+    const hasVisual = !!(step.video || step.image);
+    const audioBound = !!step.audio && !!step.waitForAudioEnd;
+    const cycles = { cycleMs };
 
-      //+apply-then-wait-step-model apply this step's own effects first, then hold
-      // for its own duration (below).
-      if (step.text !== undefined) {
-        label.textContent = step.text;
-        label.style.textTransform = "none"; //+pause-text-transform-override
-        //+icon-text-vertical-recenter out of flow (not display:none -- see the icon's own
-        // case below) so the icon re-centers alone in #pause's own column when text is empty.
-        label.style.position = step.text ? "" : "absolute";
-      }
-      if (step.textGlow !== undefined) applyTextGlow(label, step.textGlow);
-      //+text-fade-explicit-off explicit false matters here too, not just true.
-      //+text-pulse-fade-combinable independent now -- both can run together.
-      if (step.textPulse !== undefined) {
-        if (step.textPulse) activateTextDilate(label); else deactivateTextDilate(label);
-      }
-      if (step.textFade !== undefined) {
-        if (step.textFade) activateTextFade(label); else deactivateTextFade(label);
-      }
-      if (step.stopTextPulse) label.style.setProperty(DILATE_PLAY_VAR, "paused");
-      if (step.stopTextFade) label.style.setProperty(FADE_PLAY_VAR, "paused");
-      if (step.textBeatsPerCycle !== undefined) {
-        retimeAnimation(label, ["pause-fx-text-dilate", "pause-fx-text-fade"], TEXT_DURATION_VAR, cycleMs, step.textBeatsPerCycle, "text");
-      }
-      if (step.iconVisible !== undefined && iconEl) {
-        iconEl.style.visibility = step.iconVisible ? "visible" : "hidden";
-        //+icon-text-vertical-recenter position, not display:none -- keeps the spin
-        // animation's own currentTime ticking (see icon-spin-retiming-jump) while hidden.
-        iconEl.style.position = step.iconVisible ? "" : "absolute";
-      }
+    if (step.audio && !audioBound) {
+      const detached = await playSound(
+        { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: !!step.audioLoop },
+      );
+      if (detached) activeSounds.add(detached);
+    }
 
-      if (step.icon !== undefined || step.iconSpin !== undefined || step.iconGlow !== undefined) {
-        iconSpinning = applyIconChanges(iconEl, { icon: step.icon, iconSpin: step.iconSpin, iconGlow: step.iconGlow }, iconSpinning, iconDurationEverSet);
+    if (hasVisual || audioBound) {
+      const isVideo = !!step.video;
+      const imageFiles = hasVisual && !isVideo ? (step.imageFiles ?? await resolveImageFiles(step.image)) : null;
+      let visualEl = null;
+      if (hasVisual) {
+        visualEl = document.createElement(isVideo ? "video" : "img");
+        Object.assign(visualEl.style, {
+          position: "fixed",
+          inset: "0",
+          margin: "auto",
+          width: "min(90vmin, 800px)",
+          maxHeight: "90vh",
+          zIndex: "100000", // above Foundry's own UI chrome -- #pause's icon/text sit higher still
+        });
+        // Loaded but not yet playing -- pre-AV (below) elapses before anything actually starts.
+        if (isVideo) {
+          Object.assign(visualEl, { src: step.video, autoplay: false, loop: !!step.loop, controls: false, volume: step.videoVolume ?? 0.5 });
+        } else if (leader) {
+          // Harmless when nothing's actually waiting on it -- advanceAll() is a no-op then.
+          visualEl.style.cursor = "pointer";
+          visualEl.addEventListener("dblclick", advanceEveryone);
+        }
+        document.body.appendChild(visualEl);
+        overlay = visualEl;
       }
-      if (step.stopIconSpin && iconEl) iconEl.style.animationPlayState = "paused";
-      if (step.iconBeatsPerCycle !== undefined && iconEl) {
-        retimeAnimation(iconEl, "pause-fx-icon-spin", ICON_DURATION_VAR, cycleMs, step.iconBeatsPerCycle, "icon");
-        iconDurationEverSet = true;
-      }
-      if (step.borderColor) activateBorder(step.borderColor, { label });
-      if (step.borderWidth !== undefined) setBorderWidth(step.borderWidth);
-      if (step.stopBorderPulse) document.body.classList.add(BORDER_FROZEN_CLASS);
-      if (step.borderBeatsPerCycle !== undefined) {
-        // //+icon-spin-retiming-jump same mid-flight jump, same fix -- border's own pulse
-        // lives on a ::before pseudo-element, not <body> itself.
-        retimeAnimation(document.body, "pause-fx-border-pulse", BORDER_DURATION_VAR, cycleMs, step.borderBeatsPerCycle, "border", "::before");
-      }
-
-      // //+pre-av-duration-post-av-step-model AV phase: video/image self-contained per step;
-      // audio joins it only when waitForAudioEnd binds it, else detached (starts now, stoppable later).
-      const hasVisual = !!(step.video || step.image);
-      const audioBound = !!step.audio && !!step.waitForAudioEnd;
-      const cycles = { cycleMs };
-
-      if (step.audio && !audioBound) {
-        const detached = await playSound(
-          { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: true, loop: !!step.audioLoop },
+      let boundSound = null;
+      if (audioBound) {
+        boundSound = await playSound(
+          { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: false, loop: !!step.audioLoop },
         );
-        if (detached) activeSounds.add(detached);
+        if (boundSound) activeSounds.add(boundSound);
       }
 
-      if (hasVisual || audioBound) {
-        const isVideo = !!step.video;
-        const imageFiles = hasVisual && !isVideo ? await resolveImageFiles(step.image) : null;
-        let visualEl = null;
-        if (hasVisual) {
-          visualEl = document.createElement(isVideo ? "video" : "img");
-          Object.assign(visualEl.style, {
-            position: "fixed",
-            inset: "0",
-            margin: "auto",
-            width: "min(90vmin, 800px)",
-            maxHeight: "90vh",
-            zIndex: "100000", // above Foundry's own UI chrome -- #pause's icon/text sit higher still
-          });
-          // Loaded but not yet playing -- pre-AV (below) elapses before anything actually starts.
-          if (isVideo) {
-            Object.assign(visualEl, { src: step.video, autoplay: false, loop: !!step.loop, controls: false, volume: step.videoVolume ?? 0.5 });
-          } else {
-            // Harmless when nothing's actually waiting on it -- advanceAll() is a no-op then.
-            visualEl.style.cursor = "pointer";
-            visualEl.addEventListener("dblclick", advanceAll);
-          }
-          document.body.appendChild(visualEl);
-          overlay = visualEl;
-        }
-        let boundSound = null;
-        if (audioBound) {
-          boundSound = await playSound(
-            { src: step.audio, volume: step.audioVolume ?? 0.8, autoplay: false, loop: !!step.audioLoop },
-          );
-          if (boundSound) activeSounds.add(boundSound);
-        }
-
-        if (step.preAV) await wait(clockMsFor(step.preAV, cycles), signal);
-        if (signal.aborted) break;
-
-        //+image-step-defaults-to-manual-advance omitted imagePulses behaves like 0 (manual)
-        // -- matches the step-editor's own "DblClick" placeholder for a blank field.
-        let slideshowDone = null;
-        if (hasVisual) {
-          if (isVideo) {
-            visualEl.play();
-          } else {
-            visualEl.src = imageFiles[0];
-            const imagePulses = step.imagePulses ?? 0;
-            let resolveSlideshowDone;
-            slideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
-            const showSlideshow = async () => {
-              let i = 0;
-              while (true) {
-                //+slideshow-closes-over-element-not-overlay isConnected: the step already
-                // ended and took the element with it -- else this loops past the run.
-                if (signal.aborted || !visualEl.isConnected) { resolveSlideshowDone(); return; }
-                if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
-                if (imagePulses === 0) await waitForManualAdvance(signal);
-                else await wait(clockMsFor({ units: imagePulses }, cycles), signal);
-                i++;
-                if (i >= imageFiles.length) {
-                  resolveSlideshowDone(); // one full pass done, looping or not -- fires once
-                  if (!step.loop) break;
-                }
-              }
-            };
-            void showSlideshow();
-          }
-        }
-        if (boundSound) boundSound.play();
-
-        //+manual-slideshow-loop-has-a-natural-end explicit Duration always wins when set;
-        // unset, wait for the later of whichever channels genuinely have no natural end.
-        const naturalEnds = [];
-        if (hasVisual && (!step.loop || (step.imagePulses ?? 0) === 0)) {
-          // "error" too: an unloadable video never fires "ended", and would hang the sequence.
-          if (isVideo) naturalEnds.push(waitForEvent(visualEl, ["ended", "error"], signal));
-          else if (slideshowDone) naturalEnds.push(slideshowDone);
-        }
-        if (boundSound && !step.audioLoop) {
-          naturalEnds.push(waitForEvent(boundSound, ["end"], signal));
-        }
-        if (step.wait) {
-          await wait(clockMsFor(step.wait, cycles), signal);
-        } else if (naturalEnds.length) {
-          await Promise.all(naturalEnds);
-        } else {
-          ui.notifications.error("pause-fx: a step's media all loops with no Duration set -- add one so it knows when to stop.");
-        }
-        if (signal.aborted) break;
-
-        // Freeze rather than clean up outright -- holds through post-AV the same way a
-        // video that already reached its own natural end just sits on its last frame.
-        if (isVideo && visualEl) visualEl.pause();
-        if (step.postAV) await wait(clockMsFor(step.postAV, cycles), signal);
-        if (hasVisual) { overlay?.remove(); overlay = null; }
-        if (boundSound) { boundSound.stop(); activeSounds.delete(boundSound); }
-      }
-
-      if (step.stopAudio) stopAllSounds();
+      if (step.preAV) await wait(clockMsFor(step.preAV, cycles), signal);
       if (signal.aborted) break;
 
-      // A step with no AV phase of its own just holds for its plain Duration, as always.
-      if (!hasVisual && !audioBound && step.wait) {
-        await wait(clockMsFor(step.wait, cycles), signal);
+      //+image-step-defaults-to-manual-advance omitted imagePulses behaves like 0 (manual)
+      // -- matches the step-editor's own "DblClick" placeholder for a blank field.
+      let slideshowDone = null;
+      if (hasVisual) {
+        if (isVideo) {
+          visualEl.play();
+        } else {
+          visualEl.src = imageFiles[0];
+          const imagePulses = step.imagePulses ?? 0;
+          let resolveSlideshowDone;
+          slideshowDone = new Promise((resolve) => { resolveSlideshowDone = resolve; });
+          const showSlideshow = async () => {
+            let i = 0;
+            while (true) {
+              //+slideshow-closes-over-element-not-overlay isConnected: the step already
+              // ended and took the element with it -- else this loops past the run.
+              if (signal.aborted || !visualEl.isConnected) { resolveSlideshowDone(); return; }
+              if (i > 0) visualEl.src = imageFiles[i % imageFiles.length];
+              if (imagePulses === 0) await waitForManualAdvance(signal);
+              else await wait(clockMsFor({ units: imagePulses }, cycles), signal);
+              i++;
+              if (i >= imageFiles.length) {
+                resolveSlideshowDone(); // one full pass done, looping or not -- fires once
+                if (!step.loop) break;
+              }
+            }
+          };
+          void showSlideshow();
+        }
       }
-      if (signal.aborted) break; // the wait/gate above may be what the unpause interrupted
+      if (boundSound) boundSound.play();
 
-      if (step.unpause) {
-        // resetOnUnpause (the pauseGame hook above) does the actual cleanup and aborts this
-        // run; the loop's own abort check catches it on the next iteration.
-        await game.togglePause(false, { broadcast: true });
+      //+manual-slideshow-loop-has-a-natural-end explicit Duration always wins when set;
+      // unset, wait for the later of whichever channels genuinely have no natural end.
+      const naturalEnds = [];
+      if (hasVisual && (!step.loop || (step.imagePulses ?? 0) === 0)) {
+        // "error" too: an unloadable video never fires "ended", and would hang the sequence.
+        if (isVideo) naturalEnds.push(waitForEvent(visualEl, ["ended", "error"], signal));
+        else if (slideshowDone) naturalEnds.push(slideshowDone);
       }
+      if (boundSound && !step.audioLoop) {
+        naturalEnds.push(waitForEvent(boundSound, ["end"], signal));
+      }
+      if (step.wait) {
+        await wait(clockMsFor(step.wait, cycles), signal);
+      } else if (naturalEnds.length) {
+        await Promise.all(naturalEnds);
+      } else if (leader) {
+        ui.notifications.error("pause-fx: a step's media all loops with no Duration set -- add one so it knows when to stop.");
+      }
+      if (signal.aborted) break;
+
+      // Freeze rather than clean up outright -- holds through post-AV the same way a
+      // video that already reached its own natural end just sits on its last frame.
+      if (isVideo && visualEl) visualEl.pause();
+      if (step.postAV) await wait(clockMsFor(step.postAV, cycles), signal);
+      if (hasVisual) { overlay?.remove(); overlay = null; }
+      if (boundSound) { boundSound.stop(); activeSounds.delete(boundSound); }
+    }
+
+    if (step.stopAudio) stopAllSounds();
+    if (signal.aborted) break;
+
+    // A step with no AV phase of its own just holds for its plain Duration, as always.
+    if (!hasVisual && !audioBound && step.wait) {
+      await wait(clockMsFor(step.wait, cycles), signal);
+    }
+    if (signal.aborted) break; // the wait/gate above may be what the unpause interrupted
+
+    if (step.unpause && leader) {
+      // resetOnUnpause (the pauseGame hook above) does the actual cleanup and aborts this
+      // run; the loop's own abort check catches it on the next iteration.
+      await game.togglePause(false, { broadcast: true });
     }
   }
 }
 
 Hooks.once("ready", () => {
+  game.socket.on(SOCKET_NAME, onSocketMessage);
   const mod = game.modules.get(MODULE_ID);
   // ??=, not a plain assignment -- composer.js adds openComposer to this same object.
   if (mod) (mod.api ??= {}).run = PauseFX.run.bind(PauseFX);
